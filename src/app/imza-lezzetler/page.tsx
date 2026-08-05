@@ -4,9 +4,9 @@ import { CtaBand } from "@/components/shared/CtaBand";
 import { ProductCard } from "@/components/shared/ProductCard";
 import { Section } from "@/components/ui/Section";
 import { Container } from "@/components/ui/Container";
-import { SectionHeading } from "@/components/ui/SectionHeading";
+import { Heading } from "@/components/ui/Heading";
 import { Figure } from "@/components/ui/Figure";
-import { Divider } from "@/components/ui/Ornament";
+
 import { Reveal } from "@/components/ui/Reveal";
 import { signatureIntro, signatureProducts } from "@/content/menu";
 
@@ -50,9 +50,8 @@ export default function SignaturePage() {
             <Reveal className="lg:col-span-6">
               <Figure
         asset={signatureIntro.image}
-                ratio="aspect-[3/2]"
+                ratio="3 / 2"
                 sizes="(max-width: 1024px) 90vw, 50vw"
-                framed
               />
             </Reveal>
 
@@ -60,7 +59,6 @@ export default function SignaturePage() {
               <p className="font-sans text-[11px] uppercase tracking-[0.3em] text-gold">
                 Neden imza?
               </p>
-              <Divider className="mt-5 justify-start" />
               <ul className="mt-8 space-y-7">
                 {reasons.map((reason) => (
                   <li key={reason.title}>
@@ -79,10 +77,10 @@ export default function SignaturePage() {
       {/* İmza ürünler */}
       <Section tone="cream-2">
         <Container>
-          <SectionHeading
-            eyebrow="Seçki"
+          <Heading
+            label="Seçki"
             title="Funda denince akla gelenler."
-            description="Az sayıda, iddialı ürün. Her biri yıllar içinde kendi müdavimini yarattı."
+            lead="Az sayıda, iddialı ürün. Her biri yıllar içinde kendi müdavimini yarattı."
           />
 
           <div className="mt-16 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
@@ -96,7 +94,6 @@ export default function SignaturePage() {
       </Section>
 
       <CtaBand
-        eyebrow="Bir Kutu Mutluluk"
         title="İmza lezzetleri kutuda götürün."
         description="Hediye kutularımızın içeriğini imza ürünlerle birlikte hazırlıyoruz."
         primary={{ href: "/paket-hediye", label: "Paket & Hediye" }}

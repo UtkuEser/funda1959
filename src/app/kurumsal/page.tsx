@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { PageHero } from "@/components/shared/PageHero";
 import { Section } from "@/components/ui/Section";
 import { Container } from "@/components/ui/Container";
-import { SectionHeading } from "@/components/ui/SectionHeading";
+import { Heading } from "@/components/ui/Heading";
 import { Figure } from "@/components/ui/Figure";
 import { Reveal } from "@/components/ui/Reveal";
 import { RequestForm } from "@/components/shared/RequestForm";
@@ -36,18 +36,17 @@ export default function CorporatePage() {
             <Reveal className="lg:col-span-5">
               <Figure
         asset={corporateIntro.image}
-                ratio="aspect-[4/5]"
+                ratio="4 / 5"
                 sizes="(max-width: 1024px) 90vw, 40vw"
-                framed
               />
             </Reveal>
 
             <div className="lg:col-span-7">
-              <SectionHeading
+              <Heading
                 align="left"
-                eyebrow="Neler Yapıyoruz"
+                label="Neler Yapıyoruz"
                 title="Adet büyüdükçe planlama başlar."
-                description="Toplu siparişlerde üretim takvimi, paketleme ve teslimat tek bir plan olarak kurulur."
+                lead="Toplu siparişlerde üretim takvimi, paketleme ve teslimat tek bir plan olarak kurulur."
               />
 
               <div className="mt-10 grid gap-px border border-stone/30 bg-stone/30 sm:grid-cols-2">
@@ -70,8 +69,8 @@ export default function CorporatePage() {
       {/* Süreç */}
       <Section tone="cream-2" spacing="tight">
         <Container>
-          <SectionHeading
-            eyebrow="Süreç"
+          <Heading
+            label="Süreç"
             title="Dört adımda toplu sipariş."
           />
 
@@ -103,12 +102,12 @@ export default function CorporatePage() {
       </Section>
 
       {/* Talep formu */}
-      <Section tone="paper">
+      <Section tone="cream">
         <Container size="narrow">
-          <SectionHeading
-            eyebrow="Teklif Alın"
+          <Heading
+            label="Teklif Alın"
             title="Talebinizi iletin."
-            description="Formu doldurduğunuzda bilgileriniz hazır bir e-posta taslağına dönüşür; göndermeniz yeterli."
+            lead="Formu doldurduğunuzda bilgileriniz hazır bir e-posta taslağına dönüşür; göndermeniz yeterli."
           />
 
           <div className="mt-12">

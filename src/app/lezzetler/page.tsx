@@ -5,7 +5,7 @@ import { CtaBand } from "@/components/shared/CtaBand";
 import { Section } from "@/components/ui/Section";
 import { Container } from "@/components/ui/Container";
 import { Figure } from "@/components/ui/Figure";
-import { Divider } from "@/components/ui/Ornament";
+
 import { Reveal } from "@/components/ui/Reveal";
 import { collections, getCategoriesByCollection } from "@/content/menu";
 
@@ -48,7 +48,6 @@ export default function MenuPage() {
                       {collection.description}
                     </p>
                   </div>
-                  <Divider className="hidden md:flex md:pb-2" />
                 </div>
 
                 <div className="mt-12 grid gap-x-8 gap-y-14 sm:grid-cols-2 lg:grid-cols-3">
@@ -60,7 +59,7 @@ export default function MenuPage() {
                       >
                         <Figure
         asset={category.image}
-                          ratio="aspect-[4/3]"
+                          ratio="4 / 3"
                           sizes="(max-width: 640px) 90vw, (max-width: 1024px) 45vw, 30vw"
                         />
                         <div className="flex flex-1 flex-col pt-6">
@@ -87,7 +86,6 @@ export default function MenuPage() {
         })}
 
       <CtaBand
-        eyebrow="Sipariş"
         title="Vitrini görmeden de sipariş verebilirsiniz."
         description="Özel gün pastaları ve toplu siparişler için bizi arayın; çeşidi ve teslim gününü birlikte belirleyelim."
         primary={{ href: "/iletisim", label: "Sipariş Ver" }}

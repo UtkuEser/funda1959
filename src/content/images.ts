@@ -1,84 +1,78 @@
 /**
  * Merkezi görsel kaydı.
  *
- * Sitedeki bütün görsel alanları buradan beslenir.
+ * Fotoğraf eklemek için tek yapılacak: dosyayı public/images içine koyup
+ * ilgili kaydın `src` alanını doldurmak.
  *
- * Fotoğraf eklemek için tek yapılacak:
- *   1) dosyayı public/images içine koyun
- *   2) aşağıdaki ilgili kaydın `src` alanına yolunu yazın
+ *   hero: { ...,  src: "/images/hero.jpg" }
  *
- *      hero: { ...,  src: "/images/hero.jpg" }
- *
- * `src` boş olduğu sürece o alan, aynı ölçüde marka yüzeyi olarak çizilir
- * (bordo/krem zemin + motif + künye). Layout hiçbir şekilde değişmez.
- *
- * `position` her görselin kadrajını ayrı ayarlar (CSS object-position).
- * `tone`, fotoğraf yokken kullanılacak marka zeminini belirler.
+ * `src` boşken alan, aynı ölçüde nötr bir yüzey olarak çizilir; layout değişmez.
+ * `position` kadrajı, `ratio` ise alanın en-boy oranını belirler (CLS oluşmaz).
  */
 
-export type ImageTone = "cream" | "beige" | "powder" | "stone" | "bordo";
-
 export type ImageAsset = {
-  /** Fotoğraf yolu. Boşsa marka yüzeyi çizilir. */
+  /** Fotoğraf yolu (public altı). Boşsa nötr yüzey gösterilir. */
   src?: string;
-  /** Erişilebilirlik metni ve fotoğraf yokken görünen künye. */
+  /** Erişilebilirlik metni. */
   alt: string;
-  /** CSS object-position — kadraj ayarı. */
+  /** CSS object-position — kadraj. */
   position?: string;
-  /** Fotoğraf yokken kullanılacak zemin tonu. */
-  tone?: ImageTone;
+  /** CSS aspect-ratio — alanın oranı. */
+  ratio?: string;
+  /** Kaynak dosyanın gerçek ölçüleri (biliniyorsa). */
+  width?: number;
+  height?: number;
 };
 
-const slot = (alt: string, tone: ImageTone = "cream", position = "center"): ImageAsset => ({
+const slot = (alt: string, ratio: string, position = "center"): ImageAsset => ({
   src: undefined,
   alt,
-  tone,
+  ratio,
   position,
 });
 
 export const images = {
-  /* Hero — video ve/veya kapak fotoğrafı */
-  hero: slot("Şube atmosferi: sıcak ışık, vitrin, kahve ve masa", "bordo"),
+  /* Hero — video posteri / kapak */
+  hero: slot("Funda 1959 şubesinde kahve ve tatlı servisi", "16 / 9"),
 
-  /* Funda'da Neler Var */
-  kahveninYanina: slot("Kahve fincanı ve yanında tek lokmalık tatlı", "powder"),
-  eveGoturmelik: slot("Kutulanmış, eve götürülmeye hazır lezzetler", "beige"),
-  ozelGunler: slot("Özel gün pastası, mumlar ve masa", "stone"),
-  imzaKart: slot("Funda imza lezzeti, yakın plan", "bordo"),
+  /* Günün her anına Funda */
+  kahveninYanina: slot("Kahvenin yanında tek lokmalık tatlı", "4 / 5"),
+  eveGoturmelik: slot("Kutulanmış, eve götürülmeye hazır lezzetler", "16 / 10"),
+  ozelGunler: slot("Özel gün pastası ve masa", "16 / 10"),
+  imzaKart: slot("Funda imza lezzeti", "21 / 9"),
 
-  /* İmza bölümü */
-  imzaBuyuk: slot("İmza lezzet, bordo kurdeleli paketiyle birlikte", "powder"),
+  /* İmza */
+  imzaBuyuk: slot("İmza lezzet, yakın plan", "4 / 5"),
 
-  /* Paket & hediye */
-  hediyeGenis: slot("Paketleme tezgahı: kutular, kurdele, mühür", "beige"),
-  hediye1: slot("Klasik Funda kutusu, kapalı ve kurdeleli", "cream"),
-  hediye2: slot("Misafirlik kutusu, açık halde içeriğiyle", "powder"),
-  hediye3: slot("Ofis ikramı tepsisi", "stone"),
-  hediye4: slot("Özel gün kutusu ve el yazısı kart", "beige"),
+  /* Bir kutu mutluluk */
+  hediyeGenis: slot("Funda kutusu hazırlanırken", "21 / 9"),
+  hediye1: slot("Klasik Funda kutusu", "3 / 4"),
+  hediye2: slot("Misafirlik kutusu", "3 / 4"),
+  hediye3: slot("Ofis ikramı", "3 / 4"),
+  hediye4: slot("Özel gün kutusu", "3 / 4"),
 
   /* Şubeler */
-  subeGop: slot("GOP şubesi: vitrin ve oturma alanı", "beige"),
-  subePanora: slot("Panora şubesi: servis tezgahı ve salon", "stone"),
-  subeIncek: slot("İncek şubesi: ferah salon ve masa detayı", "powder"),
+  subeGop: slot("GOP şubesi", "4 / 5"),
+  subePanora: slot("Panora şubesi", "4 / 5"),
+  subeIncek: slot("İncek şubesi", "4 / 5"),
 
   /* Hikaye */
-  hikaye: slot("Arşivden bir kare: ilk vitrin ve usta", "stone"),
-  hikayeArsiv: slot("Eski tabela, tartı ve kutu detayı", "beige"),
+  hikaye: slot("Funda 1959 arşivinden bir kare", "4 / 5"),
+  hikayeArsiv: slot("Eski vitrin detayı", "4 / 3"),
 
-  /* Funda Defteri */
-  defter1: slot("Kahve ve yanında küçük tabak", "powder"),
-  defter2: slot("Elde taşınan kurdeleli kutu", "cream"),
-  defter3: slot("Mumlu pasta ve kalabalık masa", "beige"),
-  defter4: slot("Masada kahve, tatlı ve gün ışığı", "stone"),
+  /* Tatlı ritüeller */
+  defter1: slot("Kahve ve yanında küçük tabak", "3 / 2"),
+  defter2: slot("Elde taşınan kutu", "1 / 1"),
+  defter3: slot("Mumlu pasta ve masa", "1 / 1"),
+  defter4: slot("Masada kahve ve tatlı", "3 / 2"),
 
   /* Ürün ve kategoriler */
-  urunBaklava: slot("Antep fıstıklı baklava, yakın plan", "beige"),
-  urunMakaron: slot("Makaron seçkisi", "powder"),
-  urunTart: slot("Meyveli tart", "cream"),
-  urunPasta: slot("Yaş pasta dilimi, kesit", "powder"),
-  urunKek: slot("Kek ve çay servisi", "beige"),
-  urunFistik: slot("Fıstıklı tatlı, üstten çekim", "stone"),
-  urunVitrin: slot("Vitrinde günün çeşitleri", "stone"),
+  urunBaklava: slot("Antep fıstıklı baklava", "4 / 5"),
+  urunMakaron: slot("Makaron seçkisi", "4 / 5"),
+  urunTart: slot("Meyveli tart", "4 / 5"),
+  urunPasta: slot("Yaş pasta dilimi", "4 / 5"),
+  urunKek: slot("Kek ve çay servisi", "4 / 5"),
+  urunFistik: slot("Fıstıklı tatlı", "4 / 5"),
+  urunVitrin: slot("Vitrinde günün çeşitleri", "4 / 3"),
 } satisfies Record<string, ImageAsset>;
 
-export type ImageKey = keyof typeof images;

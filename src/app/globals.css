@@ -1,33 +1,30 @@
 @import "tailwindcss";
 
 /* =========================================================
-   FUNDA 1959 — Tasarım Sistemi
-   Tüm marka renkleri ve tonları tek noktadan yönetilir.
+   FUNDA 1959 — tasarım sistemi
+   Açık krem zemin, kontrollü bordo vurgu, büyük tipografi.
    ========================================================= */
 
 @theme {
-  /* Ana renk — bordo. Vurgu, CTA, footer ve motiflerde kullanılır. */
-  --color-bordo: #7b1e2b;
-  --color-bordo-dark: #57121c;
-  --color-bordo-soft: #9c4450;
-  --color-bordo-tint: #f0e2e2;
+  /* Zeminler */
+  --color-cream: #fbf8f3;
+  --color-cream-2: #f5efe5;
+  --color-cream-3: #ece3d5;
+  --color-sand: #ddd0bc;
 
-  /* Zeminler — krem / kırık beyaz */
-  --color-cream: #fbf7f0;
-  --color-cream-2: #f4ecdf;
-  --color-cream-3: #ece0cd;
+  /* Vurgu */
+  --color-bordo: #7a1f2b;
+  --color-bordo-dark: #5a141d;
+  --color-bordo-soft: #98444e;
 
-  /* Destek tonlar */
-  --color-beige: #e2d3bb;
-  --color-powder: #eddfd6;
-  --color-stone: #c7b39a;
-  --color-gold: #b8924f;
-  --color-gold-soft: #dcc48f;
+  /* Destek */
+  --color-gold: #b08b4f;
+  --color-stone: #b9a68d;
 
   /* Metin */
-  --color-ink: #2c1a16;
-  --color-ink-soft: #6d564d;
-  --color-ink-mute: #8d786f;
+  --color-ink: #2a1a15;
+  --color-ink-soft: #6a544a;
+  --color-ink-mute: #907c72;
 }
 
 @theme inline {
@@ -41,17 +38,17 @@
 
 html {
   scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
-  /* Okunabilirlik: gövde metni geniş bir yaş aralığı için rahat boyutta tutulur. */
-  font-size: 17px;
-  line-height: 1.65;
   background-color: var(--color-cream);
   color: var(--color-ink);
+  font-size: 17px;
+  line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
 }
 
 h1,
@@ -59,7 +56,8 @@ h2,
 h3,
 h4 {
   font-family: var(--font-serif);
-  font-feature-settings: "kern" 1, "liga" 1;
+  font-weight: 400;
+  letter-spacing: -0.01em;
 }
 
 ::selection {
@@ -70,116 +68,64 @@ h4 {
 *:focus-visible {
   outline: 2px solid var(--color-bordo);
   outline-offset: 3px;
-  border-radius: 2px;
-}
-
-::-webkit-scrollbar {
-  width: 8px;
-}
-::-webkit-scrollbar-track {
-  background: var(--color-cream-2);
-}
-::-webkit-scrollbar-thumb {
-  background: var(--color-stone);
-}
-::-webkit-scrollbar-thumb:hover {
-  background: var(--color-bordo-soft);
 }
 
 /* ---------------------------------------------------------
-   Dekoratif dokular ve motifler
+   Tipografi ölçeği — masaüstünde büyük, mobilde clamp ile kontrollü
    --------------------------------------------------------- */
 
-/* Kağıt hissi veren çok hafif doku */
-.surface-paper {
-  background-image:
-    radial-gradient(
-      ellipse at 15% 0%,
-      color-mix(in srgb, var(--color-powder) 55%, transparent),
-      transparent 60%
-    ),
-    radial-gradient(
-      ellipse at 85% 100%,
-      color-mix(in srgb, var(--color-cream-3) 60%, transparent),
-      transparent 55%
-    );
+.t-hero {
+  font-size: clamp(2.75rem, 5.6vw, 5.5rem); /* 44 → 88px */
+  line-height: 1.03;
+  letter-spacing: -0.02em;
 }
 
-/* Placeholder görsel dokusu — gerçek fotoğraf gelene kadar */
-.surface-plate {
-  background-image:
-    linear-gradient(
-      135deg,
-      color-mix(in srgb, var(--color-cream-2) 92%, white),
-      var(--color-cream-3)
-    ),
-    repeating-linear-gradient(
-      45deg,
-      color-mix(in srgb, var(--color-stone) 12%, transparent) 0px,
-      color-mix(in srgb, var(--color-stone) 12%, transparent) 1px,
-      transparent 1px,
-      transparent 11px
-    );
+.t-h2 {
+  font-size: clamp(2rem, 3.6vw, 3.75rem); /* 32 → 60px */
+  line-height: 1.08;
+  letter-spacing: -0.015em;
 }
 
-.surface-plate-warm {
-  background-image:
-    linear-gradient(135deg, var(--color-powder), var(--color-beige)),
-    repeating-linear-gradient(
-      45deg,
-      color-mix(in srgb, var(--color-bordo) 7%, transparent) 0px,
-      color-mix(in srgb, var(--color-bordo) 7%, transparent) 1px,
-      transparent 1px,
-      transparent 11px
-    );
+.t-h3 {
+  font-size: clamp(1.375rem, 1.6vw, 1.75rem); /* 22 → 28px */
+  line-height: 1.2;
 }
 
-.surface-plate-deep {
-  background-image:
-    linear-gradient(140deg, var(--color-bordo-dark), var(--color-bordo)),
-    repeating-linear-gradient(
-      45deg,
-      rgba(255, 255, 255, 0.05) 0px,
-      rgba(255, 255, 255, 0.05) 1px,
-      transparent 1px,
-      transparent 12px
-    );
+.t-lead {
+  font-size: clamp(1.0625rem, 0.9vw + 0.75rem, 1.375rem); /* 17 → 22px */
+  line-height: 1.65;
 }
 
-/* İnce çift çerçeve — Ladurée hissi */
-.frame-fine {
-  position: relative;
+.t-body {
+  font-size: clamp(1.0625rem, 0.35vw + 0.95rem, 1.1875rem); /* 17 → 19px */
+  line-height: 1.7;
 }
-.frame-fine::after {
-  content: "";
-  position: absolute;
-  inset: 0.6rem;
-  border: 1px solid color-mix(in srgb, var(--color-gold) 45%, transparent);
-  pointer-events: none;
+
+.t-label {
+  font-size: 0.8125rem; /* 13px */
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+/* Paragraf ölçüsü — 55-70 karakter */
+.measure {
+  max-width: 62ch;
 }
 
 /* ---------------------------------------------------------
-   Girişte beliren içerik
+   Giriş animasyonu — hafif ve tek tip
    --------------------------------------------------------- */
 
+/* İçerik varsayılan olarak görünür; animasyon yalnızca destekleyen
+   tarayıcılarda ve hareket tercihi kapalı değilse çalışır. */
 .reveal {
-  opacity: 0;
-  transform: translateY(18px);
-  transition:
-    opacity 0.9s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.9s cubic-bezier(0.22, 1, 0.36, 1);
-  transition-delay: var(--reveal-delay, 0ms);
-}
-
-.reveal[data-visible="true"] {
   opacity: 1;
-  transform: none;
 }
 
-@keyframes funda-rise {
+@keyframes reveal-in {
   from {
     opacity: 0;
-    transform: translateY(22px);
+    transform: translateY(16px);
   }
   to {
     opacity: 1;
@@ -187,21 +133,29 @@ h4 {
   }
 }
 
-.animate-rise {
-  opacity: 0;
-  animation: funda-rise 1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-  animation-delay: var(--rise-delay, 0ms);
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .reveal {
+      animation: reveal-in linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 85%;
+    }
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
   }
-  .reveal,
-  .animate-rise {
+  .reveal {
     opacity: 1;
     transform: none;
     transition: none;
-    animation: none;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
   }
 }

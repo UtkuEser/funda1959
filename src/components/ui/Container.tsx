@@ -4,13 +4,12 @@ type ContainerProps = {
   children: ReactNode;
   className?: string;
   as?: ElementType;
-  size?: "default" | "narrow" | "wide";
+  size?: "default" | "narrow";
 };
 
 const sizes = {
-  narrow: "max-w-3xl",
-  default: "max-w-[1320px]",
-  wide: "max-w-[1560px]",
+  default: "max-w-[1440px]",
+  narrow: "max-w-[760px]",
 };
 
 export function Container({
@@ -20,7 +19,9 @@ export function Container({
   size = "default",
 }: ContainerProps) {
   return (
-    <Tag className={`mx-auto w-full ${sizes[size]} px-5 sm:px-8 lg:px-12 ${className}`}>
+    <Tag
+      className={`mx-auto w-full px-6 md:px-12 lg:px-[72px] ${sizes[size]} ${className}`}
+    >
       {children}
     </Tag>
   );

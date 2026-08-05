@@ -4,7 +4,7 @@ import { CtaBand } from "@/components/shared/CtaBand";
 import { BranchCard } from "@/components/shared/BranchCard";
 import { Section } from "@/components/ui/Section";
 import { Container } from "@/components/ui/Container";
-import { SectionHeading } from "@/components/ui/SectionHeading";
+import { Heading } from "@/components/ui/Heading";
 import { Reveal } from "@/components/ui/Reveal";
 import { branches, branchesIntro } from "@/content/branches";
 import { site } from "@/content/site";
@@ -54,12 +54,12 @@ export default function BranchesPage() {
         </Container>
       </Section>
 
-      <Section tone="paper" spacing="tight">
+      <Section tone="cream" spacing="tight">
         <Container>
-          <SectionHeading
-            eyebrow="Şube Deneyimi"
+          <Heading
+            label="Şube Deneyimi"
             title="Kapıdan girince ne oluyor?"
-            description="Şubeler farklı mahallelerde ama akış her yerde aynı."
+            lead="Şubeler farklı mahallelerde ama akış her yerde aynı."
           />
 
           <div className="mt-14 grid gap-px border border-stone/30 bg-stone/30 sm:grid-cols-3">
@@ -83,7 +83,6 @@ export default function BranchesPage() {
       </Section>
 
       <CtaBand
-        eyebrow="Funda’da Buluşalım"
         title="Masayı ayıralım mı?"
         description="Kalabalık buluşmalar ve özel gün kutlamaları için önceden haber vermeniz yeterli."
         primary={{ href: "/iletisim", label: "İletişime Geçin" }}

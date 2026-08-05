@@ -3,7 +3,7 @@ import { PageHero } from "@/components/shared/PageHero";
 import { CtaBand } from "@/components/shared/CtaBand";
 import { Section } from "@/components/ui/Section";
 import { Container } from "@/components/ui/Container";
-import { SectionHeading } from "@/components/ui/SectionHeading";
+import { Heading } from "@/components/ui/Heading";
 import { Figure } from "@/components/ui/Figure";
 import { Reveal } from "@/components/ui/Reveal";
 import { giftBoxes, giftIntro, giftMoments, giftRitual } from "@/content/gifting";
@@ -33,9 +33,8 @@ export default function GiftPage() {
                 <article className="flex h-full flex-col">
                   <Figure
         asset={box.image}
-                    ratio="aspect-[3/4]"
+                    ratio="3 / 4"
                     sizes="(max-width: 640px) 90vw, (max-width: 1024px) 45vw, 24vw"
-                    framed
                   />
                   <div className="flex flex-1 flex-col pt-6">
                     <p className="font-sans text-[10px] uppercase tracking-[0.26em] text-gold">
@@ -66,10 +65,10 @@ export default function GiftPage() {
       {/* Ritüel */}
       <Section tone="cream-2">
         <Container>
-          <SectionHeading
-            eyebrow="Paketleme Ritüeli"
+          <Heading
+            label="Paketleme Ritüeli"
             title="Kutu, açılmadan önce de bir jesttir."
-            description="Hediye kutuları sipariş alındıktan sonra hazırlanır; içerik, tazelik ve sunum birlikte düşünülür."
+            lead="Hediye kutuları sipariş alındıktan sonra hazırlanır; içerik, tazelik ve sunum birlikte düşünülür."
           />
 
           <div className="mt-16 grid gap-px border border-stone/30 bg-stone/30 sm:grid-cols-2 lg:grid-cols-4">
@@ -89,15 +88,15 @@ export default function GiftPage() {
       </Section>
 
       {/* Kutuya giren ürünler */}
-      <Section tone="paper" spacing="tight">
+      <Section tone="cream" spacing="tight">
         <Container>
           <div className="grid gap-12 lg:grid-cols-12 lg:gap-16">
             <div className="lg:col-span-5">
-              <SectionHeading
+              <Heading
                 align="left"
-                eyebrow="İçerik"
+                label="İçerik"
                 title="Kutuya en çok girenler."
-                description="Kutunun içeriğini birlikte belirliyoruz; aşağıdaki ürünler en sık tercih edilenler."
+                lead="Kutunun içeriğini birlikte belirliyoruz; aşağıdaki ürünler en sık tercih edilenler."
               />
             </div>
 
@@ -131,7 +130,6 @@ export default function GiftPage() {
       </Section>
 
       <CtaBand
-        eyebrow="Hediye Siparişi"
         title="Kutunuzu birlikte hazırlayalım."
         description="Kime gittiğini söyleyin; içeriği, boyutu ve teslim gününü buna göre planlayalım."
         primary={{ href: "/iletisim", label: "Sipariş Ver" }}

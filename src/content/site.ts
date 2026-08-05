@@ -34,7 +34,6 @@ export type NavItem = {
 };
 
 export const navigation: NavItem[] = [
-  { href: "/", label: "Ana Sayfa" },
   { href: "/hikayemiz", label: "Hikayemiz" },
   { href: "/lezzetler", label: "Lezzetler" },
   { href: "/imza-lezzetler", label: "İmza Lezzetler" },
@@ -90,28 +89,12 @@ export const heroContent = {
   eyebrow: "1959’dan beri Ankara’da",
   title: "Pastane kültürünün sıcak hali.",
   description: site.description,
-  actions: [
-    { href: "/lezzetler", label: "Lezzetleri Keşfet", variant: "primary" as const },
-    { href: "/subeler", label: "Şubelerimizi Gör", variant: "outline" as const },
-    { href: "/iletisim", label: "Sipariş Ver", variant: "ghost" as const },
-  ],
   /**
-   * Hero medya alanı — video gelecek.
-   * Dosya hazır olduğunda: video: "/media/hero.mp4", poster: "/images/hero-poster.jpg"
+   * Hero videosu hazır olduğunda:  video: "/media/hero.mp4"
+   * Poster/kapak görseli src/content/images.ts → images.hero üzerinden yönetilir.
    */
   video: undefined as string | undefined,
-  poster: undefined as string | undefined,
-  mediaLabel: "Hero video alanı — vitrin, servis anı ve masa atmosferi",
-  mediaCaption: "Funda 1959 · Gaziosmanpaşa",
-  meta: ["GOP · Panora · İncek", site.hours],
 };
 
-/** Hero altında dönen kısa marka cümleleri. */
-export const brandLines = [
-  "Tatlı anların köklü adresi",
-  "Bir kutu mutluluk",
-  "Kahvenin yanına küçük bir Funda",
-  "Funda’da buluşalım",
-];
 
 export const announcement = `${site.year}’dan beri ${site.city}’da · GOP · Panora · İncek`;

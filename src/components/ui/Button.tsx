@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-export type ButtonVariant = "primary" | "outline" | "ghost" | "light" | "solid-light";
+export type ButtonVariant = "solid" | "outline" | "light" | "lightSolid";
 
 type ButtonProps = {
   href: string;
@@ -12,30 +12,25 @@ type ButtonProps = {
 };
 
 const base =
-  "inline-flex items-center justify-center gap-2 px-7 py-3.5 font-sans text-[12px] font-medium uppercase tracking-[0.18em] transition-all duration-300";
+  "inline-flex items-center justify-center px-8 py-4 font-sans text-[13px] uppercase tracking-[0.16em] transition-colors duration-300";
 
 const variants: Record<ButtonVariant, string> = {
-  primary: "bg-bordo text-cream hover:bg-bordo-dark",
-  outline:
-    "border border-bordo/35 text-bordo hover:border-bordo hover:bg-bordo hover:text-cream",
-  ghost:
-    "border-b border-bordo/30 px-0 py-2 text-bordo hover:border-bordo hover:text-bordo-dark",
-  light:
-    "border border-cream/45 text-cream hover:border-cream hover:bg-cream hover:text-bordo",
-  "solid-light": "bg-cream text-bordo hover:bg-gold-soft hover:text-bordo-dark",
+  solid: "bg-bordo text-cream hover:bg-bordo-dark",
+  outline: "border border-bordo/45 text-bordo hover:bg-bordo hover:text-cream",
+  light: "border border-cream/60 text-cream hover:bg-cream hover:text-bordo",
+  lightSolid: "bg-cream text-bordo hover:bg-cream-2",
 };
 
 export function Button({
   href,
   children,
-  variant = "primary",
+  variant = "solid",
   className = "",
   external = false,
 }: ButtonProps) {
   const classes = `${base} ${variants[variant]} ${className}`;
 
   if (external) {
-    // tel: / mailto: bağlantıları yeni sekmede açılmaz.
     const isRemote = href.startsWith("http");
     return (
       <a
@@ -55,3 +50,4 @@ export function Button({
     </Link>
   );
 }
+

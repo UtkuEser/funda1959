@@ -3,10 +3,10 @@ import { PageHero } from "@/components/shared/PageHero";
 import { CtaBand } from "@/components/shared/CtaBand";
 import { Section } from "@/components/ui/Section";
 import { Container } from "@/components/ui/Container";
-import { SectionHeading } from "@/components/ui/SectionHeading";
+import { Heading } from "@/components/ui/Heading";
 import { Figure } from "@/components/ui/Figure";
 import { Reveal } from "@/components/ui/Reveal";
-import { Crest } from "@/components/ui/Ornament";
+import { Monogram } from "@/components/ui/Marks";
 import { storyChapters, storyIntro, storyTeaser, storyValues } from "@/content/story";
 import { site } from "@/content/site";
 
@@ -32,9 +32,8 @@ export default function StoryPage() {
             <Reveal className="lg:col-span-5">
               <Figure
         asset={storyTeaser.image}
-                ratio="aspect-[4/5]"
+                ratio="4 / 5"
                 sizes="(max-width: 1024px) 90vw, 40vw"
-                framed
               />
             </Reveal>
 
@@ -54,7 +53,7 @@ export default function StoryPage() {
               </div>
 
               <div className="mt-10 flex items-center gap-5 border-t border-stone/30 pt-8">
-                <Crest className="h-12 w-12 text-bordo" />
+                <Monogram className="h-12 w-12 text-bordo" />
                 <p className="font-serif text-xl text-bordo">{site.positioning}</p>
               </div>
             </div>
@@ -65,10 +64,10 @@ export default function StoryPage() {
       {/* Dönemler */}
       <Section tone="cream-2">
         <Container>
-          <SectionHeading
-            eyebrow="Dönemler"
+          <Heading
+            label="Dönemler"
             title="Altmış yılı aşan bir vitrin."
-            description="Ustalar değişti, çeşitler arttı, şehir büyüdü. Vitrinin arkasındaki özen aynı kaldı."
+            lead="Ustalar değişti, çeşitler arttı, şehir büyüdü. Vitrinin arkasındaki özen aynı kaldı."
           />
 
           <ol className="mx-auto mt-16 max-w-3xl">
@@ -90,10 +89,10 @@ export default function StoryPage() {
       </Section>
 
       {/* Değerler */}
-      <Section tone="paper">
+      <Section tone="cream">
         <Container>
-          <SectionHeading
-            eyebrow="Nasıl Çalışıyoruz"
+          <Heading
+            label="Nasıl Çalışıyoruz"
             title="Alışkanlıklarımız tarif kadar önemli."
           />
 
@@ -114,7 +113,6 @@ export default function StoryPage() {
       </Section>
 
       <CtaBand
-        eyebrow="Funda’da Buluşalım"
         title="Hikayenin devamı şubelerimizde."
         description="Bir kahve, bir tatlı ve acele etmeyen bir sohbet için sizi bekliyoruz."
         primary={{ href: "/subeler", label: "Şubelerimizi Gör" }}

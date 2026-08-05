@@ -8,59 +8,43 @@ type BranchCardProps = {
 
 export function BranchCard({ branch, detailed = false }: BranchCardProps) {
   return (
-    <article className="group flex h-full flex-col bg-cream">
+    <article className="group flex h-full flex-col">
       <Figure
         asset={branch.image}
-        ratio={detailed ? "aspect-[3/2]" : "aspect-[4/5]"}
-        sizes="(max-width: 640px) 90vw, (max-width: 1024px) 45vw, 33vw"
+        ratio={detailed ? "3 / 2" : "4 / 5"}
+        sizes="(max-width: 768px) 100vw, 32vw"
+        zoom
       />
 
-      <div className="flex flex-1 flex-col border-x border-b border-stone/25 px-6 py-7">
-        <h3 className="font-serif text-2xl text-ink">{branch.shortName}</h3>
-        <p className="mt-2 font-sans text-[13px] uppercase tracking-[0.16em] text-bordo/70">
-          {branch.atmosphere}
-        </p>
+      <div className="flex flex-1 flex-col pt-6">
+        <h3 className="t-h3 font-serif text-ink">{branch.shortName}</h3>
+        <p className="mt-2 font-sans text-[16px] text-bordo/80">{branch.atmosphere}</p>
 
-        <p className="mt-4 font-sans text-[15px] leading-[1.7] text-ink-soft">
+        <p className="mt-4 font-sans text-[16px] leading-[1.65] text-ink-soft">
           {branch.description}
         </p>
 
-        <dl className="mt-6 space-y-2 font-sans text-[14px] text-ink-soft">
-          <div className="flex gap-2">
-            <dt className="sr-only">Adres</dt>
-            <dd>{branch.address}</dd>
-          </div>
-          <div className="flex gap-2">
-            <dt className="sr-only">Çalışma saatleri</dt>
-            <dd className="text-ink-mute">{branch.hours}</dd>
-          </div>
-        </dl>
+        <p className="mt-4 font-sans text-[16px] text-ink-soft">{branch.address}</p>
+        <p className="mt-1 font-sans text-[15px] text-ink-mute">{branch.hours}</p>
 
         {detailed ? (
-          <ul className="mt-5 flex flex-wrap gap-2">
-            {branch.features.map((feature) => (
-              <li
-                key={feature}
-                className="border border-stone/40 px-3 py-1.5 font-sans text-[10px] uppercase tracking-[0.14em] text-ink-mute"
-              >
-                {feature}
-              </li>
-            ))}
-          </ul>
+          <p className="mt-4 font-sans text-[15px] text-ink-mute">
+            {branch.features.join(" · ")}
+          </p>
         ) : null}
 
-        <div className="mt-auto flex flex-wrap items-center gap-5 pt-7">
+        <div className="mt-auto flex flex-wrap items-center gap-6 pt-7">
           <a
             href={branch.mapUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="border-b border-bordo/35 pb-1 font-sans text-[12px] uppercase tracking-[0.18em] text-bordo transition-colors hover:border-bordo"
+            className="border-b border-bordo/40 pb-1 font-sans text-[13px] uppercase tracking-[0.16em] text-bordo transition-colors hover:border-bordo"
           >
             Yol Tarifi
           </a>
           <a
             href={branch.phoneHref}
-            className="pb-1 font-sans text-[12px] uppercase tracking-[0.18em] text-ink-mute transition-colors hover:text-bordo"
+            className="font-sans text-[15px] text-ink-mute transition-colors hover:text-bordo"
           >
             {branch.phone}
           </a>

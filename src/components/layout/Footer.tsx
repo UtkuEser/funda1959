@@ -1,102 +1,108 @@
 import Link from "next/link";
 import { footerColumns, site } from "@/content/site";
 import { Container } from "@/components/ui/Container";
-import { Crest, Divider, MotifBand } from "@/components/ui/Ornament";
+import { Monogram } from "@/components/ui/Marks";
 import { NewsletterForm } from "@/components/shared/NewsletterForm";
-
-const socials = [
-  { href: site.instagram, label: "Instagram" },
-  { href: site.whatsapp, label: "WhatsApp" },
-];
 
 export function Footer() {
   return (
-    <footer className="relative bg-bordo text-cream">
-      {/* Üst dekoratif ayraç */}
-      <MotifBand className="bg-bordo-dark py-2.5 opacity-75" />
-
+    <footer className="bg-bordo text-cream">
       <Container className="py-16 md:py-20">
-        {/* Marka bloğu */}
-        <div className="text-center">
-          <Crest className="mx-auto h-12 w-12 text-gold-soft" />
-          <p className="mt-5 font-serif text-[1.9rem] tracking-[0.14em]">
-            {site.wordmark}
-            <span className="ml-3 font-sans text-[11px] uppercase tracking-[0.42em] text-gold-soft align-middle">
-              {site.year}
-            </span>
-          </p>
-          <p className="mx-auto mt-4 max-w-md font-serif text-lg leading-relaxed text-cream/85">
-            {site.positioning}
-          </p>
-          <Divider tone="cream" className="mt-7" />
-        </div>
-
-        {/* Kolonlar */}
-        <div className="mt-14 grid gap-10 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
-          {footerColumns.map((column) => (
-            <div key={column.title}>
-              <p className="font-sans text-[11px] uppercase tracking-[0.26em] text-gold-soft">
-                {column.title}
-              </p>
-              <ul className="mt-5 space-y-3">
-                {column.items.map((item) => (
-                  <li key={`${column.title}-${item.href}-${item.label}`}>
-                    {item.href.startsWith("/") ? (
-                      <Link
-                        href={item.href}
-                        className="font-sans text-[15px] text-cream/75 transition-colors hover:text-cream"
-                      >
-                        {item.label}
-                      </Link>
-                    ) : (
-                      <a
-                        href={item.href}
-                        className="font-sans text-[15px] text-cream/75 transition-colors hover:text-cream"
-                      >
-                        {item.label}
-                      </a>
-                    )}
-                  </li>
-                ))}
-              </ul>
+        <div className="grid gap-12 lg:grid-cols-12 lg:gap-10">
+          {/* Marka */}
+          <div className="lg:col-span-4">
+            <Monogram className="h-8 w-8 text-cream/80" />
+            <div className="mt-4 flex items-baseline gap-3">
+              <span className="font-serif text-[28px] tracking-[0.16em]">FUNDA</span>
+              <span className="font-sans text-[12px] tracking-[0.34em] text-cream/70">
+                {site.year}
+              </span>
             </div>
-          ))}
-
-          {/* Sosyal medya + bülten */}
-          <div>
-            <p className="font-sans text-[11px] uppercase tracking-[0.26em] text-gold-soft">
-              Sosyal Medya
+            <p className="mt-6 max-w-[34ch] font-serif text-[22px] leading-[1.4] text-cream/90">
+              {site.positioning}
             </p>
-            <ul className="mt-5 space-y-3">
-              {socials.map((social) => (
-                <li key={social.label}>
-                  <a
-                    href={social.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="font-sans text-[15px] text-cream/75 transition-colors hover:text-cream"
-                  >
-                    {social.label}
-                  </a>
-                </li>
-              ))}
+            <p className="mt-4 font-sans text-[15px] text-cream/65">
+              {site.city} · GOP · Panora · İncek
+            </p>
+          </div>
+
+          {/* Kolonlar */}
+          <div className="grid gap-10 sm:grid-cols-3 lg:col-span-5">
+            {footerColumns.slice(0, 3).map((column) => (
+              <div key={column.title}>
+                <p className="font-sans text-[13px] uppercase tracking-[0.18em] text-cream/60">
+                  {column.title}
+                </p>
+                <ul className="mt-5 space-y-3">
+                  {column.items.map((item) => (
+                    <li key={`${column.title}-${item.href}-${item.label}`}>
+                      {item.href.startsWith("/") ? (
+                        <Link
+                          href={item.href}
+                          className="font-sans text-[16px] text-cream/85 transition-colors hover:text-cream"
+                        >
+                          {item.label}
+                        </Link>
+                      ) : (
+                        <a
+                          href={item.href}
+                          className="font-sans text-[16px] text-cream/85 transition-colors hover:text-cream"
+                        >
+                          {item.label}
+                        </a>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+
+          {/* İletişim + bülten */}
+          <div className="lg:col-span-3">
+            <p className="font-sans text-[13px] uppercase tracking-[0.18em] text-cream/60">
+              İletişim
+            </p>
+            <ul className="mt-5 space-y-3 font-sans text-[16px] text-cream/85">
+              <li>
+                <a href={site.phoneHref} className="transition-colors hover:text-cream">
+                  {site.phone}
+                </a>
+              </li>
+              <li>
+                <a href={site.emailHref} className="transition-colors hover:text-cream">
+                  {site.email}
+                </a>
+              </li>
+              <li>
+                <a
+                  href={site.instagram}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="transition-colors hover:text-cream"
+                >
+                  Instagram
+                </a>
+              </li>
             </ul>
 
-            <p className="mt-8 font-sans text-[11px] uppercase tracking-[0.26em] text-gold-soft">
+            <p className="mt-8 font-sans text-[13px] uppercase tracking-[0.18em] text-cream/60">
               Bülten
             </p>
             <NewsletterForm />
           </div>
         </div>
 
-        {/* Alt bar */}
-        <div className="mt-14 flex flex-col gap-4 border-t border-cream/15 pt-8 sm:flex-row sm:items-center sm:justify-between">
-          <p className="font-sans text-[12px] tracking-[0.06em] text-cream/55">
+        <div className="mt-14 flex flex-col gap-3 border-t border-cream/20 pt-8 sm:flex-row sm:items-center sm:justify-between">
+          <p className="font-sans text-[14px] text-cream/60">
             © {new Date().getFullYear()} {site.name}. Tüm hakları saklıdır.
           </p>
-          <p className="font-sans text-[12px] uppercase tracking-[0.2em] text-cream/50">
-            {site.city} · GOP · Panora · İncek
-          </p>
+          <Link
+            href="/kurumsal"
+            className="font-sans text-[14px] text-cream/60 transition-colors hover:text-cream"
+          >
+            Kurumsal & Toplu Sipariş
+          </Link>
         </div>
       </Container>
     </footer>

@@ -4,22 +4,21 @@ type SectionProps = {
   children: ReactNode;
   id?: string;
   className?: string;
-  /** Zemin tonu — sayfa akışında ritim kurar. */
-  tone?: "cream" | "cream-2" | "paper" | "bordo";
-  spacing?: "default" | "tight" | "loose";
+  tone?: "cream" | "cream-2" | "sand" | "bordo";
+  spacing?: "default" | "tight";
 };
 
 const tones = {
   cream: "bg-cream",
   "cream-2": "bg-cream-2",
-  paper: "bg-cream surface-paper",
+  sand: "bg-cream-3",
   bordo: "bg-bordo text-cream",
 };
 
 const spacings = {
-  tight: "py-14 md:py-20",
-  default: "py-20 md:py-28 lg:py-32",
-  loose: "py-24 md:py-36 lg:py-44",
+  /* 96 → 140px */
+  default: "py-24 md:py-28 lg:py-[8.75rem]",
+  tight: "py-16 md:py-20 lg:py-24",
 };
 
 export function Section({
@@ -32,9 +31,7 @@ export function Section({
   return (
     <section
       id={id}
-      className={`relative ${tones[tone]} ${spacings[spacing]} ${
-        id ? "scroll-mt-36" : ""
-      } ${className}`}
+      className={`${tones[tone]} ${spacings[spacing]} ${id ? "scroll-mt-24" : ""} ${className}`}
     >
       {children}
     </section>

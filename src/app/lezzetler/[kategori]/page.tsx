@@ -104,7 +104,6 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
       </Section>
 
       <CtaBand
-        eyebrow="Sipariş"
         title="Bu kategoriden sipariş vermek ister misiniz?"
         description="Adet, çeşit ve teslim günü için bize yazın; hazırlığı planlayalım."
         primary={{ href: "/iletisim", label: "Sipariş Ver" }}

@@ -1,56 +1,39 @@
 # Görseller
 
-Site şu an motifli placeholder’larla çalışıyor. Gerçek fotoğraflar geldiğinde
-dosyaları bu klasöre koyup **ilgili içerik dosyasındaki `image` alanını doldurmak
-yeterli** — başka hiçbir yerde değişiklik gerekmiyor.
+Site şu an fotoğrafsız çalışıyor; görsel alanları nötr yüzey olarak duruyor.
+Fotoğraf eklemek için **iki adım** yeterli, layout hiç değişmez:
 
-## Nereye ne yazılır?
+1. Dosyayı bu klasöre koyun (örn. `public/images/hero.jpg`).
+2. `src/content/images.ts` içindeki ilgili kaydın `src` alanını doldurun.
 
-| İçerik dosyası | Alan | Görsel |
-| --- | --- | --- |
-| `src/content/site.ts` → `heroContent.video` + `heroContent.poster` | hero medya | **Hero videosu** — bkz. aşağıdaki not |
-| `src/content/menu.ts` → `collections[].image` | kategori kartları | “Funda’da Neler Var?” kartları (dikey 3:4) |
-| `src/content/menu.ts` → `categories[].image` | lezzet kategorileri | Lezzetler sayfası kartları (yatay 4:3) |
-| `src/content/menu.ts` → `products[].image` | ürünler | Ürün kartları (dikey 4:5) |
-| `src/content/menu.ts` → `signatureIntro.image` | imza alanı | İmza lezzet ana görseli |
-| `src/content/branches.ts` → `branches[].image` | şubeler | Şube iç mekan fotoğrafları |
-| `src/content/gifting.ts` → `giftIntro.image`, `giftBoxes[].image` | paket & hediye | Kutu ve paketleme kareleri |
-| `src/content/story.ts` → `storyTeaser.image` | hikaye | Arşiv / vitrin karesi |
-| `src/content/journal.ts` → `journalEntries[].image` | Funda Defteri | Editorial kareler |
-| `src/content/corporate.ts` → `corporateIntro.image` | kurumsal | İkram düzeni karesi |
+```ts
+// src/content/images.ts
+hero: { ...slot("Funda 1959 şubesinde kahve ve tatlı servisi", "16 / 9"),
+        src: "/images/hero.jpg" },
+```
+
+Her kayıtta ayarlanabilenler:
+
+| Alan | İşlevi |
+| --- | --- |
+| `src` | Fotoğraf yolu. Boşsa nötr yüzey çizilir. |
+| `alt` | Erişilebilirlik metni (fotoğraf yokken künye olarak da görünür). |
+| `position` | `object-position` — kadraj (örn. `"center 40%"`). |
+| `ratio` | `aspect-ratio` — alanın oranı (örn. `"4 / 5"`). CLS oluşmaz. |
 
 ## Hero videosu
 
-Ana sayfadaki hero medya alanı video için tasarlandı. Video hazır olduğunda:
+Ana sayfa hero'su video için hazır. Video geldiğinde:
 
-1. Dosyayı `public/media/hero.mp4` olarak koyun (poster karesi:
-   `public/images/hero-poster.jpg`).
-2. `src/content/site.ts` içindeki `heroContent` alanlarını doldurun:
+1. `public/media/hero.mp4` olarak koyun.
+2. `src/content/site.ts` → `heroContent.video = "/media/hero.mp4"`.
+3. Kapak karesi olarak `images.hero.src` kullanılır (poster).
 
-```ts
-video: "/media/hero.mp4",
-poster: "/images/hero-poster.jpg",
-```
-
-Alan aynı ölçüde ve aynı çerçevede kalır; `VideoStage` otomatik olarak sessiz,
-döngüsel ve `playsInline` bir `<video>` render eder. Öneri: 12–20 sn, ses yok,
-1080p, ~5 MB altı, yatay kadraj.
-
-## Örnek
-
-```ts
-// src/content/branches.ts
-{
-  id: "gop",
-  // ...
-  image: "/images/subeler/gop.jpg",
-}
-```
+Video otomatik olarak `muted`, `loop`, `autoPlay`, `playsInline` ve `object-cover`
+çalışır. Öneri: 12–20 sn, sessiz, 1080p, ~5 MB altı, yatay kadraj.
 
 ## Öneriler
 
-- Format: `.jpg` (fotoğraf) veya `.webp`. Uzun kenar 2000–2400px yeterli.
-- Her içerik kaydındaki `imageLabel`, o alana hangi karenin geleceğini anlatır;
-  placeholder üzerinde de görünür. Çekim brief’i olarak kullanılabilir.
-- Görseller `next/image` ile otomatik boyutlandırılır, `object-cover` uygulanır;
-  kadrajda ana öğeyi merkeze yakın tutun.
+- Format `.jpg` veya `.webp`, uzun kenar 2000–2400px yeterli.
+- Kadrajda ana öğeyi merkeze yakın tutun; gerekirse `position` ile düzeltin.
+- Hero dışındaki tüm görseller lazy-load edilir; hero `priority` yüklenir.

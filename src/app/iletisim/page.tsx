@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { PageHero } from "@/components/shared/PageHero";
 import { Section } from "@/components/ui/Section";
 import { Container } from "@/components/ui/Container";
-import { SectionHeading } from "@/components/ui/SectionHeading";
-import { Divider } from "@/components/ui/Ornament";
+import { Heading } from "@/components/ui/Heading";
+
 import { Reveal } from "@/components/ui/Reveal";
 import { RequestForm } from "@/components/shared/RequestForm";
 import { branches } from "@/content/branches";
@@ -62,15 +62,15 @@ export default function ContactPage() {
       </Section>
 
       {/* Form + şubeler */}
-      <Section tone="paper">
+      <Section tone="cream">
         <Container>
           <div className="grid gap-14 lg:grid-cols-12 lg:gap-16">
             <div className="lg:col-span-7">
-              <SectionHeading
+              <Heading
                 align="left"
-                eyebrow="Sipariş Formu"
+                label="Sipariş Formu"
                 title="Talebinizi anlatın."
-                description="Form, girdiğiniz bilgilerle hazır bir e-posta taslağı oluşturur; göndermeniz yeterli."
+                lead="Form, girdiğiniz bilgilerle hazır bir e-posta taslağı oluşturur; göndermeniz yeterli."
               />
 
               <div className="mt-10">
@@ -91,7 +91,6 @@ export default function ContactPage() {
               <p className="font-sans text-[11px] uppercase tracking-[0.3em] text-bordo/75">
                 Şubelerimiz
               </p>
-              <Divider className="mt-5 justify-start" />
 
               <ul className="mt-8 space-y-8">
                 {branches.map((branch) => (
