@@ -29,7 +29,7 @@ export function Rituals() {
                 sizes="(max-width: 1024px) 100vw, 58vw"
               />
               <p className="t-label mt-6 font-sans text-bordo/80">{lead.label}</p>
-              <h3 className="mt-4 max-w-[20ch] font-serif text-[clamp(1.75rem,2.4vw,2.5rem)] leading-[1.15] text-ink">
+              <h3 className="t-h3 mt-4 max-w-[20ch] font-serif text-ink">
                 {lead.title}
               </h3>
               <p className="t-body measure mt-5 text-ink-soft">{lead.excerpt}</p>
@@ -50,7 +50,7 @@ export function Rituals() {
                   </div>
                   <div>
                     <p className="t-label font-sans text-bordo/80">{entry.label}</p>
-                    <h3 className="t-h3 mt-3 font-serif text-ink">{entry.title}</h3>
+                    <h3 className="t-card mt-3 font-serif text-ink">{entry.title}</h3>
                     <p className="mt-3 font-sans text-[16px] leading-[1.6] text-ink-soft">
                       {entry.excerpt}
                     </p>

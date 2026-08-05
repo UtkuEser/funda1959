@@ -7,7 +7,7 @@ export const storyTeaser = {
   title: "Bir tatlı hafızanın hikayesi.",
   description:
     "1959’da başlayan yolculuk, bugün de sıcak sofralara, özel günlere ve günlük küçük mutluluklara eşlik etmeye devam ediyor.",
-  image: images.hikaye,
+  image: images.arsiv4,
   cta: { href: "/hikayemiz", label: "Hikayemizi Keşfedin" },
 };
 

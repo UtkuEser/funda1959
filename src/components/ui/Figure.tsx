@@ -7,15 +7,15 @@ type FigureProps = {
   ratio?: string;
   className?: string;
   sizes?: string;
-  /** Hero gibi ilk ekranda görünen görseller için. */
+  /** İlk ekranda görünen görseller için. */
   priority?: boolean;
-  /** Hover'da çok hafif yakınlaşma. */
+  /** Hover'da çok hafif yakınlaşma (maks. 1.03). */
   zoom?: boolean;
 };
 
 /**
- * Görsel alanı. Fotoğraf yoksa aynı oranda nötr bir yüzey çizer —
- * desen veya motif kullanılmaz, yalnızca sıcak nötr bir zemin.
+ * Görsel alanı. Fotoğraf yoksa aynı oranda sıcak nötr bir yüzey çizer —
+ * desen, motif veya amblem kullanılmaz.
  */
 export function Figure({
   asset,
@@ -36,20 +36,19 @@ export function Figure({
         <Image
           src={asset.src}
           alt={asset.alt}
-          fill
+          width={asset.width ?? 1600}
+          height={asset.height ?? 1200}
           sizes={sizes}
           priority={priority}
           loading={priority ? undefined : "lazy"}
           style={{ objectPosition: asset.position }}
-          className={`object-cover ${
-            zoom
-              ? "transition-transform duration-700 ease-out group-hover:scale-[1.03]"
-              : ""
+          className={`h-full w-full object-cover ${
+            zoom ? "transition-transform duration-700 ease-out group-hover:scale-[1.03]" : ""
           }`}
         />
       ) : (
-        <div className="absolute inset-0 flex items-center justify-center bg-[linear-gradient(150deg,#efe6d6_0%,#e3d5be_55%,#d6c4a7_100%)] p-6">
-          <span className="max-w-[24ch] text-center font-sans text-[12px] uppercase leading-[1.7] tracking-[0.16em] text-ink-soft/70">
+        <div className="absolute inset-0 bg-[linear-gradient(155deg,#f7f0e4_0%,#eadfcc_52%,#dccbb0_100%)]">
+          <span className="absolute inset-x-0 bottom-0 px-5 pb-5 font-sans text-[12px] uppercase tracking-[0.14em] text-ink-mute/80">
             {asset.alt}
           </span>
         </div>

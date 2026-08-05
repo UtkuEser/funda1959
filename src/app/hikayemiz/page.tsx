@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { CtaBand } from "@/components/shared/CtaBand";
+import { Figure } from "@/components/ui/Figure";
 import { Reveal } from "@/components/ui/Reveal";
 import { ArchiveFrame } from "@/components/story/ArchiveFrame";
 import { Chapter } from "@/components/story/Chapter";
+import { PullQuote } from "@/components/story/PullQuote";
 import { StoryContainer } from "@/components/story/StoryContainer";
 import {
   foundingChapter,
@@ -18,6 +20,7 @@ import {
   storyImageThree,
   storyImageTwo,
 } from "@/content/storyImages";
+import { images } from "@/content/images";
 
 export const metadata: Metadata = {
   title: "Hikayemiz",
@@ -31,7 +34,7 @@ export default function StoryPage() {
   return (
     <>
       {/* 1 — Hero */}
-      <section className="bg-cream pb-16 pt-36 md:pb-20 md:pt-44">
+      <section className="bg-cream pb-14 pt-36 md:pb-16 md:pt-44">
         <StoryContainer>
           <p className="font-sans text-[13px] uppercase tracking-[0.22em] text-bordo/80">
             {storyHero.label}
@@ -47,7 +50,7 @@ export default function StoryPage() {
         </StoryContainer>
       </section>
 
-      {/* İlk iki arşiv karesi */}
+      {/* İki görselli açılış kompozisyonu */}
       <section className="bg-cream pb-24 md:pb-28 lg:pb-32">
         <StoryContainer>
           <div className="grid gap-8 sm:grid-cols-2 lg:gap-12">
@@ -59,13 +62,13 @@ export default function StoryPage() {
             <ArchiveFrame
               image={storyImageTwo}
               sizes="(max-width: 640px) 88vw, (max-width: 1320px) 44vw, 600px"
-              className="sm:mt-12"
+              className="sm:mt-14"
             />
           </div>
         </StoryContainer>
       </section>
 
-      {/* 2 — Kökler */}
+      {/* 2 — Kökler: geniş metin, kapanışta tam genişlik alıntı */}
       <section className="bg-cream-2 py-24 md:py-28 lg:py-32">
         <StoryContainer>
           <Reveal>
@@ -74,20 +77,16 @@ export default function StoryPage() {
               label={koklerChapter.label}
               title={koklerChapter.title}
               paragraphs={koklerChapter.paragraphs}
-              emphasis={koklerChapter.emphasis}
-              mediaSide="right"
-              media={
-                <ArchiveFrame
-                  image={storyImageThree}
-                  sizes="(max-width: 1024px) 88vw, 420px"
-                />
-              }
             />
           </Reveal>
+
+          <div className="mt-20 lg:mt-24">
+            <PullQuote>{koklerChapter.emphasis}</PullQuote>
+          </div>
         </StoryContainer>
       </section>
 
-      {/* 3 — Ustalığın yolculuğu */}
+      {/* 3 — Ustalığın yolculuğu: metin solda, görsel sağda */}
       <section className="bg-cream py-24 md:py-28 lg:py-32">
         <StoryContainer>
           <Reveal>
@@ -97,12 +96,20 @@ export default function StoryPage() {
               title={ustalikChapter.title}
               paragraphs={ustalikChapter.paragraphs}
               emphasis={ustalikChapter.emphasis}
+              mediaSide="right"
+              media={
+                <ArchiveFrame
+                  image={storyImageThree}
+                  sizes="(max-width: 1024px) 88vw, 420px"
+                  caption="Ailenin pastacılık yıllarından"
+                />
+              }
             />
           </Reveal>
         </StoryContainer>
       </section>
 
-      {/* 4 — Türkiye'ye dönüş */}
+      {/* 4 — Türkiye'ye dönüş: sade metin bloğu */}
       <section className="bg-cream-2 py-24 md:py-28 lg:py-32">
         <StoryContainer>
           <Reveal>
@@ -117,7 +124,7 @@ export default function StoryPage() {
         </StoryContainer>
       </section>
 
-      {/* 5 — 1959 */}
+      {/* 5 — 1959: büyük tarih ve arşiv görseli */}
       <section className="bg-cream py-24 md:py-28 lg:py-36">
         <StoryContainer>
           <div className="grid items-start gap-14 lg:grid-cols-12 lg:gap-16">
@@ -154,6 +161,7 @@ export default function StoryPage() {
               <ArchiveFrame
                 image={storyImageFour}
                 sizes="(max-width: 1024px) 88vw, 560px"
+                caption="Funda Pastanesi’nin ilk yıllarından"
                 className="lg:sticky lg:top-32"
               />
             </Reveal>
@@ -161,7 +169,7 @@ export default function StoryPage() {
         </StoryContainer>
       </section>
 
-      {/* 6 — Ankara'da büyüyen pastane kültürü */}
+      {/* 6 — Şehrin farklı noktalarında aynı sofra */}
       <section className="bg-cream-2 py-24 md:py-28 lg:py-32">
         <StoryContainer>
           <Reveal>
@@ -175,8 +183,8 @@ export default function StoryPage() {
         </StoryContainer>
       </section>
 
-      {/* 7 — Geçmişten bugüne */}
-      <section className="bg-cream py-24 md:py-28 lg:py-32">
+      {/* 7 — Aynı hikâyenin yeni dönemi */}
+      <section className="bg-cream pt-24 md:pt-28 lg:pt-32">
         <StoryContainer>
           <Reveal>
             <Chapter
@@ -186,6 +194,23 @@ export default function StoryPage() {
               emphasis={todayChapter.emphasis}
             />
           </Reveal>
+        </StoryContainer>
+      </section>
+
+      {/* Geçmişten bugüne geçiş — güncel, renkli kare */}
+      <section className="bg-cream pb-24 pt-16 md:pb-28 md:pt-20 lg:pb-32">
+        <StoryContainer>
+          <Reveal>
+            <Figure
+              asset={images.bugununFundasi}
+              sizes="(max-width: 1320px) 92vw, 1200px"
+            />
+          </Reveal>
+
+          <p className="mt-8 max-w-[38ch] font-serif text-[clamp(1.375rem,2vw,2rem)] leading-[1.35] text-ink">
+            Geçmişten gelen bu hikâye, bugün Funda’nın masalarında yaşamaya devam
+            ediyor.
+          </p>
         </StoryContainer>
       </section>
 

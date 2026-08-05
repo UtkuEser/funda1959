@@ -14,7 +14,7 @@ function MomentCard({
   item,
   ratio,
   sizes,
-  titleClass = "t-h3",
+  titleClass = "t-card",
 }: {
   item: (typeof collections)[number];
   ratio?: string;
@@ -58,7 +58,7 @@ export function Moments() {
               item={feature}
               ratio="3 / 4"
               sizes="(max-width: 1024px) 100vw, 58vw"
-              titleClass="t-h3"
+              titleClass="t-card"
             />
           </Reveal>
 

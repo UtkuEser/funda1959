@@ -1,13 +1,10 @@
 /**
- * Merkezi görsel kaydı.
+ * Merkezi görsel kaydı — sitedeki bütün görsel alanları buradan beslenir.
  *
- * Fotoğraf eklemek için tek yapılacak: dosyayı public/images içine koyup
- * ilgili kaydın `src` alanını doldurmak.
+ * Fotoğraf eklemek için: dosyayı public/ altına koyup ilgili kaydın `src`,
+ * `width` ve `height` alanlarını doldurun. Layout değişmez.
  *
- *   hero: { ...,  src: "/images/hero.jpg" }
- *
- * `src` boşken alan, aynı ölçüde nötr bir yüzey olarak çizilir; layout değişmez.
- * `position` kadrajı, `ratio` ise alanın en-boy oranını belirler (CLS oluşmaz).
+ * `src` boşken alan, aynı oranda nötr bir yüzey olarak çizilir.
  */
 
 export type ImageAsset = {
@@ -15,58 +12,84 @@ export type ImageAsset = {
   src?: string;
   /** Erişilebilirlik metni. */
   alt: string;
-  /** CSS object-position — kadraj. */
-  position?: string;
-  /** CSS aspect-ratio — alanın oranı. */
-  ratio?: string;
-  /** Kaynak dosyanın gerçek ölçüleri (biliniyorsa). */
+  /** Kaynak dosyanın gerçek ölçüleri — CLS önlemek için zorunlu. */
   width?: number;
   height?: number;
+  /** CSS aspect-ratio — alanın oranı. */
+  ratio?: string;
+  /** CSS object-position — kadraj. */
+  position?: string;
 };
 
+/** Henüz fotoğrafı olmayan alan. */
 const slot = (alt: string, ratio: string, position = "center"): ImageAsset => ({
-  src: undefined,
   alt,
   ratio,
   position,
 });
 
+/** public/Hikayemiz altındaki gerçek arşiv kareleri (675×770, siyah-beyaz). */
+const archive = (file: string, alt: string, position = "center"): ImageAsset => ({
+  src: `/Hikayemiz/${file}`,
+  alt,
+  width: 675,
+  height: 770,
+  ratio: "675 / 770",
+  position,
+});
+
 export const images = {
-  /* Hero — video posteri / kapak */
-  hero: slot("Funda 1959 şubesinde kahve ve tatlı servisi", "16 / 9"),
+  /* --- Gerçek arşiv görselleri --- */
+  arsiv1: archive("img-hakkimizda-1.jpg", "Funda 1959 aile arşivinden bir kare"),
+  arsiv2: archive("img-hakkimizda-2.jpg", "Funda 1959 aile arşivinden bir kare"),
+  arsiv3: archive(
+    "img-hakkimizda-3.jpg",
+    "Tarakçı ailesinin pastacılık yıllarından bir arşiv karesi",
+  ),
+  arsiv4: archive(
+    "img-hakkimizda-4.jpg",
+    "Funda Pastanesi’nin ilk yıllarından bir arşiv karesi",
+  ),
 
-  /* Günün her anına Funda */
+  /* --- Hero (video gelene kadar poster) --- */
+  hero: slot("Funda 1959 şubesinde kahve ve tatlı servisi", "4 / 3"),
+
+  /* --- Günün her anına Funda --- */
   kahveninYanina: slot("Kahvenin yanında tek lokmalık tatlı", "4 / 5"),
-  eveGoturmelik: slot("Kutulanmış, eve götürülmeye hazır lezzetler", "16 / 10"),
-  ozelGunler: slot("Özel gün pastası ve masa", "16 / 10"),
-  imzaKart: slot("Funda imza lezzeti", "21 / 9"),
+  eveGoturmelik: slot("Kutulanmış, eve götürülmeye hazır lezzetler", "4 / 3"),
+  ozelGunler: slot("Özel gün pastası ve masa", "4 / 3"),
+  imzaKart: slot("Funda imza lezzeti", "16 / 10"),
 
-  /* İmza */
-  imzaBuyuk: slot("İmza lezzet, yakın plan", "4 / 5"),
+  /* --- İmza --- */
+  imzaBuyuk: slot("Kahve ve yanında Funda imza lezzeti", "4 / 5"),
 
-  /* Bir kutu mutluluk */
+  /* --- Bir kutu mutluluk --- */
   hediyeGenis: slot("Funda kutusu hazırlanırken", "21 / 9"),
   hediye1: slot("Klasik Funda kutusu", "3 / 4"),
   hediye2: slot("Misafirlik kutusu", "3 / 4"),
   hediye3: slot("Ofis ikramı", "3 / 4"),
   hediye4: slot("Özel gün kutusu", "3 / 4"),
 
-  /* Şubeler */
-  subeGop: slot("GOP şubesi", "4 / 5"),
-  subePanora: slot("Panora şubesi", "4 / 5"),
-  subeIncek: slot("İncek şubesi", "4 / 5"),
+  /* --- Şubeler --- */
+  subeGop: slot("Funda 1959 GOP şubesi", "4 / 5"),
+  subePanora: slot("Funda 1959 Panora şubesi", "4 / 5"),
+  subeIncek: slot("Funda 1959 İncek şubesi", "4 / 5"),
 
-  /* Hikaye */
-  hikaye: slot("Funda 1959 arşivinden bir kare", "4 / 5"),
-  hikayeArsiv: slot("Eski vitrin detayı", "4 / 3"),
+  /* --- Hikaye --- */
+  /** Hikayemiz sayfasının kapanışındaki güncel, renkli kare. */
+  bugununFundasi: slot(
+    "Bugün Funda 1959’un masalarından bir kare",
+    "21 / 9",
+    "center 55%",
+  ),
 
-  /* Tatlı ritüeller */
+  /* --- Tatlı ritüeller --- */
   defter1: slot("Kahve ve yanında küçük tabak", "3 / 2"),
-  defter2: slot("Elde taşınan kutu", "1 / 1"),
-  defter3: slot("Mumlu pasta ve masa", "1 / 1"),
-  defter4: slot("Masada kahve ve tatlı", "3 / 2"),
+  defter2: slot("Elde taşınan kutu", "4 / 3"),
+  defter3: slot("Mumlu pasta ve masa", "4 / 3"),
+  defter4: slot("Masada kahve, tatlı ve gün ışığı", "4 / 3"),
 
-  /* Ürün ve kategoriler */
+  /* --- Ürün ve kategoriler --- */
   urunBaklava: slot("Antep fıstıklı baklava", "4 / 5"),
   urunMakaron: slot("Makaron seçkisi", "4 / 5"),
   urunTart: slot("Meyveli tart", "4 / 5"),
@@ -75,4 +98,3 @@ export const images = {
   urunFistik: slot("Fıstıklı tatlı", "4 / 5"),
   urunVitrin: slot("Vitrinde günün çeşitleri", "4 / 3"),
 } satisfies Record<string, ImageAsset>;
-

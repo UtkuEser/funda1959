@@ -133,7 +133,7 @@ export const categories: Category[] = [
     tagline: "Hafif, kremsi ve evcil",
     description:
       "Kazandibi, sütlaç, muhallebi ve profiterol. Ağır olmayan, her mevsim yenen, herkesin sevdiği tatlılar.",
-    image: images.hikayeArsiv,
+    image: images.urunKek,
   },
   {
     slug: "cikolatalar",
@@ -199,7 +199,7 @@ export const products: Product[] = [
     description:
       "Espresso emdirilmiş kek, mascarpone kreması ve kakao. Kahvenin yanında ikinci bir kahve gibi.",
     notes: ["Kahveli", "Tek servis"],
-    image: images.hikayeArsiv,
+    image: images.urunKek,
   },
   {
     id: "ml-2",
@@ -310,7 +310,7 @@ export const products: Product[] = [
     description:
       "Güğümde uzun süre pişen süt, pirinç ve vanilya. Fırında üstü koyulaşana kadar bekletilir.",
     notes: ["Hafif", "Her mevsim"],
-    image: images.hikayeArsiv,
+    image: images.urunKek,
   },
   {
     id: "sut-2",
@@ -320,7 +320,7 @@ export const products: Product[] = [
     description:
       "Tabanı özenle karamelize edilen, kaşıkla kolayca ayrılan geleneksel sütlü tatlı.",
     notes: ["Geleneksel"],
-    image: images.hikayeArsiv,
+    image: images.urunKek,
   },
   {
     id: "sut-3",

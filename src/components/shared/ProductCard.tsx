@@ -18,7 +18,7 @@ export function ProductCard({ product }: { product: Product }) {
           </p>
         ) : null}
 
-        <h3 className="t-h3 font-serif text-ink">{product.name}</h3>
+        <h3 className="t-card font-serif text-ink">{product.name}</h3>
 
         <p className="mt-2 font-sans text-[16px] text-ink-mute">{product.short}</p>
 

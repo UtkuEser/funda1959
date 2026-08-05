@@ -47,7 +47,7 @@ export function GiftBox() {
                   ratio="4 / 5"
                   sizes="(max-width: 640px) 100vw, 30vw"
                 />
-                <h3 className="t-h3 mt-5 font-serif text-ink">{box.name}</h3>
+                <h3 className="t-card mt-5 font-serif text-ink">{box.name}</h3>
                 <p className="mt-3 max-w-[42ch] font-sans text-[16px] leading-[1.65] text-ink-soft">
                   {box.description}
                 </p>
