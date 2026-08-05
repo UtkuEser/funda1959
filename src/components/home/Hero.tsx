@@ -1,4 +1,3 @@
-import Image from "next/image";
 import { Container } from "@/components/ui/Container";
 import { Button } from "@/components/ui/Button";
 import { heroContent } from "@/content/site";
@@ -7,12 +6,12 @@ import { images } from "@/content/images";
 /**
  * Hero — solda büyük tipografi, sağda medya sahnesi.
  *
- * Medya sahnesi video için hazırdır: `heroContent.video` doldurulduğunda aynı
- * alanda video oynar. Video gelene kadar arşivden bir kare poster olarak durur.
- * Alanın oranı sabit olduğu için video eklendiğinde layout kaymaz.
+ * Medya sahnesi video için ayrılmıştır: `heroContent.video` doldurulduğunda
+ * (örn. "/media/hero.mp4") aynı alanda video oynar. Alanın oranı sabit olduğu
+ * için video eklendiğinde layout kaymaz.
  */
 export function Hero() {
-  const poster = images.hero.src ? images.hero : images.arsiv1;
+  const poster = images.hero;
 
   return (
     <section className="relative overflow-hidden bg-cream">
@@ -42,10 +41,10 @@ export function Hero() {
             </div>
           </div>
 
-          {/* Medya sahnesi */}
+          {/* Medya sahnesi — video alanı */}
           <div className="lg:col-span-6">
             <div
-              className="relative mx-auto w-full max-w-[560px] overflow-hidden bg-cream-3 shadow-[0_30px_70px_-45px_rgba(42,26,21,0.6)] lg:max-h-[56vh] lg:max-w-none"
+              className="relative mx-auto w-full max-w-[560px] overflow-hidden border border-stone/45 bg-[linear-gradient(155deg,#f7f0e4_0%,#eadfcc_55%,#dccbb0_100%)] lg:max-h-[56vh] lg:max-w-none"
               style={{ aspectRatio: "4 / 5" }}
             >
               {heroContent.video ? (
@@ -59,22 +58,21 @@ export function Hero() {
                   playsInline
                 />
               ) : (
-                <Image
-                  src={poster.src as string}
-                  alt={poster.alt}
-                  width={poster.width ?? 675}
-                  height={poster.height ?? 770}
-                  sizes="(max-width: 1024px) 92vw, 560px"
-                  priority
-                  style={{ objectPosition: poster.position }}
-                  className="h-full w-full object-cover"
-                />
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
+                  <span
+                    aria-hidden="true"
+                    className="flex h-14 w-14 items-center justify-center rounded-full border border-bordo/40 text-bordo"
+                  >
+                    <svg width="14" height="16" viewBox="0 0 14 16" fill="none">
+                      <path d="M1 1.2 13 8 1 14.8z" fill="currentColor" opacity="0.85" />
+                    </svg>
+                  </span>
+                  <p className="font-sans text-[13px] uppercase tracking-[0.2em] text-ink-soft">
+                    Video gelecek
+                  </p>
+                </div>
               )}
             </div>
-
-            <p className="mt-4 font-sans text-[13px] text-ink-mute">
-              Funda 1959 arşivinden
-            </p>
           </div>
         </div>
       </Container>
