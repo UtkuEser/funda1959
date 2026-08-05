@@ -1,0 +1,122 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useEffect } from "react";
+import { navigation, site } from "@/content/site";
+import { Crest, Divider } from "@/components/ui/Ornament";
+
+type MobileMenuProps = {
+  open: boolean;
+  onClose: () => void;
+};
+
+export function MobileMenu({ open, onClose }: MobileMenuProps) {
+  const pathname = usePathname();
+
+  useEffect(() => {
+    if (!open) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+
+    document.addEventListener("keydown", onKeyDown);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [open, onClose]);
+
+  return (
+    <div
+      className={`fixed inset-0 z-50 lg:hidden ${
+        open ? "pointer-events-auto" : "pointer-events-none"
+      }`}
+      aria-hidden={!open}
+    >
+      <div
+        className={`absolute inset-0 bg-ink/40 transition-opacity duration-400 ${
+          open ? "opacity-100" : "opacity-0"
+        }`}
+        onClick={onClose}
+      />
+
+      <div
+        className={`absolute inset-y-0 right-0 flex w-[86%] max-w-sm flex-col bg-cream shadow-2xl transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+          open ? "translate-x-0" : "translate-x-full"
+        }`}
+      >
+        <div className="flex items-center justify-between border-b border-stone/25 px-6 py-5">
+          <div className="flex items-center gap-3 text-bordo">
+            <Crest className="h-7 w-7" />
+            <span className="font-serif text-lg tracking-[0.12em]">{site.wordmark}</span>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Menüyü kapat"
+            className="p-2 text-ink-soft transition-colors hover:text-bordo"
+          >
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+              <path d="M1 1l16 16M17 1L1 17" stroke="currentColor" strokeWidth="1.3" />
+            </svg>
+          </button>
+        </div>
+
+        <nav className="flex-1 overflow-y-auto px-6 py-8">
+          <ul className="space-y-1">
+            {navigation.map((item) => {
+              const active = pathname === item.href;
+              return (
+                <li key={item.href}>
+                  <Link
+                    href={item.href}
+                    onClick={onClose}
+                    className={`block border-b border-stone/20 py-4 font-serif text-2xl transition-colors ${
+                      active ? "text-bordo" : "text-ink hover:text-bordo"
+                    }`}
+                  >
+                    {item.label}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+
+          <Divider className="my-8" />
+
+          <div className="space-y-3 font-sans text-sm text-ink-soft">
+            <a href={site.phoneHref} className="block transition-colors hover:text-bordo">
+              {site.phone}
+            </a>
+            <a href={site.emailHref} className="block transition-colors hover:text-bordo">
+              {site.email}
+            </a>
+            <a
+              href={site.instagram}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block transition-colors hover:text-bordo"
+            >
+              {site.instagramHandle}
+            </a>
+          </div>
+        </nav>
+
+        <div className="border-t border-stone/25 p-6">
+          <Link
+            href="/iletisim"
+            onClick={onClose}
+            className="flex w-full items-center justify-center bg-bordo px-6 py-4 font-sans text-[11px] uppercase tracking-[0.2em] text-cream transition-colors hover:bg-bordo-dark"
+          >
+            Sipariş Ver
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}

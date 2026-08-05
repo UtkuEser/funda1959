@@ -1,0 +1,207 @@
+@import "tailwindcss";
+
+/* =========================================================
+   FUNDA 1959 — Tasarım Sistemi
+   Tüm marka renkleri ve tonları tek noktadan yönetilir.
+   ========================================================= */
+
+@theme {
+  /* Ana renk — bordo. Vurgu, CTA, footer ve motiflerde kullanılır. */
+  --color-bordo: #7b1e2b;
+  --color-bordo-dark: #57121c;
+  --color-bordo-soft: #9c4450;
+  --color-bordo-tint: #f0e2e2;
+
+  /* Zeminler — krem / kırık beyaz */
+  --color-cream: #fbf7f0;
+  --color-cream-2: #f4ecdf;
+  --color-cream-3: #ece0cd;
+
+  /* Destek tonlar */
+  --color-beige: #e2d3bb;
+  --color-powder: #eddfd6;
+  --color-stone: #c7b39a;
+  --color-gold: #b8924f;
+  --color-gold-soft: #dcc48f;
+
+  /* Metin */
+  --color-ink: #2c1a16;
+  --color-ink-soft: #6d564d;
+  --color-ink-mute: #8d786f;
+}
+
+@theme inline {
+  --font-serif: var(--font-display), Georgia, "Times New Roman", serif;
+  --font-sans: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* ---------------------------------------------------------
+   Temel
+   --------------------------------------------------------- */
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  /* Okunabilirlik: gövde metni geniş bir yaş aralığı için rahat boyutta tutulur. */
+  font-size: 17px;
+  line-height: 1.65;
+  background-color: var(--color-cream);
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-serif);
+  font-feature-settings: "kern" 1, "liga" 1;
+}
+
+::selection {
+  background-color: var(--color-bordo);
+  color: var(--color-cream);
+}
+
+*:focus-visible {
+  outline: 2px solid var(--color-bordo);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-cream-2);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-stone);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-bordo-soft);
+}
+
+/* ---------------------------------------------------------
+   Dekoratif dokular ve motifler
+   --------------------------------------------------------- */
+
+/* Kağıt hissi veren çok hafif doku */
+.surface-paper {
+  background-image:
+    radial-gradient(
+      ellipse at 15% 0%,
+      color-mix(in srgb, var(--color-powder) 55%, transparent),
+      transparent 60%
+    ),
+    radial-gradient(
+      ellipse at 85% 100%,
+      color-mix(in srgb, var(--color-cream-3) 60%, transparent),
+      transparent 55%
+    );
+}
+
+/* Placeholder görsel dokusu — gerçek fotoğraf gelene kadar */
+.surface-plate {
+  background-image:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--color-cream-2) 92%, white),
+      var(--color-cream-3)
+    ),
+    repeating-linear-gradient(
+      45deg,
+      color-mix(in srgb, var(--color-stone) 12%, transparent) 0px,
+      color-mix(in srgb, var(--color-stone) 12%, transparent) 1px,
+      transparent 1px,
+      transparent 11px
+    );
+}
+
+.surface-plate-warm {
+  background-image:
+    linear-gradient(135deg, var(--color-powder), var(--color-beige)),
+    repeating-linear-gradient(
+      45deg,
+      color-mix(in srgb, var(--color-bordo) 7%, transparent) 0px,
+      color-mix(in srgb, var(--color-bordo) 7%, transparent) 1px,
+      transparent 1px,
+      transparent 11px
+    );
+}
+
+.surface-plate-deep {
+  background-image:
+    linear-gradient(140deg, var(--color-bordo-dark), var(--color-bordo)),
+    repeating-linear-gradient(
+      45deg,
+      rgba(255, 255, 255, 0.05) 0px,
+      rgba(255, 255, 255, 0.05) 1px,
+      transparent 1px,
+      transparent 12px
+    );
+}
+
+/* İnce çift çerçeve — Ladurée hissi */
+.frame-fine {
+  position: relative;
+}
+.frame-fine::after {
+  content: "";
+  position: absolute;
+  inset: 0.6rem;
+  border: 1px solid color-mix(in srgb, var(--color-gold) 45%, transparent);
+  pointer-events: none;
+}
+
+/* ---------------------------------------------------------
+   Girişte beliren içerik
+   --------------------------------------------------------- */
+
+.reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition:
+    opacity 0.9s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+
+.reveal[data-visible="true"] {
+  opacity: 1;
+  transform: none;
+}
+
+@keyframes funda-rise {
+  from {
+    opacity: 0;
+    transform: translateY(22px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.animate-rise {
+  opacity: 0;
+  animation: funda-rise 1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation-delay: var(--rise-delay, 0ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .reveal,
+  .animate-rise {
+    opacity: 1;
+    transform: none;
+    transition: none;
+    animation: none;
+  }
+}
