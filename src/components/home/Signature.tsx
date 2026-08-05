@@ -38,7 +38,7 @@ export function Signature() {
                   className="flex flex-col gap-1 border-b border-stone/40 py-5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-8"
                 >
                   <span className="font-serif text-[22px] text-ink">{product.name}</span>
-                  <span className="font-sans text-[15px] text-ink-mute">{product.short}</span>
+                  <span className="font-sans text-[16px] text-ink-mute">{product.short}</span>
                 </li>
               ))}
             </ul>

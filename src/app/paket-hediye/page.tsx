@@ -37,18 +37,18 @@ export default function GiftPage() {
                     sizes="(max-width: 640px) 90vw, (max-width: 1024px) 45vw, 24vw"
                   />
                   <div className="flex flex-1 flex-col pt-6">
-                    <p className="font-sans text-[10px] uppercase tracking-[0.26em] text-gold">
+                    <p className="font-sans text-[13px] uppercase tracking-[0.26em] text-gold">
                       {box.audience}
                     </p>
                     <h3 className="mt-3 font-serif text-2xl text-ink">{box.name}</h3>
-                    <p className="mt-3 flex-1 font-sans text-sm leading-relaxed text-ink-soft">
+                    <p className="mt-3 flex-1 font-sans text-[16px] leading-relaxed text-ink-soft">
                       {box.description}
                     </p>
                     <ul className="mt-6 space-y-2 border-t border-stone/30 pt-5">
                       {box.contents.map((content) => (
                         <li
                           key={content}
-                          className="font-sans text-[12px] uppercase tracking-[0.12em] text-ink-mute"
+                          className="font-sans text-[13px] uppercase tracking-[0.12em] text-ink-mute"
                         >
                           {content}
                         </li>
@@ -75,9 +75,9 @@ export default function GiftPage() {
             {giftRitual.map((step, index) => (
               <Reveal key={step.step} delay={index * 80} className="bg-cream-2">
                 <div className="h-full px-7 py-9">
-                  <p className="font-serif text-3xl text-bordo/70">{step.step}</p>
-                  <h3 className="mt-5 font-serif text-xl text-ink">{step.title}</h3>
-                  <p className="mt-3 font-sans text-sm leading-relaxed text-ink-soft">
+                  <p className="font-serif text-3xl text-bordo/85">{step.step}</p>
+                  <h3 className="mt-5 t-card font-serif text-ink">{step.title}</h3>
+                  <p className="mt-3 font-sans text-[16px] leading-relaxed text-ink-soft">
                     {step.description}
                   </p>
                 </div>
@@ -105,8 +105,8 @@ export default function GiftPage() {
                 {giftProducts.map((product, index) => (
                   <Reveal key={product.id} delay={index * 70}>
                     <li className="flex flex-col gap-1 py-5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-8">
-                      <span className="font-serif text-xl text-ink">{product.name}</span>
-                      <span className="font-sans text-[12px] uppercase tracking-[0.14em] text-ink-mute">
+                      <span className="t-card font-serif text-ink">{product.name}</span>
+                      <span className="font-sans text-[13px] uppercase tracking-[0.14em] text-ink-mute">
                         {product.short}
                       </span>
                     </li>
@@ -118,7 +118,7 @@ export default function GiftPage() {
                 {giftMoments.map((moment) => (
                   <li
                     key={moment}
-                    className="font-sans text-[11px] uppercase tracking-[0.16em] text-bordo/70"
+                    className="font-sans text-[13px] uppercase tracking-[0.16em] text-bordo/85"
                   >
                     {moment}
                   </li>

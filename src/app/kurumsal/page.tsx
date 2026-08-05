@@ -53,8 +53,8 @@ export default function CorporatePage() {
                 {corporateServices.map((service, index) => (
                   <Reveal key={service.title} delay={index * 70} className="bg-cream">
                     <div className="h-full px-6 py-7">
-                      <h3 className="font-serif text-xl text-ink">{service.title}</h3>
-                      <p className="mt-3 font-sans text-sm leading-relaxed text-ink-soft">
+                      <h3 className="t-card font-serif text-ink">{service.title}</h3>
+                      <p className="mt-3 font-sans text-[16px] leading-relaxed text-ink-soft">
                         {service.description}
                       </p>
                     </div>
@@ -78,9 +78,9 @@ export default function CorporatePage() {
             {corporateSteps.map((step, index) => (
               <Reveal key={step.step} delay={index * 80} className="bg-cream-2">
                 <div className="h-full px-7 py-9">
-                  <p className="font-serif text-3xl text-bordo/70">{step.step}</p>
-                  <h3 className="mt-5 font-serif text-xl text-ink">{step.title}</h3>
-                  <p className="mt-3 font-sans text-sm leading-relaxed text-ink-soft">
+                  <p className="font-serif text-3xl text-bordo/85">{step.step}</p>
+                  <h3 className="mt-5 t-card font-serif text-ink">{step.title}</h3>
+                  <p className="mt-3 font-sans text-[16px] leading-relaxed text-ink-soft">
                     {step.description}
                   </p>
                 </div>
@@ -92,7 +92,7 @@ export default function CorporatePage() {
             {corporateNotes.map((note) => (
               <li
                 key={note.slice(0, 20)}
-                className="border-l-2 border-gold/60 pl-4 font-sans text-sm leading-relaxed text-ink-soft"
+                className="border-l-2 border-gold/60 pl-4 font-sans text-[16px] leading-relaxed text-ink-soft"
               >
                 {note}
               </li>

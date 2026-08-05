@@ -48,7 +48,7 @@ export function MobileMenu({ open, onClose }: MobileMenuProps) {
         }`}
       >
         <div className="flex items-center justify-between border-b border-stone/25 px-6 py-5">
-          <span className="font-serif text-xl tracking-[0.16em] text-bordo">FUNDA</span>
+          <span className="t-card font-serif tracking-[0.16em] text-bordo">FUNDA</span>
           <button
             type="button"
             onClick={onClose}
@@ -78,7 +78,7 @@ export function MobileMenu({ open, onClose }: MobileMenuProps) {
             ))}
           </ul>
 
-          <div className="mt-10 space-y-3 font-sans text-[15px] text-ink-soft">
+          <div className="mt-10 space-y-3 font-sans text-[16px] text-ink-soft">
             <a href={site.phoneHref} className="block hover:text-bordo">
               {site.phone}
             </a>
@@ -100,7 +100,7 @@ export function MobileMenu({ open, onClose }: MobileMenuProps) {
           <Link
             href="/iletisim"
             onClick={onClose}
-            className="flex w-full items-center justify-center bg-bordo px-6 py-4 font-sans text-[13px] uppercase tracking-[0.16em] text-cream"
+            className="flex w-full items-center justify-center bg-bordo px-6 py-4 font-sans text-[14px] uppercase tracking-[0.14em] text-cream"
           >
             Sipariş Ver
           </Link>

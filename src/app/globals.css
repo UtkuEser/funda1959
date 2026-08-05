@@ -45,7 +45,7 @@ body {
   background-color: var(--color-cream);
   color: var(--color-ink);
   font-size: 17px;
-  line-height: 1.6;
+  line-height: 1.65;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
@@ -109,7 +109,8 @@ h4 {
 
 .t-label {
   font-size: 0.8125rem; /* 13px */
-  letter-spacing: 0.18em;
+  line-height: 1.5;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
 }
 

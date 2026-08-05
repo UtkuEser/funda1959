@@ -22,7 +22,7 @@ export function Heading({
     <div className={`${align === "center" ? "mx-auto text-center" : ""} ${className}`}>
       {label ? (
         <p
-          className={`t-label font-sans ${light ? "text-cream/70" : "text-bordo/80"}`}
+          className={`t-label font-sans ${light ? "text-cream/85" : "text-bordo/80"}`}
         >
           {label}
         </p>

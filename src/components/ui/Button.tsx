@@ -12,7 +12,7 @@ type ButtonProps = {
 };
 
 const base =
-  "inline-flex items-center justify-center px-8 py-4 font-sans text-[13px] uppercase tracking-[0.16em] transition-colors duration-300";
+  "inline-flex items-center justify-center px-8 py-4 font-sans text-[14px] uppercase tracking-[0.14em] transition-colors duration-300";
 
 const variants: Record<ButtonVariant, string> = {
   solid: "bg-bordo text-cream hover:bg-bordo-dark",

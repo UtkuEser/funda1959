@@ -13,10 +13,10 @@ type RequestFormProps = {
 };
 
 const fieldClass =
-  "w-full border border-stone/40 bg-cream px-4 py-3 font-sans text-sm text-ink transition-colors placeholder:text-ink-mute/70 focus:border-bordo focus:outline-none";
+  "w-full border border-stone/40 bg-cream px-4 py-3 font-sans text-[16px] text-ink transition-colors placeholder:text-ink-mute focus:border-bordo focus:outline-none";
 
 const labelClass =
-  "block font-sans text-[10px] uppercase tracking-[0.22em] text-ink-mute";
+  "block font-sans text-[13px] uppercase tracking-[0.22em] text-ink-mute";
 
 /**
  * Sunucu tarafı olmadan çalışan talep formu:
@@ -158,12 +158,12 @@ export function RequestForm({
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <button
           type="submit"
-          className="inline-flex items-center justify-center bg-bordo px-8 py-3.5 font-sans text-[11px] uppercase tracking-[0.2em] text-cream transition-colors hover:bg-bordo-dark"
+          className="inline-flex items-center justify-center bg-bordo px-8 py-3.5 font-sans text-[14px] uppercase tracking-[0.16em] text-cream transition-colors hover:bg-bordo-dark"
         >
           {submitLabel}
         </button>
         {note ? (
-          <p className="font-sans text-xs leading-relaxed text-ink-mute">{note}</p>
+          <p className="font-sans text-[14px] leading-relaxed text-ink-mute">{note}</p>
         ) : null}
       </div>
     </form>

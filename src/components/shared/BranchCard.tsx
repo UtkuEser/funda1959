@@ -25,10 +25,10 @@ export function BranchCard({ branch, detailed = false }: BranchCardProps) {
         </p>
 
         <p className="mt-4 font-sans text-[16px] text-ink-soft">{branch.address}</p>
-        <p className="mt-1 font-sans text-[15px] text-ink-mute">{branch.hours}</p>
+        <p className="mt-1 font-sans text-[16px] text-ink-mute">{branch.hours}</p>
 
         {detailed ? (
-          <p className="mt-4 font-sans text-[15px] text-ink-mute">
+          <p className="mt-4 font-sans text-[16px] text-ink-mute">
             {branch.features.join(" · ")}
           </p>
         ) : null}
@@ -44,7 +44,7 @@ export function BranchCard({ branch, detailed = false }: BranchCardProps) {
           </a>
           <a
             href={branch.phoneHref}
-            className="font-sans text-[15px] text-ink-mute transition-colors hover:text-bordo"
+            className="font-sans text-[16px] text-ink-mute transition-colors hover:text-bordo"
           >
             {branch.phone}
           </a>

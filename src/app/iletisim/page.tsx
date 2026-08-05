@@ -48,10 +48,10 @@ export default function ContactPage() {
                   rel={channel.external ? "noopener noreferrer" : undefined}
                   className="group flex h-full flex-col px-7 py-9 transition-colors hover:bg-cream-2"
                 >
-                  <p className="font-sans text-[10px] uppercase tracking-[0.26em] text-gold">
+                  <p className="font-sans text-[13px] uppercase tracking-[0.26em] text-gold">
                     {channel.label}
                   </p>
-                  <p className="mt-4 font-serif text-xl text-ink transition-colors group-hover:text-bordo">
+                  <p className="mt-4 t-card font-serif text-ink transition-colors group-hover:text-bordo">
                     {channel.value}
                   </p>
                 </a>
@@ -88,7 +88,7 @@ export default function ContactPage() {
             </div>
 
             <div className="lg:col-span-5">
-              <p className="font-sans text-[11px] uppercase tracking-[0.3em] text-bordo/75">
+              <p className="font-sans text-[13px] uppercase tracking-[0.3em] text-bordo/85">
                 Şubelerimiz
               </p>
 
@@ -96,17 +96,17 @@ export default function ContactPage() {
                 {branches.map((branch) => (
                   <li key={branch.id} className="border-b border-stone/30 pb-8">
                     <h3 className="font-serif text-2xl text-ink">{branch.shortName}</h3>
-                    <p className="mt-2 font-sans text-[12px] uppercase tracking-[0.14em] text-bordo/60">
+                    <p className="mt-2 font-sans text-[13px] uppercase tracking-[0.14em] text-bordo/80">
                       {branch.atmosphere}
                     </p>
-                    <p className="mt-3 font-sans text-sm leading-relaxed text-ink-soft">
+                    <p className="mt-3 font-sans text-[16px] leading-relaxed text-ink-soft">
                       {branch.address}
                     </p>
-                    <p className="mt-1 font-sans text-sm text-ink-mute">{branch.hours}</p>
+                    <p className="mt-1 font-sans text-[16px] text-ink-mute">{branch.hours}</p>
                     <div className="mt-4 flex flex-wrap gap-5">
                       <a
                         href={branch.phoneHref}
-                        className="font-sans text-[11px] uppercase tracking-[0.18em] text-bordo transition-colors hover:text-bordo-dark"
+                        className="font-sans text-[13px] uppercase tracking-[0.18em] text-bordo transition-colors hover:text-bordo-dark"
                       >
                         {branch.phone}
                       </a>
@@ -114,7 +114,7 @@ export default function ContactPage() {
                         href={branch.mapUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="border-b border-bordo/30 pb-0.5 font-sans text-[11px] uppercase tracking-[0.18em] text-ink-mute transition-colors hover:border-bordo hover:text-bordo"
+                        className="border-b border-bordo/30 pb-0.5 font-sans text-[13px] uppercase tracking-[0.18em] text-ink-mute transition-colors hover:border-bordo hover:text-bordo"
                       >
                         Yol Tarifi
                       </a>

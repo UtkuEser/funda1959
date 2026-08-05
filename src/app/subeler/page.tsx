@@ -67,8 +67,8 @@ export default function BranchesPage() {
               <Reveal key={item.title} delay={index * 80} className="bg-cream">
                 <div className="h-full px-7 py-9">
                   <p className="font-serif text-3xl text-gold">0{index + 1}</p>
-                  <h3 className="mt-5 font-serif text-xl text-ink">{item.title}</h3>
-                  <p className="mt-3 font-sans text-sm leading-relaxed text-ink-soft">
+                  <h3 className="mt-5 t-card font-serif text-ink">{item.title}</h3>
+                  <p className="mt-3 font-sans text-[16px] leading-relaxed text-ink-soft">
                     {item.description}
                   </p>
                 </div>
@@ -76,7 +76,7 @@ export default function BranchesPage() {
             ))}
           </div>
 
-          <p className="mt-10 text-center font-sans text-sm text-ink-mute">
+          <p className="mt-10 text-center font-sans text-[16px] text-ink-mute">
             Tüm şubelerimiz {site.hours} arasında açıktır.
           </p>
         </Container>

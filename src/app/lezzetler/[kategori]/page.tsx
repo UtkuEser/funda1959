@@ -71,7 +71,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
               ))}
             </div>
           ) : (
-            <p className="mx-auto max-w-lg text-center font-sans text-sm leading-relaxed text-ink-soft">
+            <p className="mx-auto max-w-lg text-center font-sans text-[16px] leading-relaxed text-ink-soft">
               Bu kategorinin çeşitleri şubelerimizde günlük olarak değişiyor. Güncel
               vitrin için bizi arayabilirsiniz.
             </p>
@@ -79,7 +79,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
 
           {/* Diğer kategoriler */}
           <div className="mt-20 border-t border-stone/30 pt-10">
-            <p className="font-sans text-[11px] uppercase tracking-[0.28em] text-ink-mute">
+            <p className="font-sans text-[13px] uppercase tracking-[0.28em] text-ink-mute">
               Diğer Kategoriler
             </p>
             <div className="mt-6 flex flex-wrap gap-x-8 gap-y-3">
@@ -87,14 +87,14 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
                 <Link
                   key={item.slug}
                   href={`/lezzetler/${item.slug}`}
-                  className="font-serif text-xl text-ink transition-colors hover:text-bordo"
+                  className="t-card font-serif text-ink transition-colors hover:text-bordo"
                 >
                   {item.name}
                 </Link>
               ))}
               <Link
                 href="/lezzetler"
-                className="font-sans text-[11px] uppercase tracking-[0.18em] text-bordo underline-offset-8 hover:underline"
+                className="font-sans text-[13px] uppercase tracking-[0.18em] text-bordo underline-offset-8 hover:underline"
               >
                 Tümü
               </Link>

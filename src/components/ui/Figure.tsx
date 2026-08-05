@@ -48,7 +48,7 @@ export function Figure({
         />
       ) : (
         <div className="absolute inset-0 bg-[linear-gradient(155deg,#f7f0e4_0%,#eadfcc_52%,#dccbb0_100%)]">
-          <span className="absolute inset-x-0 bottom-0 px-5 pb-5 font-sans text-[12px] uppercase tracking-[0.14em] text-ink-mute/80">
+          <span className="absolute inset-x-0 bottom-0 px-5 pb-5 font-sans text-[13px] uppercase tracking-[0.14em] text-ink-mute">
             {asset.alt}
           </span>
         </div>

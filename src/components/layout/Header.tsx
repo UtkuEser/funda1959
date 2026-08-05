@@ -28,10 +28,10 @@ export function Header() {
         {/* İnce üst bant */}
         <div className="bg-bordo text-cream/85">
           <Container className="flex h-8 items-center justify-between gap-4">
-            <p className="truncate font-sans text-[12px] tracking-[0.1em]">{announcement}</p>
+            <p className="truncate font-sans text-[13px] tracking-[0.1em]">{announcement}</p>
             <a
               href={site.phoneHref}
-              className="hidden font-sans text-[12px] tracking-[0.1em] transition-colors hover:text-cream sm:block"
+              className="hidden font-sans text-[13px] tracking-[0.1em] transition-colors hover:text-cream sm:block"
             >
               {site.phone}
             </a>
@@ -55,7 +55,7 @@ export function Header() {
                 <span className="block font-serif text-[26px] tracking-[0.16em] text-bordo md:text-[30px]">
                   FUNDA
                 </span>
-                <span className="mt-1 block font-sans text-[11px] tracking-[0.42em] text-gold">
+                <span className="mt-1 block font-sans text-[13px] tracking-[0.42em] text-gold">
                   {site.year}
                 </span>
               </Link>
@@ -66,7 +66,7 @@ export function Header() {
                   <Link
                     key={item.href}
                     href={item.href}
-                    className={`font-sans text-[14px] transition-colors duration-200 ${
+                    className={`font-sans text-[15px] transition-colors duration-200 ${
                       isActive(item.href)
                         ? "text-bordo"
                         : "text-ink-soft hover:text-bordo"
@@ -80,7 +80,7 @@ export function Header() {
               <div className="flex items-center gap-4">
                 <Link
                   href="/iletisim"
-                  className="hidden shrink-0 items-center bg-bordo px-6 py-3 font-sans text-[13px] uppercase tracking-[0.14em] text-cream transition-colors duration-300 hover:bg-bordo-dark lg:inline-flex"
+                  className="hidden shrink-0 items-center bg-bordo px-6 py-3 font-sans text-[14px] uppercase tracking-[0.12em] text-cream transition-colors duration-300 hover:bg-bordo-dark lg:inline-flex"
                 >
                   Sipariş Ver
                 </Link>

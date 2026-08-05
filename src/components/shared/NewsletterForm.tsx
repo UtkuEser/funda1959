@@ -32,11 +32,11 @@ export function NewsletterForm() {
           value={email}
           onChange={(event) => setEmail(event.target.value)}
           placeholder="E-posta adresiniz"
-          className="w-full bg-transparent py-3 font-sans text-sm text-cream placeholder:text-cream/45 focus:outline-none"
+          className="w-full bg-transparent py-3 font-sans text-[16px] text-cream placeholder:text-cream/75 focus:outline-none"
         />
         <button
           type="submit"
-          className="shrink-0 px-3 font-sans text-[10px] uppercase tracking-[0.2em] text-gold-soft transition-colors hover:text-cream"
+          className="shrink-0 px-3 font-sans text-[14px] uppercase tracking-[0.16em] text-cream transition-colors hover:text-cream"
         >
           Katıl
         </button>

@@ -56,14 +56,14 @@ export default function SignaturePage() {
             </Reveal>
 
             <div className="lg:col-span-6">
-              <p className="font-sans text-[11px] uppercase tracking-[0.3em] text-gold">
+              <p className="font-sans text-[13px] uppercase tracking-[0.3em] text-gold">
                 Neden imza?
               </p>
               <ul className="mt-8 space-y-7">
                 {reasons.map((reason) => (
                   <li key={reason.title}>
-                    <h3 className="font-serif text-xl text-ink">{reason.title}</h3>
-                    <p className="mt-2 max-w-md font-sans text-sm leading-relaxed text-ink-soft">
+                    <h3 className="t-card font-serif text-ink">{reason.title}</h3>
+                    <p className="mt-2 max-w-md font-sans text-[16px] leading-relaxed text-ink-soft">
                       {reason.description}
                     </p>
                   </li>

@@ -13,7 +13,7 @@ export function ProductCard({ product }: { product: Product }) {
 
       <div className="flex flex-1 flex-col pt-6">
         {product.isSignature ? (
-          <p className="mb-3 font-sans text-[12px] uppercase tracking-[0.16em] text-bordo/80">
+          <p className="mb-3 font-sans text-[13px] uppercase tracking-[0.16em] text-bordo/80">
             İmza Lezzet
           </p>
         ) : null}
@@ -27,7 +27,7 @@ export function ProductCard({ product }: { product: Product }) {
         </p>
 
         {product.notes.length > 0 ? (
-          <p className="mt-5 font-sans text-[14px] text-ink-mute">
+          <p className="mt-5 font-sans text-[15px] text-ink-mute">
             {product.notes.join(" · ")}
           </p>
         ) : null}

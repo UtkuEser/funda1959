@@ -38,13 +38,13 @@ export default function MenuPage() {
               <Container>
                 <div className="flex flex-col gap-6 border-b border-stone/30 pb-10 md:flex-row md:items-end md:justify-between">
                   <div className="max-w-xl">
-                    <p className="font-sans text-[11px] uppercase tracking-[0.3em] text-gold">
+                    <p className="font-sans text-[13px] uppercase tracking-[0.3em] text-gold">
                       {collection.lead}
                     </p>
                     <h2 className="mt-4 font-serif text-[2rem] leading-tight text-ink sm:text-4xl">
                       {collection.title}
                     </h2>
-                    <p className="mt-5 font-sans text-[15px] leading-relaxed text-ink-soft">
+                    <p className="mt-5 font-sans text-[16px] leading-relaxed text-ink-soft">
                       {collection.description}
                     </p>
                   </div>
@@ -66,13 +66,13 @@ export default function MenuPage() {
                           <h3 className="font-serif text-2xl text-ink transition-colors group-hover:text-bordo">
                             {category.name}
                           </h3>
-                          <p className="mt-2 font-sans text-[12px] uppercase tracking-[0.14em] text-bordo/60">
+                          <p className="mt-2 font-sans text-[13px] uppercase tracking-[0.14em] text-bordo/80">
                             {category.tagline}
                           </p>
-                          <p className="mt-4 flex-1 font-sans text-sm leading-relaxed text-ink-soft">
+                          <p className="mt-4 flex-1 font-sans text-[16px] leading-relaxed text-ink-soft">
                             {category.description}
                           </p>
-                          <span className="mt-6 inline-flex w-fit border-b border-bordo/30 pb-1 font-sans text-[11px] uppercase tracking-[0.18em] text-bordo transition-colors group-hover:border-bordo">
+                          <span className="mt-6 inline-flex w-fit border-b border-bordo/30 pb-1 font-sans text-[13px] uppercase tracking-[0.18em] text-bordo transition-colors group-hover:border-bordo">
                             İncele
                           </span>
                         </div>
