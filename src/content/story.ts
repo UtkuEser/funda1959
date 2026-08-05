@@ -1,4 +1,4 @@
-/** Marka hikayesi: ana sayfa özeti, dönemler ve marka değerleri. */
+/** Ana sayfadaki hikâye bloğu. Hikayemiz sayfası src/content/storyPage.ts kullanır. */
 
 import { images } from "./images";
 
@@ -9,15 +9,6 @@ export const storyTeaser = {
     "1959’da başlayan yolculuk, bugün de sıcak sofralara, özel günlere ve günlük küçük mutluluklara eşlik etmeye devam ediyor.",
   image: images.hikaye,
   cta: { href: "/hikayemiz", label: "Hikayemizi Keşfedin" },
-};
-
-export const storyIntro = {
-  lead: "Funda 1959, bir şehrin tatlı alışkanlığı.",
-  paragraphs: [
-    "Her şey küçük bir vitrinle başladı. Tezgahın arkasında bir usta, önünde her gün aynı saatte gelen birkaç müşteri vardı. Zamanla o vitrin büyüdü; ama alışkanlık değişmedi.",
-    "Bugün Funda; kahve molasının, misafirliğe giderken uğranan durağın, doğum günü masasına gelen pastanın adı. Yıllar içinde tarifler tazelendi, ustalar çoğaldı, şubeler eklendi.",
-    "Değişmeyen şey şu: bir pastane yalnızca ürün satmaz. Bir mahallenin hafızasını taşır, kutlamalarına ortak olur, sıradan bir salı gününü bile tatlandırır.",
-  ],
 };
 
 export type StoryChapter = {
@@ -59,25 +50,3 @@ export const storyChapters: StoryChapter[] = [
   },
 ];
 
-export const storyValues = [
-  {
-    title: "Günlük üretim",
-    description:
-      "Vitrine çıkan her ürün o gün hazırlanır. Kalan ürünle ertesi güne başlanmaz.",
-  },
-  {
-    title: "Değişmeyen tarifler",
-    description:
-      "İmza ürünlerin tarifi yıllardır aynı. Yenilik, klasiğin yerine değil yanına gelir.",
-  },
-  {
-    title: "Karşılama biçimi",
-    description:
-      "Bir pastanenin lezzeti kadar kapıdaki karşılaması da hatırlanır. Sıcaklık, servisin parçasıdır.",
-  },
-  {
-    title: "Paylaşma kültürü",
-    description:
-      "Ürünlerimiz çoğu zaman tek başına değil, birlikte tüketilmek için hazırlanır.",
-  },
-];

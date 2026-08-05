@@ -1,122 +1,211 @@
 import type { Metadata } from "next";
-import { PageHero } from "@/components/shared/PageHero";
 import { CtaBand } from "@/components/shared/CtaBand";
-import { Section } from "@/components/ui/Section";
-import { Container } from "@/components/ui/Container";
-import { Heading } from "@/components/ui/Heading";
-import { Figure } from "@/components/ui/Figure";
 import { Reveal } from "@/components/ui/Reveal";
-import { Monogram } from "@/components/ui/Marks";
-import { storyChapters, storyIntro, storyTeaser, storyValues } from "@/content/story";
-import { site } from "@/content/site";
+import { ArchiveFrame } from "@/components/story/ArchiveFrame";
+import { Chapter } from "@/components/story/Chapter";
+import { StoryContainer } from "@/components/story/StoryContainer";
+import { StoryTimeline } from "@/components/story/StoryTimeline";
+import {
+  foundingChapter,
+  growthChapter,
+  storyChaptersContent,
+  storyCta,
+  storyHero,
+  storyTimeline,
+  todayChapter,
+} from "@/content/storyPage";
+import {
+  storyImageFour,
+  storyImageOne,
+  storyImageThree,
+  storyImageTwo,
+} from "@/content/storyImages";
 
 export const metadata: Metadata = {
   title: "Hikayemiz",
   description:
-    "1959’da küçük bir vitrinle başlayan Funda’nın hikayesi: değişen tarifler, değişmeyen alışkanlıklar ve bir şehrin tatlı hafızası.",
+    "Çamlıhemşin’den Moskova’ya, Yalta’dan Ankara’ya uzanan bir aile mesleği: Funda 1959’un kuşaklar boyunca aktarılan pastacılık hikâyesi.",
 };
+
+const [koklerChapter, ustalikChapter, donusChapter] = storyChaptersContent;
 
 export default function StoryPage() {
   return (
     <>
-      <PageHero
-        eyebrow={storyTeaser.eyebrow}
-        title={storyTeaser.title}
-        description={storyTeaser.description}
-      />
+      {/* 1 — Hero */}
+      <section className="bg-cream pb-16 pt-36 md:pb-20 md:pt-44">
+        <StoryContainer>
+          <p className="font-sans text-[13px] uppercase tracking-[0.22em] text-bordo/80">
+            {storyHero.label}
+          </p>
 
-      {/* Giriş */}
-      <Section tone="cream">
-        <Container>
-          <div className="grid gap-14 lg:grid-cols-12 lg:gap-16">
-            <Reveal className="lg:col-span-5">
-              <Figure
-        asset={storyTeaser.image}
-                ratio="4 / 5"
-                sizes="(max-width: 1024px) 90vw, 40vw"
-              />
-            </Reveal>
+          <h1 className="mt-6 max-w-[16ch] font-serif text-[clamp(2.5rem,4.8vw,5rem)] leading-[1.04] text-ink">
+            {storyHero.title}
+          </h1>
 
-            <div className="lg:col-span-7">
-              <h2 className="font-serif text-[1.9rem] leading-snug text-ink sm:text-[2.4rem]">
-                {storyIntro.lead}
+          <p className="mt-8 max-w-[70ch] font-sans text-[clamp(1.0625rem,0.5vw+0.9rem,1.25rem)] leading-[1.75] text-ink-soft">
+            {storyHero.description}
+          </p>
+        </StoryContainer>
+      </section>
+
+      {/* İlk iki arşiv karesi */}
+      <section className="bg-cream pb-24 md:pb-28 lg:pb-32">
+        <StoryContainer>
+          <div className="grid gap-8 sm:grid-cols-2 lg:gap-12">
+            <ArchiveFrame
+              image={storyImageOne}
+              sizes="(max-width: 640px) 88vw, (max-width: 1320px) 44vw, 600px"
+              priority
+            />
+            <ArchiveFrame
+              image={storyImageTwo}
+              sizes="(max-width: 640px) 88vw, (max-width: 1320px) 44vw, 600px"
+              className="sm:mt-12"
+            />
+          </div>
+        </StoryContainer>
+      </section>
+
+      {/* 2 — Kökler */}
+      <section className="bg-cream-2 py-24 md:py-28 lg:py-32">
+        <StoryContainer>
+          <Reveal>
+            <Chapter
+              id="kokler"
+              label={koklerChapter.label}
+              title={koklerChapter.title}
+              paragraphs={koklerChapter.paragraphs}
+              emphasis={koklerChapter.emphasis}
+              mediaSide="right"
+              media={
+                <ArchiveFrame
+                  image={storyImageThree}
+                  sizes="(max-width: 1024px) 88vw, 420px"
+                />
+              }
+            />
+          </Reveal>
+        </StoryContainer>
+      </section>
+
+      {/* 3 — Ustalığın yolculuğu */}
+      <section className="bg-cream py-24 md:py-28 lg:py-32">
+        <StoryContainer>
+          <Reveal>
+            <Chapter
+              id="ustalik"
+              label={ustalikChapter.label}
+              title={ustalikChapter.title}
+              paragraphs={ustalikChapter.paragraphs}
+              emphasis={ustalikChapter.emphasis}
+            />
+          </Reveal>
+        </StoryContainer>
+      </section>
+
+      {/* 4 — Türkiye'ye dönüş */}
+      <section className="bg-cream-2 py-24 md:py-28 lg:py-32">
+        <StoryContainer>
+          <Reveal>
+            <Chapter
+              id="donus"
+              label={donusChapter.label}
+              title={donusChapter.title}
+              paragraphs={donusChapter.paragraphs}
+              emphasis={donusChapter.emphasis}
+            />
+          </Reveal>
+        </StoryContainer>
+      </section>
+
+      {/* 5 — 1959 */}
+      <section className="bg-cream py-24 md:py-28 lg:py-36">
+        <StoryContainer>
+          <div className="grid items-start gap-14 lg:grid-cols-12 lg:gap-16">
+            <div className="lg:col-span-6">
+              <p className="font-sans text-[13px] uppercase tracking-[0.18em] text-bordo/80">
+                {foundingChapter.label}
+              </p>
+
+              <p className="mt-4 font-serif text-[clamp(5rem,12vw,11rem)] leading-[0.82] tracking-[-0.02em] text-bordo">
+                {foundingChapter.year}
+              </p>
+
+              <h2 className="mt-8 max-w-[18ch] font-serif text-[clamp(1.75rem,2.9vw,3rem)] leading-[1.12] text-ink">
+                {foundingChapter.title}
               </h2>
+
               <div className="mt-8 space-y-6">
-                {storyIntro.paragraphs.map((paragraph) => (
+                {foundingChapter.paragraphs.map((paragraph) => (
                   <p
-                    key={paragraph.slice(0, 24)}
-                    className="font-sans text-[15px] leading-[1.85] text-ink-soft sm:text-base"
+                    key={paragraph.slice(0, 28)}
+                    className="max-w-[70ch] font-sans text-[clamp(1.0625rem,0.35vw+0.95rem,1.1875rem)] leading-[1.75] text-ink-soft"
                   >
                     {paragraph}
                   </p>
                 ))}
               </div>
 
-              <div className="mt-10 flex items-center gap-5 border-t border-stone/30 pt-8">
-                <Monogram className="h-12 w-12 text-bordo" />
-                <p className="font-serif text-xl text-bordo">{site.positioning}</p>
-              </div>
+              <p className="mt-10 max-w-[34ch] border-l-2 border-bordo/50 pl-6 font-serif text-[clamp(1.375rem,1.9vw,2rem)] leading-[1.35] text-bordo">
+                {foundingChapter.emphasis}
+              </p>
+            </div>
+
+            <Reveal className="lg:col-span-6">
+              <ArchiveFrame
+                image={storyImageFour}
+                sizes="(max-width: 1024px) 88vw, 560px"
+                className="lg:sticky lg:top-32"
+              />
+            </Reveal>
+          </div>
+        </StoryContainer>
+      </section>
+
+      {/* 6 — Ankara'da büyüyen pastane kültürü */}
+      <section className="bg-cream-2 py-24 md:py-28 lg:py-32">
+        <StoryContainer>
+          <Reveal>
+            <Chapter
+              label={growthChapter.label}
+              title={growthChapter.title}
+              paragraphs={growthChapter.paragraphs}
+              emphasis={growthChapter.emphasis}
+            />
+          </Reveal>
+
+          <div className="mt-16 border-t border-stone/40 pt-12 lg:mt-20">
+            <p className="font-sans text-[13px] uppercase tracking-[0.18em] text-bordo/80">
+              Şubeler ve Yıllar
+            </p>
+            <div className="mt-10">
+              <StoryTimeline items={storyTimeline} />
             </div>
           </div>
-        </Container>
-      </Section>
+        </StoryContainer>
+      </section>
 
-      {/* Dönemler */}
-      <Section tone="cream-2">
-        <Container>
-          <Heading
-            label="Dönemler"
-            title="Altmış yılı aşan bir vitrin."
-            lead="Ustalar değişti, çeşitler arttı, şehir büyüdü. Vitrinin arkasındaki özen aynı kaldı."
-          />
+      {/* 7 — Geçmişten bugüne */}
+      <section className="bg-cream py-24 md:py-28 lg:py-32">
+        <StoryContainer>
+          <Reveal>
+            <Chapter
+              label={todayChapter.label}
+              title={todayChapter.title}
+              paragraphs={todayChapter.paragraphs}
+              emphasis={todayChapter.emphasis}
+            />
+          </Reveal>
+        </StoryContainer>
+      </section>
 
-          <ol className="mx-auto mt-16 max-w-3xl">
-            {storyChapters.map((chapter, index) => (
-              <Reveal key={chapter.year} delay={index * 80}>
-                <li className="grid gap-4 border-b border-stone/30 py-8 sm:grid-cols-[140px_1fr] sm:gap-10">
-                  <p className="font-serif text-2xl text-bordo">{chapter.year}</p>
-                  <div>
-                    <h3 className="font-serif text-xl text-ink">{chapter.title}</h3>
-                    <p className="mt-3 font-sans text-sm leading-relaxed text-ink-soft">
-                      {chapter.description}
-                    </p>
-                  </div>
-                </li>
-              </Reveal>
-            ))}
-          </ol>
-        </Container>
-      </Section>
-
-      {/* Değerler */}
-      <Section tone="cream">
-        <Container>
-          <Heading
-            label="Nasıl Çalışıyoruz"
-            title="Alışkanlıklarımız tarif kadar önemli."
-          />
-
-          <div className="mt-14 grid gap-px border border-stone/30 bg-stone/30 sm:grid-cols-2 lg:grid-cols-4">
-            {storyValues.map((value, index) => (
-              <Reveal key={value.title} delay={index * 80} className="bg-cream">
-                <div className="h-full px-7 py-9">
-                  <p className="font-serif text-3xl text-gold">0{index + 1}</p>
-                  <h3 className="mt-5 font-serif text-xl text-ink">{value.title}</h3>
-                  <p className="mt-3 font-sans text-sm leading-relaxed text-ink-soft">
-                    {value.description}
-                  </p>
-                </div>
-              </Reveal>
-            ))}
-          </div>
-        </Container>
-      </Section>
-
+      {/* 8 — Kapanış */}
       <CtaBand
-        title="Hikayenin devamı şubelerimizde."
-        description="Bir kahve, bir tatlı ve acele etmeyen bir sohbet için sizi bekliyoruz."
-        primary={{ href: "/subeler", label: "Şubelerimizi Gör" }}
-        secondary={{ href: "/lezzetler", label: "Lezzetleri Keşfet" }}
+        title={storyCta.title}
+        description={storyCta.description}
+        primary={storyCta.primary}
+        secondary={storyCta.secondary}
       />
     </>
   );
