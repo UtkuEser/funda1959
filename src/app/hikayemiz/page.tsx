@@ -4,14 +4,12 @@ import { Reveal } from "@/components/ui/Reveal";
 import { ArchiveFrame } from "@/components/story/ArchiveFrame";
 import { Chapter } from "@/components/story/Chapter";
 import { StoryContainer } from "@/components/story/StoryContainer";
-import { StoryTimeline } from "@/components/story/StoryTimeline";
 import {
   foundingChapter,
   growthChapter,
   storyChaptersContent,
   storyCta,
   storyHero,
-  storyTimeline,
   todayChapter,
 } from "@/content/storyPage";
 import {
@@ -174,15 +172,6 @@ export default function StoryPage() {
               emphasis={growthChapter.emphasis}
             />
           </Reveal>
-
-          <div className="mt-16 border-t border-stone/40 pt-12 lg:mt-20">
-            <p className="font-sans text-[13px] uppercase tracking-[0.18em] text-bordo/80">
-              Şubeler ve Yıllar
-            </p>
-            <div className="mt-10">
-              <StoryTimeline items={storyTimeline} />
-            </div>
-          </div>
         </StoryContainer>
       </section>
 

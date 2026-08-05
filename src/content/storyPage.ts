@@ -72,18 +72,6 @@ export const growthChapter = {
   emphasis: "Şehir değişti, alışkanlıklar değişti; Funda’nın sıcaklığı aynı kaldı.",
 };
 
-export type TimelineItem = { year?: string; place: string };
-
-export const storyTimeline: TimelineItem[] = [
-  { year: "1959", place: "Akay" },
-  { place: "Çankaya ve GOP" },
-  { place: "AŞTİ" },
-  { year: "2010", place: "Yaşamkent" },
-  { year: "2018", place: "Ümitköy Galleria" },
-  { year: "2019", place: "Angora" },
-  { year: "2020", place: "Panora" },
-];
-
 export const todayChapter = {
   label: "Geçmişten Bugüne",
   title: "Aynı hikâyenin yeni dönemi",
