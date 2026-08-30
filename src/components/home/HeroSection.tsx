@@ -1,119 +1,200 @@
+"use client";
+
 import Link from "next/link";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Container } from "@/components/shared/Container";
+import { heroSlides } from "@/lib/hero-slides";
+import { HeroVisual } from "./HeroVisual";
+
+const AUTOPLAY_MS = 6500;
+
+function Arrow({ dir }: { dir: "prev" | "next" }) {
+  return (
+    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d={dir === "prev" ? "M15 6l-6 6 6 6" : "M9 6l6 6-6 6"}
+      />
+    </svg>
+  );
+}
 
 export function HeroSection() {
+  const count = heroSlides.length;
+  const [index, setIndex] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const [reduced, setReduced] = useState(false);
+  const touchX = useRef<number | null>(null);
+
+  const next = useCallback(() => setIndex((i) => (i + 1) % count), [count]);
+  const prev = useCallback(() => setIndex((i) => (i - 1 + count) % count), [count]);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const update = () => setReduced(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+
+  useEffect(() => {
+    if (paused || reduced) return;
+    const t = setInterval(next, AUTOPLAY_MS);
+    return () => clearInterval(t);
+  }, [paused, reduced, next, index]);
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    touchX.current = e.touches[0].clientX;
+  };
+  const onTouchEnd = (e: React.TouchEvent) => {
+    if (touchX.current == null) return;
+    const delta = e.changedTouches[0].clientX - touchX.current;
+    if (delta < -44) next();
+    else if (delta > 44) prev();
+    touchX.current = null;
+  };
+
+  const activeTag = heroSlides[index].tag;
+
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
-      {/* Background */}
-      <div
-        className="absolute inset-0"
-        style={{
-          background:
-            "linear-gradient(135deg, #2C1A17 0%, #3D2015 35%, #5C3420 65%, #4A2A18 100%)",
-        }}
-      />
-
-      {/* Warm texture overlay */}
-      <div
-        className="absolute inset-0 opacity-30"
-        style={{
-          backgroundImage: `radial-gradient(ellipse at 30% 60%, rgba(196, 150, 42, 0.25) 0%, transparent 60%),
-            radial-gradient(ellipse at 70% 30%, rgba(168, 123, 47, 0.2) 0%, transparent 50%)`,
-        }}
-      />
-
-      {/* Decorative pattern */}
-      <div
-        className="absolute inset-0 opacity-5"
-        style={{
-          backgroundImage: `repeating-linear-gradient(
-            45deg,
-            transparent,
-            transparent 40px,
-            rgba(245, 240, 232, 0.3) 40px,
-            rgba(245, 240, 232, 0.3) 41px
-          )`,
-        }}
-      />
-
-      {/* Warm vignette */}
-      <div
-        className="absolute inset-0 opacity-60"
-        style={{
-          background:
-            "radial-gradient(ellipse at center, transparent 30%, rgba(28, 16, 8, 0.7) 100%)",
-        }}
-      />
-
-      {/* Decorative ornament */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] opacity-5">
+    <section
+      className="relative bg-cream-light pt-24 md:pt-32 pb-14 md:pb-20"
+      aria-roledescription="carousel"
+      aria-label="Funda 1959 öne çıkanlar"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onFocusCapture={() => setPaused(true)}
+      onBlurCapture={() => setPaused(false)}
+    >
+      <Container>
         <div
-          className="w-full h-full rounded-full border border-gold"
-          style={{ boxShadow: "inset 0 0 0 2px rgba(196, 150, 42, 0.3)" }}
-        />
-      </div>
-
-      {/* Content */}
-      <div className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-        {/* Eyebrow */}
-        <p className="animate-fade-in font-sans text-xs tracking-[0.35em] uppercase text-gold mb-6 opacity-0">
-          Ankara · 1959&apos;dan Beri
-        </p>
-
-        {/* Headline */}
-        <h1 className="animate-fade-up delay-100 font-serif text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-semibold text-cream-light leading-tight mb-6 opacity-0">
-          1959&apos;dan beri<br />
-          <span className="text-gold italic">Ankara&apos;nın</span>{" "}
-          tatlı anlarında.
-        </h1>
-
-        {/* Sub */}
-        <p className="animate-fade-up delay-300 font-sans text-base sm:text-lg md:text-xl text-cream/70 max-w-2xl mx-auto leading-relaxed mb-10 opacity-0">
-          Pastalar, tatlılar, çikolatalar ve özel gün lezzetleriyle Funda, her anı daha unutulmaz kılar.
-        </p>
-
-        {/* CTAs */}
-        <div className="animate-fade-up delay-500 flex flex-col sm:flex-row gap-4 justify-center items-center opacity-0">
-          <Link
-            href="/lezzetlerimiz"
-            className="group px-8 py-4 bg-gold text-espresso rounded-xl font-sans font-semibold text-sm tracking-wide hover:bg-gold-light transition-all duration-300 shadow-lg shadow-gold/20"
-          >
-            Lezzetleri Keşfet
-            <span className="inline-block ml-2 transition-transform group-hover:translate-x-1">→</span>
-          </Link>
-          <Link
-            href="/subeler"
-            className="px-8 py-4 bg-cream-light/10 text-cream-light border border-cream-light/25 rounded-xl font-sans font-semibold text-sm tracking-wide hover:bg-cream-light/20 transition-all duration-300"
-          >
-            Şubelerimizi Gör
-          </Link>
-        </div>
-
-        {/* Est. badge */}
-        <div className="animate-fade-in delay-600 mt-16 inline-flex items-center gap-3 opacity-0">
-          <div className="w-10 h-px bg-gold/40" />
-          <p className="font-sans text-xs text-cream/40 tracking-widest uppercase">
-            Est. 1959 · Ankara
-          </p>
-          <div className="w-10 h-px bg-gold/40" />
-        </div>
-      </div>
-
-      {/* Scroll indicator */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce">
-        <svg
-          className="w-5 h-5 text-cream/30"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
+          className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center"
+          onTouchStart={onTouchStart}
+          onTouchEnd={onTouchEnd}
         >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={1.5}
-            d="M19 9l-7 7-7-7"
-          />
-        </svg>
-      </div>
+          {/* Left — copy (fixed position, crossfades) */}
+          <div className="relative min-h-[300px] sm:min-h-[300px] lg:min-h-[352px] max-w-[34rem]">
+            {heroSlides.map((slide, i) => {
+              const isActive = i === index;
+              return (
+                <div
+                  key={slide.id}
+                  role="group"
+                  aria-roledescription="slayt"
+                  aria-label={`${i + 1} / ${count}`}
+                  aria-hidden={!isActive}
+                  className={`transition-opacity duration-700 ease-out motion-reduce:transition-none ${
+                    isActive
+                      ? "relative opacity-100"
+                      : "pointer-events-none absolute inset-0 opacity-0"
+                  }`}
+                >
+                  <h1 className="font-serif text-[30px] sm:text-[40px] lg:text-[48px] font-semibold text-burgundy leading-[1.1] tracking-[-0.018em]">
+                    {slide.headline[0]}
+                    <br />
+                    {slide.headline[1]}
+                  </h1>
+                  <p className="mt-6 font-sans text-[16px] md:text-[17px] text-warm-brown leading-relaxed max-w-[27rem]">
+                    {slide.text}
+                  </p>
+                  <div className="mt-8 flex flex-col sm:flex-row gap-3">
+                    <Link
+                      href={slide.primary.href}
+                      tabIndex={isActive ? 0 : -1}
+                      className="inline-flex items-center justify-center px-7 py-3.5 rounded-md bg-burgundy text-cream-light font-sans text-[15px] font-semibold tracking-wide hover:bg-chocolate-light transition-colors duration-200"
+                    >
+                      {slide.primary.label}
+                    </Link>
+                    <Link
+                      href={slide.secondary.href}
+                      tabIndex={isActive ? 0 : -1}
+                      className="inline-flex items-center justify-center px-7 py-3.5 rounded-md border border-burgundy/25 text-burgundy font-sans text-[15px] font-semibold tracking-wide hover:border-burgundy hover:bg-burgundy/[0.04] transition-colors duration-200"
+                    >
+                      {slide.secondary.label}
+                    </Link>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Right — visual (crossfade + light zoom) */}
+          <div className="relative mx-auto w-full max-w-[360px] sm:max-w-[420px] lg:max-w-none lg:h-[520px]">
+            <div className="relative h-full w-full aspect-[4/5] lg:aspect-auto rounded-xl overflow-hidden shadow-[0_34px_80px_-34px_rgba(110,34,48,0.4)]">
+              {heroSlides.map((slide, i) => (
+                <div
+                  key={slide.id}
+                  aria-hidden={i !== index}
+                  className={`absolute inset-0 transition-all duration-[900ms] ease-out motion-reduce:transition-none motion-reduce:scale-100 ${
+                    i === index ? "opacity-100 scale-100" : "opacity-0 scale-[1.035]"
+                  }`}
+                >
+                  <HeroVisual variant={slide.visual} />
+                </div>
+              ))}
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-burgundy/12 via-transparent to-cream-light/10" />
+            </div>
+
+            {activeTag && (
+              <div
+                key={activeTag.value}
+                className="absolute -left-4 bottom-8 sm:-left-6 rounded-lg border border-sand-light bg-cream-light px-5 py-3.5 shadow-[0_16px_44px_-16px_rgba(42,35,32,0.32)] animate-fade-in"
+              >
+                <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.12em] text-burgundy/55">
+                  {activeTag.label}
+                </p>
+                <p className="mt-0.5 font-serif text-[15px] font-medium text-burgundy">
+                  {activeTag.value}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Controls */}
+        <div className="mt-9 flex items-center gap-5 lg:mt-11">
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={prev}
+              aria-label="Önceki slayt"
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-burgundy/20 text-burgundy transition-colors hover:bg-burgundy hover:text-cream-light"
+            >
+              <Arrow dir="prev" />
+            </button>
+            <button
+              type="button"
+              onClick={next}
+              aria-label="Sonraki slayt"
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-burgundy/20 text-burgundy transition-colors hover:bg-burgundy hover:text-cream-light"
+            >
+              <Arrow dir="next" />
+            </button>
+          </div>
+
+          <span className="font-sans text-[13px] font-medium tabular-nums text-burgundy/60">
+            {String(index + 1).padStart(2, "0")}
+            <span className="text-burgundy/30"> / {String(count).padStart(2, "0")}</span>
+          </span>
+
+          <div className="flex items-center gap-1.5">
+            {heroSlides.map((slide, i) => (
+              <button
+                key={slide.id}
+                type="button"
+                onClick={() => setIndex(i)}
+                aria-label={`${i + 1}. slayt`}
+                aria-current={i === index}
+                className={`h-1.5 rounded-full transition-all duration-300 ${
+                  i === index ? "w-7 bg-burgundy" : "w-1.5 bg-burgundy/25 hover:bg-burgundy/45"
+                }`}
+              />
+            ))}
+          </div>
+        </div>
+      </Container>
     </section>
   );
 }

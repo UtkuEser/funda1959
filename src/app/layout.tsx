@@ -1,22 +1,23 @@
 import type { Metadata } from "next";
-import { Playfair_Display, Inter } from "next/font/google";
+import { Fraunces, Inter } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { generateLocalBusinessSchema } from "@/lib/schema";
 
-const playfair = Playfair_Display({
+const fraunces = Fraunces({
   subsets: ["latin"],
-  variable: "--font-playfair",
+  variable: "--font-fraunces",
   display: "swap",
   weight: ["400", "500", "600", "700"],
+  style: ["normal", "italic"],
 });
 
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
   display: "swap",
-  weight: ["300", "400", "500", "600"],
+  weight: ["400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
@@ -75,7 +76,7 @@ export default function RootLayout({
         />
       </head>
       <body
-        className={`${playfair.variable} ${inter.variable} font-sans bg-cream-light text-espresso antialiased`}
+        className={`${fraunces.variable} ${inter.variable} font-sans bg-cream-light text-espresso antialiased`}
       >
         <Header />
         <main>{children}</main>

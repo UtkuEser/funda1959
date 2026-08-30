@@ -65,7 +65,7 @@ export default function HikayemizPage() {
       <section
         className="relative pt-32 pb-20 md:pt-44 md:pb-28 overflow-hidden"
         style={{
-          background: "linear-gradient(160deg, #3D2015 0%, #5C3420 40%, #7B4A2D 80%, #8B5E3C 100%)",
+          background: "linear-gradient(150deg, #6E2230 0%, #5A1B27 55%, #3F1720 100%)",
         }}
       >
         <div
@@ -77,14 +77,14 @@ export default function HikayemizPage() {
         />
         <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <FadeIn>
-            <p className="font-sans text-xs tracking-[0.25em] uppercase text-gold mb-4 font-semibold">
+            <p className="font-sans text-[13px] tracking-[0.14em] uppercase text-gold-light mb-4 font-semibold">
               Hikayemiz
             </p>
           </FadeIn>
           <FadeIn delay={100}>
             <h1 className="font-serif text-4xl sm:text-5xl md:text-6xl font-semibold text-cream-light leading-tight mb-6">
               Bir pastaneden fazlası:{" "}
-              <span className="italic text-gold">yıllara yayılan</span>{" "}
+              <span className="text-gold-light">yıllara yayılan</span>{" "}
               bir lezzet mirası.
             </h1>
           </FadeIn>

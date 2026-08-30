@@ -19,7 +19,45 @@ export type Product = {
   isFeatured?: boolean;
   isSpecialOccasion?: boolean;
   gradient: string;
+  price?: string;
 };
+
+/**
+ * Extra fields the product catalog / listing experience needs. Kept as a
+ * side map (not baked into `products`) so existing pages that import
+ * `products` / `featuredProducts` stay untouched. Ready to move onto a
+ * real product model / backend later.
+ */
+export type CatalogMeta = {
+  priceValue: number;
+  oldPrice?: string;
+  sameDayDelivery?: boolean;
+  isNew?: boolean;
+  isBestSeller?: boolean;
+  isGift?: boolean;
+  customizable?: boolean;
+  servingOptions?: string[];
+  weightOptions?: string[];
+  features?: string[];
+  occasions?: string[]; // cake occasion slugs (pasta category only)
+  availableBranches?: string[]; // branch ids
+};
+
+export type CatalogProduct = Product & CatalogMeta & { displayPrice: string; slug: string };
+
+const TR_MAP: Record<string, string> = {
+  ç: "c", ğ: "g", ı: "i", ö: "o", ş: "s", ü: "u",
+  Ç: "c", Ğ: "g", İ: "i", I: "i", Ö: "o", Ş: "s", Ü: "u",
+};
+
+export const slugify = (value: string): string =>
+  value
+    .split("")
+    .map((c) => TR_MAP[c] ?? c)
+    .join("")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 
 export type Branch = {
   id: string;
@@ -149,6 +187,7 @@ export const products: Product[] = [
     isFeatured: true,
     isSpecialOccasion: true,
     gradient: "from-[#E8C5B5] to-[#D4A898]",
+    price: "₺780",
   },
   {
     id: "p2",
@@ -160,6 +199,7 @@ export const products: Product[] = [
     tags: ["vanilyalı", "çikolatalı", "özel"],
     isFeatured: true,
     gradient: "from-[#F0E0D0] to-[#E8CDB5]",
+    price: "₺720",
   },
   {
     id: "p3",
@@ -181,6 +221,7 @@ export const products: Product[] = [
     tags: ["fındıklı", "karamelli", "zengin"],
     isFeatured: true,
     gradient: "from-[#E8D0B0] to-[#D4B890]",
+    price: "₺760",
   },
   // Mini Lezzetler
   {
@@ -193,6 +234,7 @@ export const products: Product[] = [
     tags: ["çikolatalı", "Fransız", "hediye"],
     isFeatured: true,
     gradient: "from-[#E8D5C5] to-[#D5C0B0]",
+    price: "₺45 / adet",
   },
   {
     id: "p6",
@@ -204,6 +246,7 @@ export const products: Product[] = [
     tags: ["kahveli", "kremali", "İtalyan"],
     isFeatured: true,
     gradient: "from-[#E0D0C0] to-[#CDBBA8]",
+    price: "₺95",
   },
   {
     id: "p7",
@@ -226,6 +269,7 @@ export const products: Product[] = [
     tags: ["bademli", "tereyağlı", "çay yanı"],
     isFeatured: true,
     gradient: "from-[#EAD8C0] to-[#D8C5A8]",
+    price: "₺420 / kg",
   },
   {
     id: "p9",
@@ -412,8 +456,351 @@ export const storyTimeline = [
 export const featuredProducts = products.filter(p => p.isFeatured);
 export const specialOccasionProducts = products.filter(p => p.isSpecialOccasion);
 
+/* Curated, hand-picked showcase for the homepage vitrine (İmza Lezzetlerimiz) */
+export const signatureProducts = featuredProducts.slice(0, 4);
+
+/* Homepage — Kutlamalarınız İçin */
+export const celebrationCategories = [
+  {
+    title: "Doğum Günü Pastaları",
+    description: "Her yaşa özel, kişiselleştirilebilen tasarımlar.",
+    href: "/ozel-gun",
+    gradient: "from-[#EBD3C6] to-[#D9AF9C]",
+  },
+  {
+    title: "Düğün & Nişan Pastaları",
+    description: "İki hayatı birleştiren, zarif ve çok katlı pastalar.",
+    href: "/ozel-gun",
+    gradient: "from-[#EEE4D3] to-[#DCC7AE]",
+  },
+  {
+    title: "Kişiye Özel Pastalar",
+    description: "Fikrinizi anlatın, ustalarımız hayata geçirsin.",
+    href: "/ozel-gun",
+    gradient: "from-[#E6D0CF] to-[#C9A7AB]",
+  },
+];
+
+/* Homepage — Kategoriler mozaiği */
+export const homeCategories = [
+  {
+    name: "Pastalar",
+    href: "/lezzetlerimiz/yas-pastalar",
+    gradient: "from-[#E7C9BA] to-[#C99A86]",
+    feature: true,
+  },
+  {
+    name: "Tatlılar",
+    href: "/lezzetlerimiz/sutlu-tatlilar",
+    gradient: "from-[#EFE6D4] to-[#DCC9AC]",
+  },
+  {
+    name: "Börekler",
+    href: "/lezzetlerimiz/borekler-ve-mayalilar",
+    gradient: "from-[#E9DAC3] to-[#D3BE9C]",
+  },
+  {
+    name: "Çikolatalar",
+    href: "/lezzetlerimiz/cikolatalar",
+    gradient: "from-[#D8C1A8] to-[#B89A7C]",
+  },
+  {
+    name: "Hediyelikler",
+    href: "/hediyelikler",
+    gradient: "from-[#E7D6D2] to-[#CBAAA6]",
+  },
+];
+
+/* Homepage — Hediyelik Seçimler / Sevdiklerinize Funda'dan */
+export const giftCollections = [
+  {
+    title: "Hediyelik Çikolatalar",
+    description: "El yapımı pralin ve trüf çeşitleriyle hazırlanan çikolatalar.",
+    href: "/lezzetlerimiz/cikolatalar",
+    gradient: "from-[#D8C1A8] to-[#B4906F]",
+  },
+  {
+    title: "Özel Kutular",
+    description: "Doğum günü, yeni iş ya da bir teşekkür için özenle hazırlanan kutular.",
+    href: "/lezzetlerimiz/cikolatalar",
+    gradient: "from-[#EDE3D2] to-[#D6C0A4]",
+  },
+  {
+    title: "Tatlı & Kurabiye Seçkileri",
+    description: "Çayın yanına yakışan kurabiye ve mini tatlı derlemeleri.",
+    href: "/lezzetlerimiz/kuru-pastalar",
+    gradient: "from-[#EAD9C0] to-[#D2B78E]",
+  },
+];
+
+/* Homepage — kısa marka zaman çizelgesi */
+export const homeStoryMilestones = [
+  { year: "1959", label: "Kuruluş" },
+  { year: "1980", label: "Pastacılığa geçiş" },
+  { year: "Bugün", label: "Üç mağaza" },
+];
+
 export const getCategoryBySlug = (slug: string) =>
   categories.find(c => c.slug === slug);
 
 export const getProductsByCategory = (slug: string) =>
   products.filter(p => p.categorySlug === slug);
+
+/* ---------------------------------------------------------------------------
+ * Product catalog (Lezzetlerimiz listing)
+ * ------------------------------------------------------------------------- */
+
+const ALL_BRANCHES = ["gop", "panora", "incek"];
+
+const catalogMeta: Record<string, CatalogMeta> = {
+  p1: { priceValue: 780, isBestSeller: true, customizable: true, servingOptions: ["8–10 Kişilik"], occasions: ["kutlama", "kisiye-ozel"], features: ["Yazı Eklenebilir", "Kişiselleştirilebilir"], availableBranches: ALL_BRANCHES },
+  p2: { priceValue: 720, servingOptions: ["8–10 Kişilik"], occasions: ["kutlama"], features: ["Yazı Eklenebilir"], availableBranches: ALL_BRANCHES },
+  p3: { priceValue: 740, isNew: true, servingOptions: ["4–6 Kişilik"], occasions: ["kutlama"], availableBranches: ["gop", "panora"] },
+  p4: { priceValue: 760, servingOptions: ["12–15 Kişilik"], occasions: ["dogum-gunu", "kutlama"], availableBranches: ALL_BRANCHES },
+  p5: { priceValue: 45, sameDayDelivery: true, isGift: true, availableBranches: ALL_BRANCHES },
+  p6: { priceValue: 95, sameDayDelivery: true, availableBranches: ALL_BRANCHES },
+  p7: { priceValue: 85, sameDayDelivery: true, isNew: true, availableBranches: ["gop", "incek"] },
+  p8: { priceValue: 420, sameDayDelivery: true, isBestSeller: true, weightOptions: ["500 g", "1 kg"], availableBranches: ALL_BRANCHES },
+  p9: { priceValue: 360, sameDayDelivery: true, weightOptions: ["1 kg"], availableBranches: ALL_BRANCHES },
+  p10: { priceValue: 640, sameDayDelivery: true, isBestSeller: true, weightOptions: ["500 g", "1 kg"], availableBranches: ALL_BRANCHES },
+  p11: { priceValue: 560, sameDayDelivery: true, weightOptions: ["1 kg"], availableBranches: ["gop", "panora"] },
+  p12: { priceValue: 120, sameDayDelivery: true, availableBranches: ALL_BRANCHES },
+  p13: { priceValue: 520, oldPrice: "₺580", sameDayDelivery: true, isBestSeller: true, isGift: true, availableBranches: ALL_BRANCHES },
+  p14: { priceValue: 890, isNew: true, isGift: true, availableBranches: ["gop", "panora"] },
+  p15: { priceValue: 1450, customizable: true, servingOptions: ["15+ Kişilik"], occasions: ["dugun-nisan", "kisiye-ozel"], features: ["Özel Tasarım", "Kişiselleştirilebilir", "Yazı Eklenebilir"], availableBranches: ["gop", "incek"] },
+  p16: { priceValue: 950, isBestSeller: true, customizable: true, isGift: true, servingOptions: ["8–10 Kişilik"], occasions: ["dogum-gunu", "kisiye-ozel"], features: ["Kişiselleştirilebilir", "Yazı Eklenebilir", "Fotoğraflı Pasta"], availableBranches: ALL_BRANCHES },
+  p17: { priceValue: 280, sameDayDelivery: true, weightOptions: ["1 kg"], availableBranches: ALL_BRANCHES },
+  p18: { priceValue: 240, oldPrice: "₺290", sameDayDelivery: true, isBestSeller: true, availableBranches: ALL_BRANCHES },
+};
+
+export const catalogProducts: CatalogProduct[] = products.map((p) => {
+  const meta = catalogMeta[p.id] ?? { priceValue: 0 };
+  return {
+    ...p,
+    ...meta,
+    slug: slugify(p.name),
+    displayPrice: p.price ?? `₺${meta.priceValue.toLocaleString("tr-TR")}`,
+  };
+});
+
+export const getCatalogProductBySlug = (slug: string) =>
+  catalogProducts.find((p) => p.slug === slug);
+
+export type CatalogCategory = {
+  label: string;
+  slug: string;
+  sources: string[]; // product categorySlugs that roll up here
+};
+
+export const catalogCategories: CatalogCategory[] = [
+  { label: "Tümü", slug: "tumu", sources: [] },
+  { label: "Yaş Pastalar", slug: "yas-pastalar", sources: ["yas-pastalar", "ozel-gun"] },
+  { label: "Adet Pastalar", slug: "adet-pastalar", sources: ["adet-pastalar"] },
+  { label: "Tatlılar", slug: "tatlilar", sources: ["serbetli-tatlilar", "sutlu-tatlilar", "mini-lezzetler", "kekler"] },
+  { label: "Börekler", slug: "borekler", sources: ["borekler-ve-mayalilar", "atistirmaliklar"] },
+  { label: "Kuru Pastalar", slug: "kuru-pastalar", sources: ["kuru-pastalar"] },
+  { label: "Çikolatalar", slug: "cikolatalar", sources: ["cikolatalar"] },
+  { label: "Hediyelikler", slug: "hediyelikler", sources: [] }, // matched via isGift
+];
+
+/** Categories where cake-specific contextual filters apply. */
+export const cakeCatalogSlugs = ["yas-pastalar"];
+
+/** Contextual (pasta-only) filter: occasion. */
+export const catalogPastaOccasions: { value: string; label: string }[] = [
+  { value: "all", label: "Tümü" },
+  { value: "dogum-gunu", label: "Doğum Günü" },
+  { value: "dugun-nisan", label: "Düğün & Nişan" },
+  { value: "kutlama", label: "Kutlama" },
+  { value: "kisiye-ozel", label: "Kişiye Özel" },
+];
+
+/** Contextual (pasta-only) filter: serving size. */
+export const catalogServingOptions = [
+  "4–6 Kişilik",
+  "8–10 Kişilik",
+  "12–15 Kişilik",
+  "15+ Kişilik",
+];
+
+export function catalogProductsForCategory(slug: string): CatalogProduct[] {
+  if (slug === "tumu") return catalogProducts;
+  if (slug === "hediyelikler") return catalogProducts.filter((p) => p.isGift);
+  const cat = catalogCategories.find((c) => c.slug === slug);
+  if (!cat) return catalogProducts;
+  return catalogProducts.filter((p) => cat.sources.includes(p.categorySlug));
+}
+
+/* ---------------------------------------------------------------------------
+ * Product detail
+ * ------------------------------------------------------------------------- */
+
+export type DeliveryType = "address" | "pickup";
+export type VariantKind = "serving" | "weight" | "pack" | "none";
+export type ProductVariant = { id: string; label: string; price: number };
+
+type ProductDetailMeta = {
+  longDescription?: string;
+  images?: string[]; // gradient class fragments used as placeholders
+  variants?: ProductVariant[];
+  maxCakeMessageLength?: number;
+  preparationTimeHours?: number;
+  availableDeliveryTypes?: DeliveryType[];
+  extraOptions?: string[];
+  allergens?: string;
+  ingredients?: string;
+  storageInfo?: string;
+  deliveryInfo?: string;
+  quantityEnabled?: boolean;
+  relatedProductIds?: string[];
+};
+
+export type ProductDetail = CatalogProduct & {
+  variantKind: VariantKind;
+  basePrice: number;
+  variants: ProductVariant[];
+  longDescription: string;
+  images: string[];
+  imageLabels: string[];
+  maxCakeMessageLength: number | null;
+  preparationTimeHours: number;
+  availableDeliveryTypes: DeliveryType[];
+  extraOptions: string[];
+  allergens: string;
+  ingredients: string;
+  storageInfo: string;
+  deliveryInfo: string;
+  quantityEnabled: boolean;
+  relatedProducts: CatalogProduct[];
+};
+
+export const deliveryTimeSlots = [
+  "10:00 – 12:00",
+  "12:00 – 14:00",
+  "14:00 – 16:00",
+  "16:00 – 18:00",
+  "18:00 – 20:00",
+];
+
+const SERVING_BUCKETS = [
+  { id: "4-6", label: "4–6 Kişilik", mult: 1 },
+  { id: "8-10", label: "8–10 Kişilik", mult: 1.35 },
+  { id: "12-15", label: "12–15 Kişilik", mult: 1.85 },
+  { id: "15-20", label: "15–20 Kişilik", mult: 2.4 },
+];
+const WEIGHT_BUCKETS = [
+  { id: "500g", label: "500 g", mult: 0.55 },
+  { id: "1kg", label: "1 kg", mult: 1 },
+  { id: "1.5kg", label: "1.5 kg", mult: 1.45 },
+];
+const PACK_BUCKETS = [
+  { id: "6", label: "6'lı", mult: 0.5 },
+  { id: "12", label: "12'li", mult: 1 },
+  { id: "24", label: "24'lü", mult: 1.9 },
+];
+
+function variantKindFor(categorySlug: string): VariantKind {
+  if (["yas-pastalar", "ozel-gun"].includes(categorySlug)) return "serving";
+  if (["kuru-pastalar", "serbetli-tatlilar"].includes(categorySlug)) return "weight";
+  if (categorySlug === "cikolatalar") return "pack";
+  return "none";
+}
+
+const round10 = (n: number) => Math.round(n / 10) * 10;
+
+const productDetailMeta: Record<string, ProductDetailMeta> = {
+  p1: {
+    longDescription:
+      "Yoğun çikolata kreması, taze çilekler ve yumuşak pandispanya ile hazırlanan Funda klasiklerinden. Belçika çikolatası ganajıyla kaplanır; her katmanında taze meyve dilimleri bulunur. Doğum günü ve kutlamaların vazgeçilmezi.",
+    variants: [
+      { id: "4-6", label: "4–6 Kişilik", price: 780 },
+      { id: "8-10", label: "8–10 Kişilik", price: 1050 },
+      { id: "12-15", label: "12–15 Kişilik", price: 1450 },
+    ],
+    maxCakeMessageLength: 40,
+    preparationTimeHours: 24,
+    availableDeliveryTypes: ["address", "pickup"],
+    extraOptions: ["Mum Ekle", "Doğum Günü Kartı", "Hediye Notu"],
+    allergens: "Gluten, süt ürünü, yumurta ve fındık içerebilir.",
+    ingredients:
+      "Pandispanya (buğday unu, yumurta, şeker), çikolatalı krema, taze çilek, Belçika çikolatası ganajı, krem şanti.",
+    storageInfo:
+      "+2 / +4 °C arasında buzdolabında saklayınız. Hazırlandığı gün tüketilmesi önerilir, en geç 2 gün içinde tüketiniz.",
+    deliveryInfo:
+      "Yaş pasta siparişleri en az 24 saat öncesinden alınır. Adrese teslim ve mağazadan teslim seçenekleri mevcuttur.",
+    quantityEnabled: false,
+    relatedProductIds: ["p2", "p4", "p18", "p16"],
+  },
+};
+
+export function getProductDetail(slug: string): ProductDetail | undefined {
+  const base = getCatalogProductBySlug(slug);
+  if (!base) return undefined;
+
+  const meta = productDetailMeta[base.id] ?? {};
+  const kind = variantKindFor(base.categorySlug);
+  const basePrice = base.priceValue;
+
+  let variants = meta.variants ?? [];
+  if (variants.length === 0 && kind !== "none") {
+    const buckets =
+      kind === "serving" ? SERVING_BUCKETS : kind === "weight" ? WEIGHT_BUCKETS : PACK_BUCKETS;
+    variants = buckets.map((b) => ({
+      id: b.id,
+      label: b.label,
+      price: round10(basePrice * b.mult),
+    }));
+  }
+
+  const relatedIds =
+    meta.relatedProductIds ??
+    catalogProducts
+      .filter((p) => p.categorySlug === base.categorySlug && p.id !== base.id)
+      .slice(0, 4)
+      .map((p) => p.id);
+
+  const relatedProducts = relatedIds
+    .map((id) => catalogProducts.find((p) => p.id === id))
+    .filter((p): p is CatalogProduct => Boolean(p))
+    .slice(0, 4);
+
+  return {
+    ...base,
+    variantKind: kind,
+    basePrice,
+    variants,
+    longDescription: meta.longDescription ?? base.description,
+    images: meta.images ?? [base.gradient, base.gradient, base.gradient, base.gradient],
+    imageLabels: ["Ön Görünüm", "Detay", "Kesit", "Servis"],
+    maxCakeMessageLength: meta.maxCakeMessageLength ?? (base.customizable ? 40 : null),
+    preparationTimeHours: meta.preparationTimeHours ?? (base.sameDayDelivery ? 4 : 24),
+    availableDeliveryTypes: meta.availableDeliveryTypes ?? ["address", "pickup"],
+    extraOptions: meta.extraOptions ?? (kind === "serving" ? ["Mum Ekle", "Doğum Günü Kartı", "Hediye Notu"] : []),
+    allergens: meta.allergens ?? "Gluten, süt ürünü ve yumurta içerebilir.",
+    ingredients: meta.ingredients ?? base.shortDescription,
+    storageInfo: meta.storageInfo ?? "Serin ve kuru bir yerde, doğrudan güneş ışığından uzakta saklayınız.",
+    deliveryInfo:
+      meta.deliveryInfo ??
+      "Adrese teslim ve mağazadan teslim seçenekleri mevcuttur. Teslimat uygunluğu adres bilgisi sırasında kontrol edilir.",
+    quantityEnabled: meta.quantityEnabled ?? (kind === "weight" || kind === "pack"),
+    relatedProducts,
+  };
+}
+
+/**
+ * Whether a product can be added to the cart straight from a product card,
+ * without the customer making any pre-purchase choice.
+ *
+ * Returns `false` (→ "Seçenekleri Gör") whenever the product has ANY of:
+ * size / serving selection, weight selection, pack/box selection, a
+ * category that derives variants, mandatory personalisation, or no definite
+ * price. Derived purely from the data model — never from the product name.
+ */
+export function canQuickAddToCart(product: CatalogProduct): boolean {
+  if (!(product.priceValue > 0)) return false;
+  if (product.customizable) return false;
+  if (product.servingOptions && product.servingOptions.length > 0) return false;
+  if (product.weightOptions && product.weightOptions.length > 0) return false;
+  if (variantKindFor(product.categorySlug) !== "none") return false;
+  return true;
+}

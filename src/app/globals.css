@@ -1,32 +1,46 @@
 @import "tailwindcss";
 
 :root {
-  --background: #FAF8F3;
-  --foreground: #1C1008;
+  --background: #F8F2E9;
+  --foreground: #2A2320;
 }
 
 @theme {
-  --color-cream: #F5F0E8;
-  --color-cream-light: #FAF8F3;
-  --color-cream-dark: #EDE5D8;
-  --color-chocolate: #3D2015;
-  --color-chocolate-light: #5C3420;
-  --color-espresso: #1C1008;
-  --color-gold: #C4962A;
-  --color-gold-light: #D4A84B;
-  --color-brass: #A87B2F;
-  --color-warm-brown: #7B4A2D;
-  --color-mocha: #8B5E3C;
-  --color-burgundy: #6B2737;
+  /* Warm surfaces */
+  --color-cream: #F2EBDD;
+  --color-cream-light: #F8F2E9;
+  --color-cream-dark: #EBE1CF;
+
+  /* Brand — burgundy is the primary accent, used sparingly */
+  --color-burgundy: #6E2230;
+  --color-chocolate: #6E2230;
+  --color-chocolate-light: #872C3C;
+
+  /* Ink — warm charcoal for text + footer */
+  --color-espresso: #2A2320;
+  --color-charcoal: #2A2320;
+
+  /* Muted metallic accent (eyebrows, fine lines, small details) */
+  --color-gold: #9A7B4B;
+  --color-gold-light: #B69A6C;
+  --color-brass: #86673B;
+
+  /* Warm neutral text tones */
+  --color-warm-brown: #5B4F45;
+  --color-mocha: #837567;
+  --color-taupe: #9C8E7E;
+
   --color-sage: #7B8C72;
-  --color-sand: #D4B896;
-  --color-sand-light: #EAD9C2;
+
+  /* Borders / hairlines */
+  --color-sand: #DCCFB7;
+  --color-sand-light: #EBE1D0;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-serif: var(--font-playfair);
+  --font-serif: var(--font-fraunces);
   --font-sans: var(--font-inter);
 }
 
@@ -34,7 +48,7 @@
 @keyframes fadeUp {
   from {
     opacity: 0;
-    transform: translateY(28px);
+    transform: translateY(18px);
   }
   to {
     opacity: 1;
@@ -50,7 +64,7 @@
 @keyframes scaleIn {
   from {
     opacity: 0;
-    transform: scale(0.97);
+    transform: scale(0.985);
   }
   to {
     opacity: 1;
@@ -58,14 +72,9 @@
   }
 }
 
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
-
 .animate-fade-up {
   opacity: 0;
-  animation: fadeUp 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation: fadeUp 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 .animate-fade-in {
@@ -78,25 +87,35 @@
   animation: scaleIn 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
-.delay-100 { animation-delay: 0.1s; }
-.delay-150 { animation-delay: 0.15s; }
-.delay-200 { animation-delay: 0.2s; }
-.delay-300 { animation-delay: 0.3s; }
-.delay-400 { animation-delay: 0.4s; }
-.delay-500 { animation-delay: 0.5s; }
-.delay-600 { animation-delay: 0.6s; }
+.delay-100 { animation-delay: 0.08s; }
+.delay-150 { animation-delay: 0.12s; }
+.delay-200 { animation-delay: 0.16s; }
+.delay-300 { animation-delay: 0.24s; }
+.delay-400 { animation-delay: 0.32s; }
+.delay-500 { animation-delay: 0.4s; }
+.delay-600 { animation-delay: 0.48s; }
 
 /* Base */
 body {
-  background-color: #FAF8F3;
-  color: #1C1008;
+  background-color: #F8F2E9;
+  color: #2A2320;
+  font-size: 16px;
+  line-height: 1.65;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 h1, h2, h3, h4, h5, h6 {
-  font-family: var(--font-playfair), Georgia, 'Times New Roman', serif;
+  font-family: var(--font-fraunces), "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  font-optical-sizing: auto;
   font-feature-settings: "kern" 1, "liga" 1;
+  letter-spacing: -0.012em;
+  line-height: 1.12;
+}
+
+p {
+  line-height: 1.65;
 }
 
 /* Smooth scrolling */
@@ -104,27 +123,33 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Selection */
+::selection {
+  background: rgba(110, 34, 48, 0.14);
+  color: #2A2320;
+}
+
 /* Focus styles */
 *:focus-visible {
-  outline: 2px solid #C4962A;
+  outline: 2px solid #6E2230;
   outline-offset: 2px;
   border-radius: 2px;
 }
 
 /* Custom scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #F5F0E8;
+  background: #F2EBDD;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #D4B896;
-  border-radius: 3px;
+  background: #DCCFB7;
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #A87B2F;
+  background: #6E2230;
 }

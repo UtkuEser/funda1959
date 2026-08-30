@@ -22,12 +22,12 @@ export function CTASection({
     variant === "dark"
       ? {
           background:
-            "linear-gradient(135deg, #2C1A17 0%, #3D2015 50%, #1C1008 100%)",
+            "linear-gradient(140deg, #6E2230 0%, #5A1B27 55%, #3F1720 100%)",
         }
       : variant === "gold"
       ? {
           background:
-            "linear-gradient(135deg, #A87B2F 0%, #C4962A 50%, #B8873A 100%)",
+            "linear-gradient(135deg, #8A6B3B 0%, #9A7B4B 50%, #86673B 100%)",
         }
       : undefined;
 
@@ -51,8 +51,8 @@ export function CTASection({
         {eyebrow && (
           <FadeIn>
             <p
-              className={`font-sans text-xs tracking-[0.2em] uppercase mb-4 font-semibold ${
-                isLight ? "text-gold" : "text-gold"
+              className={`font-sans text-[13px] tracking-[0.12em] uppercase mb-4 font-semibold ${
+                isLight ? "text-gold-light" : "text-gold"
               }`}
             >
               {eyebrow}
@@ -62,7 +62,7 @@ export function CTASection({
         <FadeIn delay={100}>
           <h2
             className={`font-serif text-3xl md:text-4xl lg:text-5xl font-semibold leading-tight mb-5 ${
-              isLight ? "text-cream-light" : "text-chocolate"
+              isLight ? "text-cream-light" : "text-burgundy"
             }`}
           >
             {title}
@@ -83,12 +83,12 @@ export function CTASection({
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               href={primaryCta.href}
-              className={`px-8 py-4 rounded-xl font-sans font-semibold text-sm tracking-wide transition-all duration-300 ${
+              className={`px-8 py-4 rounded-md font-sans font-semibold text-sm tracking-wide transition-colors duration-200 ${
                 variant === "dark"
-                  ? "bg-gold text-espresso hover:bg-gold-light shadow-lg shadow-gold/20"
+                  ? "bg-cream-light text-burgundy hover:bg-cream"
                   : variant === "gold"
-                  ? "bg-espresso text-cream-light hover:bg-chocolate"
-                  : "bg-chocolate text-cream-light hover:bg-chocolate-light"
+                  ? "bg-espresso text-cream-light hover:bg-charcoal"
+                  : "bg-burgundy text-cream-light hover:bg-chocolate-light"
               }`}
             >
               {primaryCta.label}
@@ -96,10 +96,10 @@ export function CTASection({
             {secondaryCta && (
               <Link
                 href={secondaryCta.href}
-                className={`px-8 py-4 rounded-xl font-sans font-semibold text-sm tracking-wide transition-all duration-300 border ${
+                className={`px-8 py-4 rounded-md font-sans font-semibold text-sm tracking-wide transition-colors duration-200 border ${
                   isLight
-                    ? "border-cream-light/25 text-cream-light hover:bg-cream-light/10"
-                    : "border-chocolate text-chocolate hover:bg-chocolate hover:text-cream-light"
+                    ? "border-cream-light/30 text-cream-light hover:bg-cream-light/10"
+                    : "border-burgundy text-burgundy hover:bg-burgundy hover:text-cream-light"
                 }`}
               >
                 {secondaryCta.label}
