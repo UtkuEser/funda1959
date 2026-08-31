@@ -1,5 +1,11 @@
 export type NavChild = { label: string; href: string };
-export type NavItem = { label: string; href: string; children?: NavChild[] };
+export type NavItem = {
+  label: string;
+  href: string;
+  children?: NavChild[];
+  /** Slightly more prominent than the other links (no dropdown, no button). */
+  emphasis?: boolean;
+};
 
 /**
  * Shared top navigation tree — consumed by the desktop dropdowns and the
@@ -7,6 +13,7 @@ export type NavItem = { label: string; href: string; children?: NavChild[] };
  * the header bar itself. Links only point to routes that already exist.
  */
 export const navItems: NavItem[] = [
+  { label: "Hızlı Sipariş", href: "/hizli-siparis", emphasis: true },
   {
     label: "Ürünler",
     href: "/lezzetlerimiz",

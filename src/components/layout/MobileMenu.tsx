@@ -129,7 +129,7 @@ export function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
         {/* CTA + social */}
         <div className="shrink-0 border-t border-sand-light px-4 pt-4 pb-6">
           <Link
-            href="/iletisim"
+            href="/hizli-siparis"
             className="flex min-h-[48px] w-full items-center justify-center rounded-md bg-burgundy px-5 font-sans text-sm font-semibold tracking-wide text-cream-light hover:bg-chocolate-light transition-colors"
           >
             Sipariş Ver

@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { catalogProducts } from "@/lib/data";
-import { LandingHero } from "@/components/landing/LandingHero";
-import { CategoryShowcase } from "@/components/landing/CategoryShowcase";
+import { CelebrationQuiz } from "@/components/landing/CelebrationQuiz";
 import { FeaturedProductStrip } from "@/components/landing/FeaturedProductStrip";
 import { EditorialSteps } from "@/components/landing/EditorialSteps";
 import { EditorialSplit } from "@/components/landing/EditorialSplit";
@@ -19,51 +18,6 @@ export const metadata: Metadata = {
     "özel tasarım pasta Ankara",
   ],
 };
-
-const OCCASIONS = [
-  {
-    index: "01",
-    title: "Doğum Günü",
-    description: "Her yaşa göre yorumlanan, sade ya da detaylı doğum günü pastaları.",
-    href: "/lezzetlerimiz/yas-pastalar",
-    gradient: "from-[#EBD3C6] to-[#D9AF9C]",
-  },
-  {
-    index: "02",
-    title: "Nişan & Söz",
-    description: "İki ailenin buluştuğu güne yakışan, zarif ve ölçülü tasarımlar.",
-    href: "/lezzetlerimiz/yas-pastalar",
-    gradient: "from-[#EEE4D3] to-[#DCC7AE]",
-  },
-  {
-    index: "03",
-    title: "Düğün",
-    description: "Masanın baş köşesi için çok katlı, özenle kurgulanmış pastalar.",
-    href: "/lezzetlerimiz/yas-pastalar",
-    gradient: "from-[#E6D0CF] to-[#C9A7AB]",
-  },
-  {
-    index: "04",
-    title: "Yıldönümü",
-    description: "Birlikte geçen yılları anlatan, kişiye özel küçük dokunuşlar.",
-    href: "/lezzetlerimiz/yas-pastalar",
-    gradient: "from-[#EFE6D4] to-[#DCC9AC]",
-  },
-  {
-    index: "05",
-    title: "Özel Davetler",
-    description: "Ev buluşmaları ve kutlamalar için pratik, paylaşımlık seçenekler.",
-    href: "/lezzetlerimiz/yas-pastalar",
-    gradient: "from-[#E9DAC3] to-[#D3BE9C]",
-  },
-  {
-    index: "06",
-    title: "Kurumsal Kutlamalar",
-    description: "Lansman, yıl dönümü ve ekip kutlamaları için planlı siparişler.",
-    href: "/iletisim",
-    gradient: "from-[#E7D6D2] to-[#CBAAA6]",
-  },
-];
 
 const PERSONALIZATION = [
   { index: "01", title: "Kişi Sayısı", description: "Davetiniz için doğru ölçüyü birlikte belirleyelim." },
@@ -85,48 +39,20 @@ const celebrationProducts = [
   ...catalogProducts.filter((p) => !p.isSpecialOccasion && (p.occasions?.length ?? 0) > 0),
 ].slice(0, 4);
 
+// Candidate pool for the recommendation quiz — celebration cakes only.
+const quizPool = catalogProducts.filter(
+  (p) =>
+    p.categorySlug === "yas-pastalar" ||
+    p.categorySlug === "ozel-gun" ||
+    p.isSpecialOccasion ||
+    (p.occasions?.length ?? 0) > 0,
+);
+
 export default function OzelGunPage() {
   return (
     <>
-      <LandingHero
-        eyebrow="Özel Gün Pastaları"
-        title={
-          <>
-            Her kutlamanın
-            <br />
-            <em className="italic text-burgundy">kendine ait</em> bir hikâyesi vardır.
-          </>
-        }
-        description="Doğum günlerinden nişanlara, özel davetlerden kurumsal kutlamalara; Funda'nın ustalığıyla hazırlanan pastalar."
-        primary={{ label: "Koleksiyonu Keşfet", href: "/lezzetlerimiz/yas-pastalar" }}
-        secondary={{ label: "Özel Sipariş Oluştur", href: "/iletisim" }}
-        tertiary={
-          <>
-            Sipariş danışmanlığı için{" "}
-            <a
-              href="tel:+903124470000"
-              className="font-semibold text-burgundy hover:text-chocolate-light"
-            >
-              0312 447 00 00
-            </a>
-          </>
-        }
-        visual={{
-          style: {
-            background: "linear-gradient(150deg, #F6EEE1 0%, #ECD6C3 46%, #DBAB90 100%)",
-          },
-          label: { kicker: "Funda 1959", title: "Özel Gün Koleksiyonu" },
-        }}
-      />
-
-      <CategoryShowcase
-        eyebrow="Hangi Gün?"
-        title="Her kutlama için bir Funda dokunuşu."
-        intro="Kutlamanızın türünü seçin, size en yakın koleksiyondan başlayalım."
-        items={OCCASIONS}
-        columns={3}
-        background="cream"
-      />
+      {/* CelebrationQuiz is this page's hero and primary discovery mechanism */}
+      <CelebrationQuiz products={quizPool} />
 
       <FeaturedProductStrip
         eyebrow="Seçkiler"

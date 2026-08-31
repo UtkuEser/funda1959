@@ -109,7 +109,7 @@ export function Header() {
               </Link>
 
               <Link
-                href="/iletisim"
+                href="/hizli-siparis"
                 className="hidden xl:inline-flex items-center whitespace-nowrap ml-2 px-4 py-2 rounded-md bg-burgundy text-cream-light font-sans text-[13.5px] font-semibold tracking-wide hover:bg-chocolate-light transition-colors"
               >
                 Sipariş Ver

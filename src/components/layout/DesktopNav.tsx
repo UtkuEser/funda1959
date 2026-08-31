@@ -48,6 +48,20 @@ export function DesktopNav() {
     <nav className="hidden xl:flex items-center gap-x-6 2xl:gap-x-8">
       {navItems.map((item) => {
         if (!item.children) {
+          if (item.emphasis) {
+            return (
+              <Link
+                key={item.label}
+                href={item.href}
+                className="inline-flex items-center gap-1 whitespace-nowrap font-sans text-[14.5px] font-medium text-burgundy transition-colors duration-200 hover:text-chocolate-light"
+              >
+                {item.label}
+                <span aria-hidden className="text-[10px] leading-none opacity-70">
+                  →
+                </span>
+              </Link>
+            );
+          }
           return (
             <Link key={item.label} href={item.href} className={linkClass(isActive(item.href))}>
               {item.label}

@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Container } from "@/components/shared/Container";
 import { EmptyCart } from "@/components/cart/EmptyCart";
-import { clearCart, type CartItem } from "@/lib/cart";
+import type { CartItem } from "@/lib/cart";
 import { useCart } from "@/lib/use-cart";
+import { branchName } from "@/lib/cart-utils";
 import {
   DELIVERY_TIME_SLOTS,
   earliestDeliveryDate,
@@ -14,7 +15,8 @@ import {
   isValidFullName,
   isValidPhone,
 } from "@/lib/checkout-utils";
-import type { CreateOrderRequest, CreateOrderResult } from "@/lib/order";
+import type { CreateOrderRequest } from "@/lib/order";
+import { setCheckoutHandoff } from "@/lib/checkout-handoff";
 import { CheckoutSummary } from "./CheckoutSummary";
 import { ContactStep } from "./ContactStep";
 import { DeliveryStep } from "./DeliveryStep";
@@ -107,13 +109,10 @@ export function CheckoutPage() {
   const [deliveryErrors, setDeliveryErrors] = useState<DeliveryErrors>({});
   const [minDate, setMinDate] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [succeeded, setSucceeded] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
   const [showErrorHint, setShowErrorHint] = useState(false);
   const [showNote, setShowNote] = useState(false);
 
   const requestIdRef = useRef("");
-  const inFlightRef = useRef(false);
 
   // Seed the form from the cart once real items are available (render-phase adjust).
   if (!seeded && items.length > 0) {
@@ -197,8 +196,11 @@ export function CheckoutPage() {
     if (el instanceof HTMLElement) el.focus({ preventScroll: true });
   };
 
-  const submitOrder = async () => {
-    if (submitting || inFlightRef.current) return;
+  // Checkout no longer creates the order directly — it validates, hands the
+  // (non-sensitive) order request to the payment step and navigates to /hizli-siparis-odeme.
+  // The /api/orders backend is untouched; order creation happens after payment.
+  const proceedToPayment = () => {
+    if (submitting) return;
 
     const { ok, merged } = validateAll();
     if (!ok) {
@@ -214,7 +216,6 @@ export function CheckoutPage() {
           ? crypto.randomUUID()
           : `req-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
     }
-    inFlightRef.current = true;
 
     const earliest = minDate || earliestDeliveryDate(items);
     const deliveryDate = state.date && state.date >= earliest ? state.date : earliest;
@@ -256,47 +257,28 @@ export function CheckoutPage() {
       orderNote: state.orderNote.trim() || undefined,
     };
 
+    const addr = state.address;
+    const addressText =
+      state.deliveryType === "delivery"
+        ? [addr.neighborhood, addr.addressLine, addr.district].filter(Boolean).join(", ")
+        : state.branch
+          ? branchName(state.branch)
+          : null;
+
     setSubmitting(true);
-    setSubmitError(null);
-
-    try {
-      const res = await fetch("/api/orders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(request),
-      });
-      const data = (await res.json().catch(() => null)) as CreateOrderResult | null;
-
-      if (!res.ok || !data || !data.ok) {
-        inFlightRef.current = false;
-        setSubmitting(false);
-        setSubmitError(
-          data && !data.ok && data.error
-            ? data.error
-            : "Siparişiniz oluşturulurken bir sorun oluştu. Lütfen tekrar deneyin.",
-        );
-        return;
-      }
-
-      setSucceeded(true);
-      clearCart();
-      router.push(`/siparis-basarili?order=${encodeURIComponent(data.order.orderNumber)}`);
-    } catch {
-      inFlightRef.current = false;
-      setSubmitting(false);
-      setSubmitError("Siparişiniz oluşturulurken bir sorun oluştu. Lütfen tekrar deneyin.");
-    }
+    setCheckoutHandoff({
+      request,
+      summary: {
+        fullName: state.contact.fullName,
+        phone: state.contact.phone,
+        deliveryLabel: state.deliveryType === "pickup" ? "Mağazadan Teslim" : "Adrese Teslim",
+        addressText,
+        date: deliveryDate,
+        timeSlot: deliveryTimeSlot,
+      },
+    });
+    router.push("/hizli-siparis-odeme");
   };
-
-  if (succeeded) {
-    return (
-      <Container className="pt-28 pb-24 md:pt-32 text-center">
-        <p className="font-sans text-[15px] text-warm-brown">
-          Siparişiniz alındı, yönlendiriliyorsunuz…
-        </p>
-      </Container>
-    );
-  }
 
   if (items.length === 0) {
     return (
@@ -318,7 +300,7 @@ export function CheckoutPage() {
         Siparişinizi Tamamlayın
       </h1>
       <p className="mt-2 font-sans text-[14px] text-warm-brown">
-        Teslimat ve iletişim bilgilerinizi tamamlayarak siparişinizi oluşturun.
+        Teslimat ve iletişim bilgilerinizi tamamlayın, ardından ödeme adımına geçin.
       </p>
 
       {showErrorHint && hasErrors && (
@@ -388,8 +370,8 @@ export function CheckoutPage() {
             <CheckoutSummary
               items={items}
               submitting={submitting}
-              submitError={submitError}
-              onSubmit={submitOrder}
+              submitError={null}
+              onSubmit={proceedToPayment}
             />
           </div>
         </div>
