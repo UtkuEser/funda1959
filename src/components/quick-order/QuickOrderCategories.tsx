@@ -14,7 +14,7 @@ export function QuickOrderCategories({
   return (
     <nav aria-label="Kategoriler">
       {/* Mobile: horizontal scroll strip */}
-      <div className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-1 sm:-mx-8 sm:px-8 lg:hidden">
+      <div className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-1 sm:-mx-8 sm:px-8 lg:hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {categories.map((c) => {
           const on = c.slug === active;
           return (

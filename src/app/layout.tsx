@@ -68,7 +68,7 @@ export default function RootLayout({
   const schema = generateLocalBusinessSchema();
 
   return (
-    <html lang="tr" className="scroll-smooth">
+    <html lang="tr" className="scroll-smooth" data-scroll-behavior="smooth">
       <head>
         <script
           type="application/ld+json"

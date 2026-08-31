@@ -149,11 +149,12 @@ export function CelebrationQuiz({ products }: { products: CatalogProduct[] }) {
   );
   const largeScale = isResults && needsCustomPlanning(answers);
 
-  // full answer summary on the result screen
+  // full answer summary on the result screen — keyed by question so two answers
+  // that share a short label (e.g. both "Funda seçsin") stay unique.
   const summaryChips = useMemo(
     () =>
-      QUESTIONS.map((q) => optionShortLabel(q, answers[q.key])).filter(
-        (v): v is string => Boolean(v),
+      QUESTIONS.map((q) => ({ key: q.key, label: optionShortLabel(q, answers[q.key]) })).filter(
+        (c): c is { key: AnswerKey; label: string } => Boolean(c.label),
       ),
     [answers],
   );
@@ -162,8 +163,8 @@ export function CelebrationQuiz({ products }: { products: CatalogProduct[] }) {
   const summaryTrail = useMemo(
     () =>
       QUESTIONS.slice(0, step)
-        .map((q) => optionShortLabel(q, answers[q.key]))
-        .filter((v): v is string => Boolean(v)),
+        .map((q) => ({ key: q.key, label: optionShortLabel(q, answers[q.key]) }))
+        .filter((c): c is { key: AnswerKey; label: string } => Boolean(c.label)),
     [answers, step],
   );
 
@@ -258,7 +259,7 @@ export function CelebrationQuiz({ products }: { products: CatalogProduct[] }) {
             <div className="mt-7 md:mt-9">
               {/* progress: "1 / 4 · Kişi Sayısı" + a very thin animated line */}
               <div
-                key={step}
+                key={`progress-${step}`}
                 className="cq-fade flex items-center gap-2 font-sans text-[12px] font-semibold"
                 aria-hidden
               >
@@ -279,9 +280,9 @@ export function CelebrationQuiz({ products }: { products: CatalogProduct[] }) {
               {summaryTrail.length > 0 && (
                 <p className="mt-3 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 font-sans text-[12px] text-taupe">
                   {summaryTrail.map((chip, i) => (
-                    <span key={chip} className="inline-flex items-center gap-1.5">
+                    <span key={chip.key} className="inline-flex items-center gap-1.5">
                       {i > 0 && <span aria-hidden>·</span>}
-                      <span>{chip}</span>
+                      <span>{chip.label}</span>
                     </span>
                   ))}
                 </p>
@@ -289,7 +290,7 @@ export function CelebrationQuiz({ products }: { products: CatalogProduct[] }) {
 
               {/* question + options — swaps inside the hero; height kept stable */}
               <div
-                key={step}
+                key={`question-${step}`}
                 className={`cq-in mt-5 min-h-[19rem] sm:min-h-[16rem] ${
                   phase === "exiting" ? "cq-exit" : ""
                 }`}
@@ -430,9 +431,9 @@ export function CelebrationQuiz({ products }: { products: CatalogProduct[] }) {
               {summaryChips.length > 0 && (
                 <p className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 font-sans text-[13px] text-warm-brown">
                   {summaryChips.map((chip, i) => (
-                    <span key={chip} className="inline-flex items-center gap-2">
+                    <span key={chip.key} className="inline-flex items-center gap-2">
                       {i > 0 && <span className="text-taupe/60">·</span>}
-                      <span>{chip}</span>
+                      <span>{chip.label}</span>
                     </span>
                   ))}
                 </p>
@@ -467,7 +468,7 @@ export function CelebrationQuiz({ products }: { products: CatalogProduct[] }) {
                         </p>
                         {rec.reasons.length > 0 && (
                           <ul className="mb-2.5 space-y-0.5">
-                            {rec.reasons.map((reason) => (
+                            {[...new Set(rec.reasons)].map((reason) => (
                               <li
                                 key={reason}
                                 className="flex items-start gap-1.5 font-sans text-[11.5px] leading-snug text-warm-brown"

@@ -51,7 +51,7 @@ export function ProductGridCard({ product }: { product: CatalogProduct }) {
     <article className="group relative flex flex-col">
       <Link href={href} className="flex flex-1 flex-col">
         <div
-          className={`relative w-full aspect-[4/5] overflow-hidden rounded-lg bg-gradient-to-br ${product.gradient}`}
+          className={`relative w-full aspect-square overflow-hidden rounded-lg bg-gradient-to-br sm:aspect-[4/5] ${product.gradient}`}
         >
           <div className="absolute inset-0 flex items-center justify-center opacity-[0.1] transition-opacity duration-500 group-hover:opacity-[0.16]">
             <span className="font-serif text-6xl leading-none text-espresso select-none">

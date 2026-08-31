@@ -38,14 +38,14 @@ export function DesktopNav() {
       : pathname === href;
 
   const linkClass = (active: boolean) =>
-    `font-sans text-[14.5px] whitespace-nowrap transition-colors duration-200 ${
+    `font-sans text-[13.5px] 2xl:text-[14.5px] whitespace-nowrap transition-colors duration-200 ${
       active
         ? "text-burgundy font-semibold"
         : "text-warm-brown font-medium hover:text-burgundy"
     }`;
 
   return (
-    <nav className="hidden xl:flex items-center gap-x-6 2xl:gap-x-8">
+    <nav className="hidden xl:flex items-center gap-x-4 2xl:gap-x-7">
       {navItems.map((item) => {
         if (!item.children) {
           if (item.emphasis) {
@@ -53,7 +53,7 @@ export function DesktopNav() {
               <Link
                 key={item.label}
                 href={item.href}
-                className="inline-flex items-center gap-1 whitespace-nowrap font-sans text-[14.5px] font-medium text-burgundy transition-colors duration-200 hover:text-chocolate-light"
+                className="inline-flex items-center gap-1 whitespace-nowrap font-sans text-[13.5px] 2xl:text-[14.5px] font-medium text-burgundy transition-colors duration-200 hover:text-chocolate-light"
               >
                 {item.label}
                 <span aria-hidden className="text-[10px] leading-none opacity-70">
@@ -83,7 +83,7 @@ export function DesktopNav() {
           >
             <Link
               href={item.href}
-              className={`${linkClass(isActive(item.href) || menuOpen)} inline-flex items-center gap-1`}
+              className={`${linkClass(isActive(item.href) || menuOpen)} inline-flex items-center gap-0.5`}
               aria-expanded={menuOpen}
               onClick={() => setOpen(null)}
             >

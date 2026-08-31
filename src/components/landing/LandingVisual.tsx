@@ -22,7 +22,7 @@ export function LandingVisual({
 }: LandingVisualProps) {
   return (
     <div
-      className={`relative w-full overflow-hidden rounded-lg border border-sand-light ${ratio} ${
+      className={`relative w-full max-h-[68svh] overflow-hidden rounded-lg border border-sand-light md:max-h-none ${ratio} ${
         gradient ? `bg-gradient-to-br ${gradient}` : "bg-cream-dark"
       } ${className}`}
       style={style}
