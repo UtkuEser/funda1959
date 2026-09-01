@@ -1,4 +1,4 @@
-import { productImage } from "./product-images";
+import { imageFromFolders, productImage } from "./product-images";
 
 export type Category = {
   id: string;
@@ -464,82 +464,112 @@ export const storyTimeline = [
 export const featuredProducts = products.filter(p => p.isFeatured);
 export const specialOccasionProducts = products.filter(p => p.isSpecialOccasion);
 
-/* Curated, hand-picked showcase for the homepage vitrine (İmza Lezzetlerimiz) */
-export const signatureProducts = featuredProducts.slice(0, 4);
+/* Curated showcase for the homepage vitrine (İmza Lezzetlerimiz) — the first
+ * featured product from four different categories, so the four cards show four
+ * different demo photos. */
+export const signatureProducts = (() => {
+  const seen = new Set<string>();
+  const picks: Product[] = [];
+  for (const p of featuredProducts) {
+    if (seen.has(p.categorySlug)) continue;
+    seen.add(p.categorySlug);
+    picks.push(p);
+    if (picks.length === 4) break;
+  }
+  return picks;
+})();
 
-/* Homepage — Kutlamalarınız İçin */
+/* Homepage — Kutlamalarınız İçin. Celebration cakes are, visually, yaş
+ * pastalar; the ozel-gun-pastalari/ folder is not shot yet. */
 export const celebrationCategories = [
   {
     title: "Doğum Günü Pastaları",
     description: "Her yaşa özel, kişiselleştirilebilen tasarımlar.",
     href: "/ozel-gun",
     gradient: "from-[#EBD3C6] to-[#D9AF9C]",
+    image: imageFromFolders(["ozel-gun-pastalari", "yas-pastalar"], 0),
   },
   {
     title: "Düğün & Nişan Pastaları",
     description: "İki hayatı birleştiren, zarif ve çok katlı pastalar.",
     href: "/ozel-gun",
     gradient: "from-[#EEE4D3] to-[#DCC7AE]",
+    image: imageFromFolders(["ozel-gun-pastalari", "yas-pastalar"], 1),
   },
   {
     title: "Kişiye Özel Pastalar",
     description: "Fikrinizi anlatın, ustalarımız hayata geçirsin.",
     href: "/ozel-gun",
     gradient: "from-[#E6D0CF] to-[#C9A7AB]",
+    image: imageFromFolders(["ozel-gun-pastalari", "yas-pastalar"], 2),
   },
 ];
 
-/* Homepage — Kategoriler mozaiği */
+/* Homepage — "Bugün ne ikram edelim?" kategori mozaiği */
 export const homeCategories = [
   {
     name: "Pastalar",
     href: "/lezzetlerimiz/yas-pastalar",
     gradient: "from-[#E7C9BA] to-[#C99A86]",
     feature: true,
+    image: imageFromFolders(["yas-pastalar", "adet-pastalar", "ozel-gun-pastalari"], 2),
   },
   {
     name: "Tatlılar",
     href: "/lezzetlerimiz/sutlu-tatlilar",
     gradient: "from-[#EFE6D4] to-[#DCC9AC]",
+    image: imageFromFolders(["sutlu-tatlilar", "serbetli-tatlilar", "mini-lezzetler"], 0),
   },
   {
     name: "Börekler",
     href: "/lezzetlerimiz/borekler-ve-mayalilar",
     gradient: "from-[#E9DAC3] to-[#D3BE9C]",
+    image: imageFromFolders(["borekler-ve-mayalilar"], 0),
   },
   {
     name: "Çikolatalar",
     href: "/lezzetlerimiz/cikolatalar",
     gradient: "from-[#D8C1A8] to-[#B89A7C]",
+    image: imageFromFolders(["cikolatalar"], 0),
   },
   {
     name: "Hediyelikler",
     href: "/hediyelikler",
     gradient: "from-[#E7D6D2] to-[#CBAAA6]",
+    image: imageFromFolders(["atistirmaliklar", "kuru-pastalar", "cikolatalar"], 0),
   },
 ];
 
 /* Homepage — Hediyelik Seçimler / Sevdiklerinize Funda'dan */
+export const giftHeroImage = imageFromFolders(["cikolatalar", "kuru-pastalar", "atistirmaliklar"], 0);
+
 export const giftCollections = [
   {
     title: "Hediyelik Çikolatalar",
     description: "El yapımı pralin ve trüf çeşitleriyle hazırlanan çikolatalar.",
     href: "/lezzetlerimiz/cikolatalar",
     gradient: "from-[#D8C1A8] to-[#B4906F]",
+    image: imageFromFolders(["cikolatalar"], 0),
   },
   {
     title: "Özel Kutular",
     description: "Doğum günü, yeni iş ya da bir teşekkür için özenle hazırlanan kutular.",
     href: "/lezzetlerimiz/cikolatalar",
     gradient: "from-[#EDE3D2] to-[#D6C0A4]",
+    image: imageFromFolders(["kuru-pastalar", "atistirmaliklar"], 0),
   },
   {
     title: "Tatlı & Kurabiye Seçkileri",
     description: "Çayın yanına yakışan kurabiye ve mini tatlı derlemeleri.",
     href: "/lezzetlerimiz/kuru-pastalar",
     gradient: "from-[#EAD9C0] to-[#D2B78E]",
+    image: imageFromFolders(["atistirmaliklar", "kuru-pastalar"], 0),
   },
 ];
+
+/* Homepage — brand-story band. No dedicated archive photo yet; the "1959'dan
+ * Bugüne" hero still is reused with a light warm/sepia treatment in the UI. */
+export const brandStoryImage = "/home/hero/1.png";
 
 /* Homepage — kısa marka zaman çizelgesi */
 export const homeStoryMilestones = [

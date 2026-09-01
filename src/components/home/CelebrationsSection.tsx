@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { celebrationCategories } from "@/lib/data";
 import { Container } from "@/components/shared/Container";
 import { SectionHeader } from "@/components/shared/SectionHeader";
@@ -25,11 +26,21 @@ export function CelebrationsSection() {
               <div
                 className={`w-full aspect-[4/5] overflow-hidden rounded-lg bg-gradient-to-br ${lead.gradient} relative`}
               >
-                <div className="absolute inset-0 flex items-center justify-center opacity-[0.1] group-hover:opacity-[0.16] transition-opacity duration-500">
-                  <span className="font-serif text-8xl text-espresso select-none">
-                    {lead.title.charAt(0)}
-                  </span>
-                </div>
+                {lead.image ? (
+                  <Image
+                    src={lead.image}
+                    alt={lead.title}
+                    fill
+                    sizes="(max-width: 1024px) 100vw, 620px"
+                    className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                  />
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center opacity-[0.1] group-hover:opacity-[0.16] transition-opacity duration-500">
+                    <span className="font-serif text-8xl text-espresso select-none">
+                      {lead.title.charAt(0)}
+                    </span>
+                  </div>
+                )}
               </div>
               <h3 className="mt-4 font-serif text-[22px] font-medium text-burgundy">
                 {lead.title}
@@ -51,11 +62,21 @@ export function CelebrationsSection() {
                   <div
                     className={`w-full aspect-[16/10] overflow-hidden rounded-lg bg-gradient-to-br ${item.gradient} relative`}
                   >
-                    <div className="absolute inset-0 flex items-center justify-center opacity-[0.1] group-hover:opacity-[0.16] transition-opacity duration-500">
-                      <span className="font-serif text-6xl text-espresso select-none">
-                        {item.title.charAt(0)}
-                      </span>
-                    </div>
+                    {item.image ? (
+                      <Image
+                        src={item.image}
+                        alt={item.title}
+                        fill
+                        sizes="(max-width: 1024px) 100vw, 520px"
+                        className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                      />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center opacity-[0.1] group-hover:opacity-[0.16] transition-opacity duration-500">
+                        <span className="font-serif text-6xl text-espresso select-none">
+                          {item.title.charAt(0)}
+                        </span>
+                      </div>
+                    )}
                   </div>
                   <h3 className="mt-3.5 font-serif text-[19px] font-medium text-burgundy">
                     {item.title}

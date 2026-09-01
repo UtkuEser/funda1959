@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { giftCollections } from "@/lib/data";
+import Image from "next/image";
+import { giftCollections, giftHeroImage } from "@/lib/data";
 import { Container } from "@/components/shared/Container";
 import { FadeIn } from "@/components/shared/FadeIn";
 
@@ -17,8 +18,17 @@ export function GiftSelectionSection() {
                   "linear-gradient(145deg, #E9D9C4 0%, #D8BE9E 50%, #C09E86 100%)",
               }}
             >
-              <div className="absolute inset-0 bg-gradient-to-t from-espresso/20 to-transparent" />
-              <p className="absolute left-6 bottom-5 font-serif text-[16px] text-cream-light/90">
+              {giftHeroImage && (
+                <Image
+                  src={giftHeroImage}
+                  alt="Funda 1959 hediyelik seçkileri"
+                  fill
+                  sizes="(max-width: 1024px) 100vw, 560px"
+                  className="object-cover"
+                />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-espresso/45 via-espresso/5 to-transparent" />
+              <p className="absolute left-6 bottom-5 font-serif text-[16px] text-cream-light">
                 Funda&apos;dan, sevdiklerinize
               </p>
             </div>
@@ -50,8 +60,18 @@ export function GiftSelectionSection() {
                     className="group flex items-center gap-5 border-b border-sand-light py-5"
                   >
                     <div
-                      className={`h-16 w-16 shrink-0 rounded-lg bg-gradient-to-br ${item.gradient}`}
-                    />
+                      className={`relative h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-gradient-to-br ${item.gradient}`}
+                    >
+                      {item.image && (
+                        <Image
+                          src={item.image}
+                          alt={item.title}
+                          fill
+                          sizes="64px"
+                          className="object-cover"
+                        />
+                      )}
+                    </div>
                     <div className="min-w-0 flex-1">
                       <h3 className="font-serif text-[18px] font-medium text-burgundy">
                         {item.title}

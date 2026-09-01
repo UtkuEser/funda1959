@@ -62,3 +62,14 @@ export function productImage(categorySlug: string, indexInCategory: number): str
   if (imgs.length === 0) return null;
   return imgs[indexInCategory % imgs.length];
 }
+
+/**
+ * Homepage tiles pick from an ordered folder preference list rather than a
+ * product category. `n` selects the nth photo across the flattened list
+ * (wrapping) so sibling tiles can be given different photos.
+ */
+export function imageFromFolders(folders: string[], n = 0): string | null {
+  const all = folders.flatMap((folder) => imagesForFolder(folder));
+  if (all.length === 0) return null;
+  return all[n % all.length];
+}

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { homeCategories } from "@/lib/data";
 import { Container } from "@/components/shared/Container";
 import { SectionHeader } from "@/components/shared/SectionHeader";
@@ -30,7 +31,16 @@ export function CategoryGrid() {
                   category.feature ? "min-h-[240px] lg:min-h-0" : "min-h-[150px]"
                 }`}
               >
-                <div className="absolute inset-0 bg-gradient-to-t from-espresso/32 via-espresso/0 to-transparent" />
+                {category.image && (
+                  <Image
+                    src={category.image}
+                    alt={category.name}
+                    fill
+                    sizes={category.feature ? "(max-width: 1024px) 100vw, 640px" : "(max-width: 1024px) 50vw, 320px"}
+                    className="object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+                  />
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-espresso/55 via-espresso/10 to-espresso/0" />
                 <h3
                   className={`absolute left-4 bottom-3.5 font-serif font-medium text-cream-light ${
                     category.feature ? "text-[26px] md:text-[32px]" : "text-[18px]"

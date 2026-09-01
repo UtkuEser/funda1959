@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { homeStoryMilestones } from "@/lib/data";
+import Image from "next/image";
+import { brandStoryImage, homeStoryMilestones } from "@/lib/data";
 import { Container } from "@/components/shared/Container";
 import { FadeIn } from "@/components/shared/FadeIn";
 
@@ -17,8 +18,17 @@ export function BrandStoryTeaser() {
                   "linear-gradient(150deg, #E7DAC6 0%, #D3BE9C 55%, #B9A079 100%)",
               }}
             >
-              <div className="absolute inset-0 bg-gradient-to-t from-espresso/25 to-transparent" />
-              <p className="absolute left-6 bottom-5 font-sans text-[13px] tracking-wide text-cream-light/90">
+              {brandStoryImage && (
+                <Image
+                  src={brandStoryImage}
+                  alt="Funda 1959 — köklü pastane geleneği"
+                  fill
+                  sizes="(max-width: 1024px) 100vw, 560px"
+                  className="object-cover [filter:sepia(0.32)_saturate(0.8)_contrast(0.94)_brightness(1.02)]"
+                />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-espresso/35 via-espresso/5 to-transparent" />
+              <p className="absolute left-6 bottom-5 font-sans text-[13px] tracking-wide text-cream-light">
                 Ankara — ilk mağaza, 1959
               </p>
             </div>
