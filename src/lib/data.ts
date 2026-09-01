@@ -1,3 +1,5 @@
+import { productImage } from "./product-images";
+
 export type Category = {
   id: string;
   name: string;
@@ -43,7 +45,13 @@ export type CatalogMeta = {
   availableBranches?: string[]; // branch ids
 };
 
-export type CatalogProduct = Product & CatalogMeta & { displayPrice: string; slug: string };
+export type CatalogProduct = Product &
+  CatalogMeta & {
+    displayPrice: string;
+    slug: string;
+    /** category-based demo photo (public path), or null -> gradient fallback */
+    image: string | null;
+  };
 
 const TR_MAP: Record<string, string> = {
   ç: "c", ğ: "g", ı: "i", ö: "o", ş: "s", ü: "u",
@@ -573,13 +581,18 @@ const catalogMeta: Record<string, CatalogMeta> = {
   p18: { priceValue: 240, oldPrice: "₺290", sameDayDelivery: true, isBestSeller: true, availableBranches: ALL_BRANCHES },
 };
 
+const categoryImageIndex = new Map<string, number>();
+
 export const catalogProducts: CatalogProduct[] = products.map((p) => {
   const meta = catalogMeta[p.id] ?? { priceValue: 0 };
+  const idx = categoryImageIndex.get(p.categorySlug) ?? 0;
+  categoryImageIndex.set(p.categorySlug, idx + 1);
   return {
     ...p,
     ...meta,
     slug: slugify(p.name),
     displayPrice: p.price ?? `₺${meta.priceValue.toLocaleString("tr-TR")}`,
+    image: productImage(p.categorySlug, idx),
   };
 });
 
@@ -770,7 +783,7 @@ export function getProductDetail(slug: string): ProductDetail | undefined {
     basePrice,
     variants,
     longDescription: meta.longDescription ?? base.description,
-    images: meta.images ?? [base.gradient, base.gradient, base.gradient, base.gradient],
+    images: meta.images ?? (base.image ? [base.image] : [base.gradient, base.gradient, base.gradient, base.gradient]),
     imageLabels: ["Ön Görünüm", "Detay", "Kesit", "Servis"],
     maxCakeMessageLength: meta.maxCakeMessageLength ?? (base.customizable ? 40 : null),
     preparationTimeHours: meta.preparationTimeHours ?? (base.sameDayDelivery ? 4 : 24),

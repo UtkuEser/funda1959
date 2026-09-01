@@ -1,6 +1,10 @@
 import Link from "next/link";
+import Image from "next/image";
 import type { CartItem as CartItemType } from "@/lib/cart";
 import { deliverySummary, formatTL, itemTotal } from "@/lib/cart-utils";
+
+/** New cart items carry a real /products/... path; older ones a gradient class. */
+const isPhoto = (image: string) => image.startsWith("/");
 
 function QtyControl({
   value,
@@ -77,11 +81,23 @@ export function CartItemRow({
       {/* Image */}
       <Link href={`/urunler/${item.slug}`} className="shrink-0">
         <div
-          className={`relative h-[104px] w-[86px] overflow-hidden rounded-md bg-gradient-to-br sm:h-[130px] sm:w-[108px] ${item.image}`}
+          className={`relative h-[104px] w-[86px] overflow-hidden rounded-md bg-gradient-to-br sm:h-[130px] sm:w-[108px] ${
+            isPhoto(item.image) ? "bg-cream-dark" : item.image
+          }`}
         >
-          <span className="absolute inset-0 flex items-center justify-center font-serif text-3xl text-espresso/15 select-none">
-            {item.productName.charAt(0)}
-          </span>
+          {isPhoto(item.image) ? (
+            <Image
+              src={item.image}
+              alt={item.productName}
+              fill
+              sizes="108px"
+              className="object-cover"
+            />
+          ) : (
+            <span className="absolute inset-0 flex items-center justify-center font-serif text-3xl text-espresso/15 select-none">
+              {item.productName.charAt(0)}
+            </span>
+          )}
         </div>
       </Link>
 

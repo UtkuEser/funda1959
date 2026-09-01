@@ -1,11 +1,15 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { Container } from "@/components/shared/Container";
 import { ProductGridCard } from "@/components/catalog/ProductGridCard";
 import { addToCart } from "@/lib/cart";
 import { branches, type ProductDetail as ProductDetailType } from "@/lib/data";
+
+/** demo photo (public path) vs. a gradient class fragment */
+const isPhoto = (src: string) => src.startsWith("/");
 
 const VARIANT_TITLE: Record<string, string> = {
   serving: "Boyut Seçin",
@@ -133,41 +137,73 @@ export function ProductDetail({ product }: { product: ProductDetailType }) {
       <div className="grid gap-8 lg:grid-cols-[1.15fr_1fr] lg:gap-14">
         {/* Gallery */}
         <div>
-          <div
-            className={`relative aspect-[4/5] overflow-hidden rounded-lg bg-gradient-to-br ${product.images[activeImage]}`}
-          >
-            <div
-              className="absolute inset-0"
-              style={{ background: `rgba(110,34,48,${activeImage * 0.045})` }}
-            />
-            <div className="absolute inset-0 flex items-center justify-center opacity-[0.12]">
-              <span className="font-serif text-8xl text-espresso select-none">
-                {product.name.charAt(0)}
-              </span>
-            </div>
-            <span className="absolute bottom-3 left-4 font-sans text-[12px] text-espresso/50">
-              {product.imageLabels[activeImage]}
-            </span>
-          </div>
-
-          <div className="mt-3 grid grid-cols-4 gap-2 sm:gap-3">
-            {product.images.map((img, i) => (
-              <button
-                key={i}
-                type="button"
-                onClick={() => setActiveImage(i)}
-                aria-label={`${product.imageLabels[i]} görselini göster`}
-                className={`relative aspect-square overflow-hidden rounded-md bg-gradient-to-br ${img} transition-opacity ${
-                  i === activeImage ? "ring-2 ring-burgundy" : "opacity-60 hover:opacity-100"
+          {(() => {
+            const current = product.images[activeImage];
+            const photo = isPhoto(current);
+            return (
+              <div
+                className={`relative aspect-[4/5] overflow-hidden rounded-lg bg-gradient-to-br ${
+                  photo ? "bg-cream-dark" : current
                 }`}
               >
-                <span
-                  className="absolute inset-0"
-                  style={{ background: `rgba(110,34,48,${i * 0.045})` }}
-                />
-              </button>
-            ))}
-          </div>
+                {photo ? (
+                  <Image
+                    src={current}
+                    alt={product.name}
+                    fill
+                    priority
+                    sizes="(max-width: 1024px) 92vw, 640px"
+                    className="object-cover"
+                  />
+                ) : (
+                  <>
+                    <div
+                      className="absolute inset-0"
+                      style={{ background: `rgba(110,34,48,${activeImage * 0.045})` }}
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center opacity-[0.12]">
+                      <span className="font-serif text-8xl text-espresso select-none">
+                        {product.name.charAt(0)}
+                      </span>
+                    </div>
+                    <span className="absolute bottom-3 left-4 font-sans text-[12px] text-espresso/50">
+                      {product.imageLabels[activeImage]}
+                    </span>
+                  </>
+                )}
+              </div>
+            );
+          })()}
+
+          {product.images.length > 1 && (
+            <div className="mt-3 grid grid-cols-4 gap-2 sm:gap-3">
+              {product.images.map((img, i) => {
+                const photo = isPhoto(img);
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => setActiveImage(i)}
+                    aria-label={`${product.imageLabels[i]} görselini göster`}
+                    className={`relative aspect-square overflow-hidden rounded-md bg-gradient-to-br ${
+                      photo ? "bg-cream-dark" : img
+                    } transition-opacity ${
+                      i === activeImage ? "ring-2 ring-burgundy" : "opacity-60 hover:opacity-100"
+                    }`}
+                  >
+                    {photo ? (
+                      <Image src={img} alt="" fill sizes="120px" className="object-cover" />
+                    ) : (
+                      <span
+                        className="absolute inset-0"
+                        style={{ background: `rgba(110,34,48,${i * 0.045})` }}
+                      />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Purchase panel */}

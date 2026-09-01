@@ -1,12 +1,12 @@
-import type { HeroSlideVisual } from "@/lib/hero-slides";
+type HeroVisualVariant = "heritage" | "celebration" | "daily";
 
 /**
- * Placeholder art for each hero slide. Every variant shares the same warm
- * container, soft gradient and a single restrained line motif so the three
- * slides read as one visual system. Swap the gradient block for a real
- * photograph when photography is available.
+ * Graceful fallback art for a hero slide when no product photo can be
+ * resolved from /public/products. Every variant shares the same warm
+ * container, soft gradient and a single restrained line motif so the slides
+ * still read as one visual system.
  */
-export function HeroVisual({ variant }: { variant: HeroSlideVisual }) {
+export function HeroVisual({ variant }: { variant: HeroVisualVariant }) {
   if (variant === "celebration") {
     return (
       <div className="absolute inset-0">

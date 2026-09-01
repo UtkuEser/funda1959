@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useState } from "react";
 import { canQuickAddToCart, type CatalogProduct } from "@/lib/data";
 import { addToCart } from "@/lib/cart";
@@ -30,7 +31,7 @@ export function ProductGridCard({ product }: { product: CatalogProduct }) {
       slug: product.slug,
       productName: product.name,
       categoryName: product.categoryName,
-      image: product.gradient,
+      image: product.image ?? product.gradient,
       selectedVariant: null,
       variantLabel: null,
       unitPrice: product.priceValue,
@@ -53,11 +54,21 @@ export function ProductGridCard({ product }: { product: CatalogProduct }) {
         <div
           className={`relative w-full aspect-square overflow-hidden rounded-lg bg-gradient-to-br sm:aspect-[4/5] ${product.gradient}`}
         >
-          <div className="absolute inset-0 flex items-center justify-center opacity-[0.1] transition-opacity duration-500 group-hover:opacity-[0.16]">
-            <span className="font-serif text-6xl leading-none text-espresso select-none">
-              {product.name.charAt(0)}
-            </span>
-          </div>
+          {product.image ? (
+            <Image
+              src={product.image}
+              alt={product.name}
+              fill
+              sizes="(max-width: 768px) 50vw, (max-width: 1280px) 33vw, 300px"
+              className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+            />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center opacity-[0.1] transition-opacity duration-500 group-hover:opacity-[0.16]">
+              <span className="font-serif text-6xl leading-none text-espresso select-none">
+                {product.name.charAt(0)}
+              </span>
+            </div>
+          )}
 
           {badges.length > 0 && (
             <div className="absolute left-2.5 top-2.5 flex flex-col items-start gap-1">

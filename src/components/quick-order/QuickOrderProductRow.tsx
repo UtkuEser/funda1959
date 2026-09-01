@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useMemo, useState } from "react";
 import type { CatalogProduct } from "@/lib/data";
 import { addToCart } from "@/lib/cart";
@@ -70,7 +71,7 @@ export function QuickOrderProductRow({ product }: { product: CatalogProduct }) {
       slug: product.slug,
       productName: product.name,
       categoryName: product.categoryName,
-      image: product.gradient,
+      image: product.image ?? product.gradient,
       selectedVariant: selectedVariant ? selectedVariant.id : null,
       variantLabel: selectedVariant ? selectedVariant.label : null,
       unitPrice,
@@ -96,11 +97,21 @@ export function QuickOrderProductRow({ product }: { product: CatalogProduct }) {
     <article className="border-b border-sand-light py-4 last:border-b-0">
       <div className="flex gap-3 sm:gap-4">
         <div
-          className={`grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-md bg-gradient-to-br sm:h-[84px] sm:w-[84px] ${product.gradient}`}
+          className={`relative grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-md bg-gradient-to-br sm:h-[84px] sm:w-[84px] ${product.gradient}`}
         >
-          <span className="font-serif text-2xl leading-none text-espresso/25 select-none sm:text-3xl">
-            {product.name.charAt(0)}
-          </span>
+          {product.image ? (
+            <Image
+              src={product.image}
+              alt={product.name}
+              fill
+              sizes="84px"
+              className="object-cover"
+            />
+          ) : (
+            <span className="font-serif text-2xl leading-none text-espresso/25 select-none sm:text-3xl">
+              {product.name.charAt(0)}
+            </span>
+          )}
         </div>
 
         <div className="flex min-w-0 flex-1 flex-col">

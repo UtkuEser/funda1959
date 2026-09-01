@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import type { CatalogProduct } from "@/lib/data";
 
 /** Compact autocomplete row — image, name, category, price. */
@@ -18,9 +19,13 @@ export function SearchResultItem({
       <div
         className={`relative h-14 w-12 shrink-0 overflow-hidden rounded-md bg-gradient-to-br ${product.gradient}`}
       >
-        <span className="absolute inset-0 flex items-center justify-center font-serif text-lg text-espresso/15">
-          {product.name.charAt(0)}
-        </span>
+        {product.image ? (
+          <Image src={product.image} alt={product.name} fill sizes="48px" className="object-cover" />
+        ) : (
+          <span className="absolute inset-0 flex items-center justify-center font-serif text-lg text-espresso/15">
+            {product.name.charAt(0)}
+          </span>
+        )}
       </div>
       <div className="min-w-0 flex-1">
         <p className="truncate font-sans text-[14px] font-medium text-espresso">{product.name}</p>

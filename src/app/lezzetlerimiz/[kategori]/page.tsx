@@ -1,11 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import {
-  categories,
-  getCategoryBySlug,
-  getProductsByCategory,
-} from "@/lib/data";
+import { catalogProducts, categories, getCategoryBySlug } from "@/lib/data";
 import { ProductCard } from "@/components/shared/ProductCard";
 import { FadeIn } from "@/components/shared/FadeIn";
 import { CTASection } from "@/components/shared/CTASection";
@@ -45,7 +41,7 @@ export default async function KategoriPage({ params }: Props) {
 
   if (!category) notFound();
 
-  const categoryProducts = getProductsByCategory(kategori);
+  const categoryProducts = catalogProducts.filter((p) => p.categorySlug === kategori);
   const otherCategories = categories.filter((c) => c.slug !== kategori).slice(0, 6);
 
   return (
@@ -124,7 +120,7 @@ export default async function KategoriPage({ params }: Props) {
                     key={product.id}
                     delay={index < 4 ? ([0, 100, 200, 300][index] as 0 | 100 | 200 | 300) : 0}
                   >
-                    <ProductCard product={product} />
+                    <ProductCard product={product} image={product.image} />
                   </FadeIn>
                 ))}
               </div>
