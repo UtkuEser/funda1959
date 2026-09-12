@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { Fraunces, Inter } from "next/font/google";
 import "./globals.css";
-import { Header } from "@/components/layout/Header";
-import { Footer } from "@/components/layout/Footer";
+import { SiteChrome } from "@/components/layout/SiteChrome";
+import { DeliveryProvider } from "@/lib/delivery/context";
 import { generateLocalBusinessSchema } from "@/lib/schema";
 
 const fraunces = Fraunces({
@@ -78,9 +78,9 @@ export default function RootLayout({
       <body
         className={`${fraunces.variable} ${inter.variable} font-sans bg-cream-light text-espresso antialiased`}
       >
-        <Header />
-        <main>{children}</main>
-        <Footer />
+        <DeliveryProvider>
+          <SiteChrome>{children}</SiteChrome>
+        </DeliveryProvider>
       </body>
     </html>
   );

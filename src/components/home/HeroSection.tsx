@@ -61,7 +61,7 @@ export function HeroSection({ slides }: { slides: ResolvedHeroSlide[] }) {
 
   return (
     <section
-      className="relative bg-cream-light pt-24 md:pt-28 pb-14 md:pb-20"
+      className="relative bg-cream-light pt-20 md:pt-24 pb-10 md:pb-14"
       aria-roledescription="carousel"
       aria-label="Funda 1959 öne çıkanlar"
       onMouseEnter={() => setPaused(true)}
@@ -126,7 +126,7 @@ export function HeroSection({ slides }: { slides: ResolvedHeroSlide[] }) {
 
           {/* Right — visual (photo crossfade + subtle settle) */}
           <div className="relative mx-auto w-full max-w-[420px] sm:max-w-[460px] lg:max-w-none">
-            <div className="relative aspect-[5/4] w-full overflow-hidden rounded-2xl bg-cream-dark shadow-[0_40px_90px_-40px_rgba(110,34,48,0.45)] ring-1 ring-espresso/[0.06] sm:aspect-[4/5] lg:aspect-auto lg:h-[560px]">
+            <div className="relative aspect-[5/4] w-full overflow-hidden rounded-2xl bg-cream-dark shadow-[0_40px_90px_-40px_rgba(110,34,48,0.45)] ring-1 ring-espresso/[0.06] sm:aspect-[4/5] lg:aspect-auto lg:h-[490px]">
               {slides.map((slide, i) => {
                 const on = i === index;
                 return (
@@ -181,7 +181,7 @@ export function HeroSection({ slides }: { slides: ResolvedHeroSlide[] }) {
         </div>
 
         {/* Controls */}
-        <div className="mt-8 flex items-center gap-5 lg:mt-11">
+        <div className="mt-6 flex items-center gap-5 lg:mt-8">
           <div className="flex items-center gap-2">
             <button
               type="button"

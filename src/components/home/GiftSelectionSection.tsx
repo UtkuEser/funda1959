@@ -6,13 +6,13 @@ import { FadeIn } from "@/components/shared/FadeIn";
 
 export function GiftSelectionSection() {
   return (
-    <section id="hediyelik" className="scroll-mt-24 bg-cream-light py-16 md:py-24">
+    <section id="hediyelik" className="scroll-mt-24 bg-cream-light py-12 md:py-20">
       <Container>
         <div className="grid grid-cols-1 lg:grid-cols-[1.05fr_0.95fr] gap-10 lg:gap-16 items-center">
           {/* Left — one strong editorial image */}
           <FadeIn direction="scale">
             <div
-              className="w-full aspect-[4/3] lg:aspect-[5/4] overflow-hidden rounded-xl relative"
+              className="w-full aspect-[4/3] lg:aspect-[10/7] overflow-hidden rounded-xl relative"
               style={{
                 background:
                   "linear-gradient(145deg, #E9D9C4 0%, #D8BE9E 50%, #C09E86 100%)",

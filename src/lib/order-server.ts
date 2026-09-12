@@ -5,6 +5,8 @@
  */
 
 import { catalogProducts, getProductDetail } from "./data";
+import { getBranchProduct } from "./inventory";
+import { listBranches } from "./branch";
 import {
   ANKARA_DISTRICTS,
   DELIVERY_TIME_SLOTS,
@@ -14,7 +16,7 @@ import {
   toISODate,
 } from "./checkout-utils";
 
-const BRANCH_SLUGS = ["gop", "panora", "incek"];
+const BRANCH_SLUGS = listBranches().map((b) => b.slug);
 const MAX_QTY = 20;
 
 type BuildResult =
@@ -115,19 +117,31 @@ export function buildOrderPayload(body: unknown): BuildResult {
 
   const date = str(d.date);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return fail("Teslimat tarihi geçersiz.");
-  if (date < earliestDate(maxPrep)) {
-    return fail("Seçilen teslimat tarihi bu sipariş için uygun değil.");
-  }
 
   const timeSlot = str(d.timeSlot);
   if (!DELIVERY_TIME_SLOTS.includes(timeSlot)) return fail("Teslimat saati geçersiz.");
 
-  let branchSlug: string | null = null;
+  // branch is routed for delivery too (via the zone) — accept it either way
+  const rawBranch = str(d.branchSlug);
+  if (rawBranch && !BRANCH_SLUGS.includes(rawBranch)) return fail("Mağaza seçimi geçersiz.");
+  const branchSlug: string | null = rawBranch || null;
   let address: Record<string, unknown> | null = null;
 
+  // preparation feasibility — branch-aware when we know the branch
+  let effectivePrepHours = maxPrep;
+  if (branchSlug) {
+    effectivePrepHours = 0;
+    for (const it of items) {
+      const bp = getBranchProduct(branchSlug, it.product_id as string);
+      effectivePrepHours = Math.max(effectivePrepHours, bp ? bp.prepTimeMinutes / 60 : maxPrep);
+    }
+  }
+  if (date < earliestDate(effectivePrepHours)) {
+    return fail("Seçilen teslimat tarihi bu sipariş için uygun değil.");
+  }
+
   if (type === "pickup") {
-    branchSlug = str(d.branchSlug);
-    if (!BRANCH_SLUGS.includes(branchSlug)) return fail("Mağaza seçimi geçersiz.");
+    if (!branchSlug) return fail("Bir mağaza seçin.");
   } else {
     const a = (d.address ?? null) as Record<string, unknown> | null;
     if (!a) return fail("Teslimat adresi gerekli.");

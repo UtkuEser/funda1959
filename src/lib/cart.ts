@@ -109,6 +109,20 @@ export function removeItem(id: string): void {
   write(read().filter((i) => i.id !== id));
 }
 
+export function removeItems(ids: string[]): void {
+  const drop = new Set(ids);
+  write(read().filter((i) => !drop.has(i.id)));
+}
+
+/**
+ * Apply the same field patch to every line — used by the fulfillment layer to
+ * stamp the resolved branch + delivery date/slot onto the whole cart (one
+ * order = one branch).
+ */
+export function patchAllItems(patch: Partial<Omit<CartItem, "id">>): void {
+  write(read().map((i) => ({ ...i, ...patch })));
+}
+
 export function clearCart(): void {
   write([]);
 }

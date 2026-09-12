@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { OrderConfirmation } from "@/components/checkout/OrderConfirmation";
-import { getOrderSummary } from "@/lib/supabase-server";
+import { getPublicOrder } from "@/lib/orders";
 import type { OrderSummary } from "@/lib/order";
 
 export const metadata: Metadata = {
@@ -18,7 +18,7 @@ export default async function OrderSuccessPage({ searchParams }: Props) {
   let summary: OrderSummary | null = null;
   if (orderNumber) {
     try {
-      summary = await getOrderSummary(orderNumber);
+      summary = await getPublicOrder(orderNumber);
     } catch {
       summary = null;
     }

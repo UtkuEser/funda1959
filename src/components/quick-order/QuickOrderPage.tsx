@@ -1,16 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Container } from "@/components/shared/Container";
 import { useCart } from "@/lib/use-cart";
 import { formatTL, quantityTotal, subtotal } from "@/lib/cart-utils";
-import {
-  catalogCategories,
-  catalogProductsForCategory,
-  type CatalogProduct,
-} from "@/lib/data";
+import { catalogCategories, catalogProductsForCategory, type CatalogProduct } from "@/lib/data";
 import { normalize } from "@/lib/search";
+import { useDelivery } from "@/lib/delivery/context";
+import type { CatalogAvailabilityVerdict } from "@/lib/availability";
+import { DeliveryContextControl } from "@/components/delivery/DeliveryContextControl";
 import { QuickOrderCategories } from "./QuickOrderCategories";
 import { QuickOrderProductRow } from "./QuickOrderProductRow";
 import { QuickOrderCartSummary } from "./QuickOrderCartSummary";
@@ -23,43 +22,74 @@ const QUICK_FILTERS: { value: QuickFilter; label: string }[] = [
   { value: "sameday", label: "Aynı Gün" },
 ];
 
-function filterProducts(
-  category: string,
-  quick: QuickFilter,
-  query: string,
-): CatalogProduct[] {
-  let list = catalogProductsForCategory(category);
-
-  if (quick === "bestseller") list = list.filter((p) => p.isBestSeller);
-  else if (quick === "sameday") list = list.filter((p) => p.sameDayDelivery);
-
+function textFilter(list: CatalogProduct[], query: string): CatalogProduct[] {
   const q = normalize(query);
-  if (q) {
-    const tokens = q.split(" ").filter(Boolean);
-    list = list.filter((p) => {
-      const hay = normalize(
-        `${p.name} ${p.categoryName} ${(p.tags ?? []).join(" ")} ${p.shortDescription ?? ""}`,
-      );
-      return tokens.every((t) => hay.includes(t));
-    });
-  }
-
-  return list;
+  if (!q) return list;
+  const tokens = q.split(" ").filter(Boolean);
+  return list.filter((p) => {
+    const hay = normalize(
+      `${p.name} ${p.categoryName} ${(p.tags ?? []).join(" ")} ${p.shortDescription ?? ""}`,
+    );
+    return tokens.every((t) => hay.includes(t));
+  });
 }
 
 export function QuickOrderPage() {
   const [category, setCategory] = useState("tumu");
   const [quick, setQuick] = useState<QuickFilter>("all");
   const [query, setQuery] = useState("");
+  const [availableTodayOnly, setAvailableTodayOnly] = useState(false);
 
-  const products = useMemo(
-    () => filterProducts(category, quick, query),
-    [category, quick, query],
-  );
+  const { context, isResolved, branchName } = useDelivery();
+
+  useEffect(() => {
+    // read once on the client to avoid an SSR hydration mismatch
+    if (new URLSearchParams(window.location.search).get("availableToday") === "1") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setAvailableTodayOnly(true);
+    }
+  }, []);
 
   const items = useCart();
   const count = quantityTotal(items);
   const sub = subtotal(items);
+
+  const baseList = useMemo(() => {
+    let list = catalogProductsForCategory(category);
+    if (quick === "bestseller") list = list.filter((p) => p.isBestSeller);
+    else if (quick === "sameday") list = list.filter((p) => p.sameDayDelivery);
+    return textFilter(list, query);
+  }, [category, quick, query]);
+
+  // server availability verdict per visible product (reservation + ops overrides aware)
+  const [verdicts, setVerdicts] = useState<Record<string, CatalogAvailabilityVerdict>>({});
+  useEffect(() => {
+    if (!isResolved) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setVerdicts({});
+      return;
+    }
+    const ctrl = new AbortController();
+    fetch("/api/availability", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        kind: "catalog",
+        context,
+        items: baseList.map((p) => ({ productId: p.id, quantity: 1 })),
+      }),
+      signal: ctrl.signal,
+    })
+      .then((r) => r.json() as Promise<{ products: Record<string, CatalogAvailabilityVerdict> }>)
+      .then((data) => setVerdicts(data.products ?? {}))
+      .catch(() => {});
+    return () => ctrl.abort();
+  }, [baseList, context, isResolved]);
+
+  const products = useMemo(() => {
+    if (!availableTodayOnly || !isResolved) return baseList;
+    return baseList.filter((p) => verdicts[p.id]?.available);
+  }, [baseList, availableTodayOnly, isResolved, verdicts]);
 
   return (
     <>
@@ -71,21 +101,16 @@ export function QuickOrderPage() {
           Lezzetleri hızlıca seçin.
         </h1>
         <p className="mt-2 max-w-xl font-sans text-[14px] leading-relaxed text-warm-brown md:text-[15px]">
-          Günlük Funda lezzetlerini pratik şekilde sepete ekleyin ve siparişinizi kolayca
-          tamamlayın.
+          Teslimat bölgenizi seçin; her ürünün bugün teslim edilebilirliğini anında görün.
         </p>
 
-        <div className="mt-8 grid gap-8 lg:grid-cols-[220px_minmax(0,1fr)_320px] lg:gap-10">
-          {/* Left — categories */}
+        <DeliveryContextControl className="mt-5" />
+
+        <div className="mt-6 grid gap-8 lg:grid-cols-[220px_minmax(0,1fr)_320px] lg:gap-10">
           <aside className="lg:sticky lg:top-24 lg:self-start">
-            <QuickOrderCategories
-              categories={catalogCategories}
-              active={category}
-              onSelect={setCategory}
-            />
+            <QuickOrderCategories categories={catalogCategories} active={category} onSelect={setCategory} />
           </aside>
 
-          {/* Middle — search + products */}
           <div className="min-w-0">
             <label htmlFor="qo-search" className="sr-only">
               Ürün ara
@@ -99,7 +124,7 @@ export function QuickOrderPage() {
               className="h-11 w-full rounded-md border border-sand bg-cream-light px-4 font-sans text-[14px] text-espresso transition-colors placeholder:text-taupe focus:border-burgundy focus:outline-none"
             />
 
-            <div className="mt-3 flex flex-wrap gap-2">
+            <div className="mt-3 flex flex-wrap items-center gap-2">
               {QUICK_FILTERS.map((f) => {
                 const on = f.value === quick;
                 return (
@@ -118,20 +143,39 @@ export function QuickOrderPage() {
                   </button>
                 );
               })}
+              {isResolved && (
+                <button
+                  type="button"
+                  aria-pressed={availableTodayOnly}
+                  onClick={() => setAvailableTodayOnly((v) => !v)}
+                  className={`rounded-md border px-3 py-1.5 font-sans text-[12.5px] transition-colors ${
+                    availableTodayOnly
+                      ? "border-burgundy bg-burgundy/[0.05] font-semibold text-burgundy"
+                      : "border-sand text-warm-brown hover:border-taupe"
+                  }`}
+                >
+                  Bugün Teslim
+                </button>
+              )}
             </div>
 
-            <p className="mt-4 font-sans text-[12px] text-taupe">{products.length} ürün</p>
+            <p className="mt-4 font-sans text-[12px] text-taupe">
+              {products.length} ürün
+              {isResolved && branchName ? ` · ${branchName} şubesinden` : ""}
+            </p>
 
             {products.length > 0 ? (
               <div className="mt-1">
                 {products.map((p) => (
-                  <QuickOrderProductRow key={p.id} product={p} />
+                  <QuickOrderProductRow key={p.id} product={p} verdict={verdicts[p.id] ?? null} />
                 ))}
               </div>
             ) : (
               <div className="mt-6 rounded-lg border border-sand-light bg-cream-light p-6 text-center">
                 <p className="font-sans text-[14px] text-warm-brown">
-                  Aramanıza uygun ürün bulunamadı.
+                  {availableTodayOnly
+                    ? "Seçtiğiniz bölgede bugün teslim edilebilecek ürün bulunamadı."
+                    : "Aramanıza uygun ürün bulunamadı."}
                 </p>
                 <button
                   type="button"
@@ -139,6 +183,7 @@ export function QuickOrderPage() {
                     setQuery("");
                     setQuick("all");
                     setCategory("tumu");
+                    setAvailableTodayOnly(false);
                   }}
                   className="mt-3 font-sans text-[13px] font-semibold text-burgundy transition-colors hover:text-chocolate-light"
                 >
@@ -148,7 +193,6 @@ export function QuickOrderPage() {
             )}
           </div>
 
-          {/* Right — sticky cart (desktop only) */}
           <aside className="hidden lg:block">
             <div className="lg:sticky lg:top-24">
               <QuickOrderCartSummary />
@@ -157,7 +201,6 @@ export function QuickOrderPage() {
         </div>
       </Container>
 
-      {/* Mobile — sticky mini cart bar */}
       {count > 0 && (
         <div className="fixed inset-x-0 bottom-0 z-20 border-t border-sand-light bg-cream-light/95 px-4 py-3 backdrop-blur lg:hidden">
           <Link href="/sepet" className="flex items-center justify-between gap-3">

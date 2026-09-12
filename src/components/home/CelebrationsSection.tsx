@@ -9,7 +9,7 @@ export function CelebrationsSection() {
   const [lead, ...rest] = celebrationCategories;
 
   return (
-    <section className="bg-cream-light py-16 md:py-24">
+    <section className="bg-cream-light py-12 md:py-20">
       <Container>
         <SectionHeader
           centered={false}
@@ -19,12 +19,12 @@ export function CelebrationsSection() {
           action={{ label: "Tüm Pastalar", href: "/lezzetlerimiz/yas-pastalar" }}
         />
 
-        <div className="grid gap-6 lg:grid-cols-2 lg:gap-8">
+        <div className="grid gap-6 lg:grid-cols-2 lg:gap-7">
           {/* Lead — one larger card */}
           <FadeIn>
             <Link href={lead.href} className="group block">
               <div
-                className={`w-full aspect-[4/5] overflow-hidden rounded-lg bg-gradient-to-br ${lead.gradient} relative`}
+                className={`relative w-full aspect-[4/5] overflow-hidden rounded-lg bg-gradient-to-br lg:aspect-auto lg:h-[420px] ${lead.gradient}`}
               >
                 {lead.image ? (
                   <Image
@@ -42,7 +42,7 @@ export function CelebrationsSection() {
                   </div>
                 )}
               </div>
-              <h3 className="mt-4 font-serif text-[22px] font-medium text-burgundy">
+              <h3 className="mt-3 font-serif text-[22px] font-medium text-burgundy">
                 {lead.title}
                 <span className="inline-block ml-1.5 text-burgundy/70 transition-transform group-hover:translate-x-0.5">
                   →
@@ -55,12 +55,12 @@ export function CelebrationsSection() {
           </FadeIn>
 
           {/* Two stacked cards */}
-          <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-4 lg:gap-5">
             {rest.map((item, index) => (
               <FadeIn key={item.title} delay={([100, 200] as const)[index]}>
                 <Link href={item.href} className="group block">
                   <div
-                    className={`w-full aspect-[16/10] overflow-hidden rounded-lg bg-gradient-to-br ${item.gradient} relative`}
+                    className={`relative w-full aspect-[16/10] overflow-hidden rounded-lg bg-gradient-to-br lg:aspect-auto lg:h-[180px] ${item.gradient}`}
                   >
                     {item.image ? (
                       <Image
@@ -78,7 +78,7 @@ export function CelebrationsSection() {
                       </div>
                     )}
                   </div>
-                  <h3 className="mt-3.5 font-serif text-[19px] font-medium text-burgundy">
+                  <h3 className="mt-2.5 font-serif text-[19px] font-medium text-burgundy">
                     {item.title}
                     <span className="inline-block ml-1.5 text-burgundy/70 transition-transform group-hover:translate-x-0.5">
                       →

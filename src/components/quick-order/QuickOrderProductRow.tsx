@@ -6,7 +6,14 @@ import { useMemo, useState } from "react";
 import type { CatalogProduct } from "@/lib/data";
 import { addToCart } from "@/lib/cart";
 import { formatTL } from "@/lib/cart-utils";
+import { cartHasBranchConflict } from "@/lib/cart-fulfillment";
 import { getQuickOrderMode } from "@/lib/quick-order-utils";
+import { useDelivery } from "@/lib/delivery/context";
+import {
+  reasonMessage,
+  type CatalogAvailabilityVerdict,
+  type AvailabilityResult,
+} from "@/lib/availability";
 
 /** Frontend-only quantity ceiling — mirrors the cart's own clamp (cart.ts). */
 const MAX_QTY = 20;
@@ -47,11 +54,43 @@ function Stepper({
   );
 }
 
-export function QuickOrderProductRow({ product }: { product: CatalogProduct }) {
+function AvailabilityLine({ v, todayISO }: { v: CatalogAvailabilityVerdict; todayISO: string }) {
+  if (v.reason === "PRODUCT_DISABLED_AT_BRANCH" || v.reason === "OUT_OF_STOCK") {
+    return <span className="text-chocolate-light">{reasonMessage(v.reason)}</span>;
+  }
+  if (v.available) {
+    return (
+      <span className="text-burgundy">
+        Bugün teslim edilebilir{v.slotLabel ? ` · en erken ${v.slotLabel}` : ""}
+      </span>
+    );
+  }
+  if (v.earliestDate) {
+    const label = v.earliestDate === todayISO ? "bugün" : "yarın ve sonrası";
+    return (
+      <span className="text-taupe">
+        Bugün uygun değil · {label} teslim edilebilir
+        {v.earliestLabel ? ` (${v.earliestLabel})` : ""}
+      </span>
+    );
+  }
+  return <span className="text-taupe">{reasonMessage(v.reason)}</span>;
+}
+
+export function QuickOrderProductRow({
+  product,
+  verdict,
+}: {
+  product: CatalogProduct;
+  verdict: CatalogAvailabilityVerdict | null;
+}) {
   const mode = useMemo(() => getQuickOrderMode(product), [product]);
+  const { context, isResolved } = useDelivery();
 
   const [qty, setQty] = useState(1);
   const [added, setAdded] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [variantId, setVariantId] = useState<string | null>(
     mode.kind === "variant" ? mode.variants[0].id : null,
   );
@@ -64,8 +103,64 @@ export function QuickOrderProductRow({ product }: { product: CatalogProduct }) {
   const unitPrice = selectedVariant ? selectedVariant.price : product.priceValue;
   const priceLabel = selectedVariant ? formatTL(unitPrice) : product.displayPrice;
 
-  const handleAdd = () => {
-    // Real cart — same payload shape the catalog / detail flows use.
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const now = new Date();
+  const todayISO = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+
+  const handleAdd = async () => {
+    setError(null);
+
+    let branch: string | null = null;
+    let deliveryDate: string | null = null;
+    let deliveryTime: string | null = null;
+    let deliveryType: "address" | "pickup" | null = null;
+
+    if (isResolved) {
+      setBusy(true);
+      // authoritative check (reservation- + ops-panel-override-aware)
+      const check = await fetch("/api/availability", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          kind: "product",
+          productId: product.id,
+          productSlug: product.slug,
+          variantId: selectedVariant?.id ?? null,
+          quantity: qty,
+          context,
+        }),
+      })
+        .then((r) => r.json() as Promise<AvailabilityResult>)
+        .catch(() => null);
+      setBusy(false);
+
+      if (!check) {
+        setError("Uygunluk kontrol edilemedi. Lütfen tekrar deneyin.");
+        return;
+      }
+      if (check.reason === "PRODUCT_DISABLED_AT_BRANCH" || check.reason === "OUT_OF_STOCK") {
+        setError(reasonMessage(check.reason));
+        return;
+      }
+      if (cartHasBranchConflict(check.branchId)) {
+        setError("Sepetinizde başka bir şubeden ürün var. Önce mevcut siparişi tamamlayın.");
+        return;
+      }
+      const target = check.available
+        ? { date: check.requestedDate, slot: check.slots.find((s) => s.available) ?? null }
+        : check.earliestAvailableSlot
+          ? { date: check.earliestAvailableSlot.date, slot: check.earliestAvailableSlot }
+          : null;
+      if (!target || !target.slot) {
+        setError(reasonMessage(check.reason));
+        return;
+      }
+      branch = check.branchId;
+      deliveryDate = target.date;
+      deliveryTime = target.slot.label;
+      deliveryType = context.fulfillmentType === "delivery" ? "address" : "pickup";
+    }
+
     addToCart({
       productId: product.id,
       slug: product.slug,
@@ -78,10 +173,10 @@ export function QuickOrderProductRow({ product }: { product: CatalogProduct }) {
       quantity: qty,
       quantityEnabled: true,
       customization: { extras: [] },
-      deliveryType: null,
-      deliveryDate: null,
-      deliveryTime: null,
-      branch: null,
+      deliveryType,
+      deliveryDate,
+      deliveryTime,
+      branch,
       addedAt: Date.now(),
     });
     setAdded(true);
@@ -100,13 +195,7 @@ export function QuickOrderProductRow({ product }: { product: CatalogProduct }) {
           className={`relative grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-md bg-gradient-to-br sm:h-[84px] sm:w-[84px] ${product.gradient}`}
         >
           {product.image ? (
-            <Image
-              src={product.image}
-              alt={product.name}
-              fill
-              sizes="84px"
-              className="object-cover"
-            />
+            <Image src={product.image} alt={product.name} fill sizes="84px" className="object-cover" />
           ) : (
             <span className="font-serif text-2xl leading-none text-espresso/25 select-none sm:text-3xl">
               {product.name.charAt(0)}
@@ -127,13 +216,9 @@ export function QuickOrderProductRow({ product }: { product: CatalogProduct }) {
             </span>
           </div>
 
-          {/* Inline variant chips (serving / weight / pack) */}
+          {/* Inline variant chips */}
           {mode.kind === "variant" && (
-            <div
-              className="mt-2.5 flex flex-wrap gap-1.5"
-              role="group"
-              aria-label={mode.label}
-            >
+            <div className="mt-2.5 flex flex-wrap gap-1.5" role="group" aria-label={mode.label}>
               {mode.variants.map((v) => {
                 const on = v.id === selectedVariant?.id;
                 return (
@@ -155,6 +240,13 @@ export function QuickOrderProductRow({ product }: { product: CatalogProduct }) {
             </div>
           )}
 
+          {/* Availability line */}
+          {mode.kind !== "detailed" && isResolved && verdict && (
+            <p className="mt-2 font-sans text-[12px] leading-snug">
+              <AvailabilityLine v={verdict} todayISO={todayISO} />
+            </p>
+          )}
+
           {/* Controls */}
           <div className="mt-3 flex flex-wrap items-center gap-2.5">
             {mode.kind === "detailed" ? (
@@ -166,17 +258,23 @@ export function QuickOrderProductRow({ product }: { product: CatalogProduct }) {
               </Link>
             ) : (
               <>
-                <Stepper value={qty} onChange={setQty} disabled={added} />
+                <Stepper value={qty} onChange={setQty} disabled={added || busy} />
                 <button
                   type="button"
                   onClick={handleAdd}
-                  className="inline-flex h-9 items-center rounded-md bg-burgundy px-4 font-sans text-[13px] font-semibold text-cream-light transition-colors hover:bg-chocolate-light"
+                  disabled={busy}
+                  className="inline-flex h-9 items-center rounded-md bg-burgundy px-4 font-sans text-[13px] font-semibold text-cream-light transition-colors hover:bg-chocolate-light disabled:opacity-60"
                 >
-                  {added ? "Sepete Eklendi ✓" : "Sepete Ekle"}
+                  {added ? "Sepete Eklendi ✓" : busy ? "Kontrol ediliyor…" : "Sepete Ekle"}
                 </button>
               </>
             )}
           </div>
+          {error && (
+            <p role="alert" className="mt-1.5 font-sans text-[12px] text-chocolate-light">
+              {error}
+            </p>
+          )}
         </div>
       </div>
     </article>

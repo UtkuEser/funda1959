@@ -17,6 +17,7 @@ import {
 } from "@/lib/checkout-utils";
 import type { CreateOrderRequest } from "@/lib/order";
 import { setCheckoutHandoff } from "@/lib/checkout-handoff";
+import { resolveZone } from "@/lib/delivery/zones";
 import { CheckoutSummary } from "./CheckoutSummary";
 import { ContactStep } from "./ContactStep";
 import { DeliveryStep } from "./DeliveryStep";
@@ -221,12 +222,20 @@ export function CheckoutPage() {
     const deliveryDate = state.date && state.date >= earliest ? state.date : earliest;
     const deliveryTimeSlot = state.timeSlot ?? DELIVERY_TIME_SLOTS[0];
 
+    // branch routing: pickup uses the chosen branch, delivery resolves via zone
+    const zone =
+      state.deliveryType === "delivery"
+        ? resolveZone(state.address.district, state.address.neighborhood)
+        : null;
+    const branchId = state.deliveryType === "pickup" ? state.branch : zone?.branchId ?? null;
+    const slotStart = deliveryTimeSlot.match(/(\d{2}:\d{2})/)?.[1] ?? "10:00";
+
     const request: CreateOrderRequest = {
       clientRequestId: requestIdRef.current,
       customer: { ...state.contact },
       delivery: {
         type: state.deliveryType,
-        branchSlug: state.deliveryType === "pickup" ? state.branch : null,
+        branchSlug: branchId,
         date: deliveryDate,
         timeSlot: deliveryTimeSlot,
         address:
@@ -276,6 +285,19 @@ export function CheckoutPage() {
         date: deliveryDate,
         timeSlot: deliveryTimeSlot,
       },
+      reservation: branchId
+        ? {
+            branchId,
+            deliveryZoneId: zone?.id ?? null,
+            date: deliveryDate,
+            slotStart,
+            items: items.map((ci) => ({
+              productId: ci.productId,
+              variantId: ci.selectedVariant,
+              quantity: ci.quantity,
+            })),
+          }
+        : undefined,
     });
     router.push("/hizli-siparis-odeme");
   };

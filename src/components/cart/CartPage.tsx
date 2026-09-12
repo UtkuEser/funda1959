@@ -7,6 +7,7 @@ import { useCart } from "@/lib/use-cart";
 import { hasMixedDelivery } from "@/lib/cart-utils";
 import { CartItemRow } from "./CartItem";
 import { CartSummary } from "./CartSummary";
+import { CartFulfillmentBanner } from "./CartFulfillmentBanner";
 import { EmptyCart } from "./EmptyCart";
 
 function Breadcrumb() {
@@ -45,6 +46,8 @@ export function CartPage() {
       <p className="mt-2 font-sans text-[14px] text-warm-brown">
         Siparişinizi tamamlamadan önce ürünlerinizi ve seçimlerinizi kontrol edin.
       </p>
+
+      <CartFulfillmentBanner />
 
       {mixedDelivery && (
         <p className="mt-6 rounded-lg border border-sand bg-cream-light px-4 py-3 font-sans text-[13px] leading-relaxed text-warm-brown">

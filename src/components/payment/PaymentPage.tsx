@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Container } from "@/components/shared/Container";
@@ -9,6 +9,7 @@ import { clearCart } from "@/lib/cart";
 import { useCart } from "@/lib/use-cart";
 import { formatCartDate } from "@/lib/cart-utils";
 import { getCheckoutHandoff, type CheckoutHandoff } from "@/lib/checkout-handoff";
+import { reasonMessage, type ReasonCode } from "@/lib/availability";
 import type { CreateOrderResult } from "@/lib/order";
 import {
   PaymentForm,
@@ -84,6 +85,11 @@ function Line({ label, value }: { label: string; value: string }) {
   );
 }
 
+function mmss(ms: number): string {
+  const total = Math.max(0, Math.round(ms / 1000));
+  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+}
+
 export function PaymentPage() {
   const router = useRouter();
   const items = useCart();
@@ -93,6 +99,62 @@ export function PaymentPage() {
   const [errors, setErrors] = useState<CardFormErrors>({});
   const [pending, setPending] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  const [reservationId, setReservationId] = useState<string | null>(null);
+  const [expiresAt, setExpiresAt] = useState<number | null>(null);
+  const [remainingMs, setRemainingMs] = useState<number | null>(null);
+  const [holdError, setHoldError] = useState<string | null>(null);
+  const reservedRef = useRef(false);
+
+  // place the capacity hold once, on arrival
+  useEffect(() => {
+    const draft = handoff?.reservation;
+    if (!draft || reservedRef.current) return;
+    reservedRef.current = true;
+
+    (async () => {
+      try {
+        const res = await fetch("/api/reservations", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            context: {
+              fulfillmentType: handoff?.summary.deliveryLabel === "Mağazadan Teslim" ? "pickup" : "delivery",
+              branchId: draft.branchId,
+              deliveryZoneId: draft.deliveryZoneId,
+              district: null,
+              neighborhood: null,
+            },
+            date: draft.date,
+            slotStart: draft.slotStart,
+            items: draft.items,
+          }),
+        });
+        const data = (await res.json().catch(() => null)) as
+          | { ok?: boolean; reservationId?: string; expiresAt?: number; reason?: ReasonCode }
+          | null;
+        if (res.ok && data?.ok && data.reservationId) {
+          setReservationId(data.reservationId);
+          setExpiresAt(data.expiresAt ?? Date.now() + 10 * 60_000);
+        } else {
+          setHoldError(reasonMessage(data?.reason ?? "DELIVERY_SLOT_FULL"));
+        }
+      } catch {
+        /* non-fatal for the demo — order route still re-checks */
+      }
+    })();
+  }, [handoff]);
+
+  // countdown
+  useEffect(() => {
+    if (!expiresAt) return;
+    const tick = () => setRemainingMs(Math.max(0, expiresAt - Date.now()));
+    tick();
+    const t = setInterval(tick, 1000);
+    return () => clearInterval(t);
+  }, [expiresAt]);
+
+  const holdExpired = remainingMs !== null && remainingMs <= 0;
 
   const patchCard = (patch: Partial<CardFormValue>) => {
     setCard((c) => ({ ...c, ...patch }));
@@ -109,8 +171,6 @@ export function PaymentPage() {
     setErrors((e) => ({ ...e, [field]: fieldError }));
   };
 
-  // Real "complete payment" — no payment provider is wired in, so this only
-  // validates the form shape and surfaces the integration-pending state.
   const completePayment = () => {
     const found = validateCard(card);
     setErrors(found);
@@ -121,16 +181,19 @@ export function PaymentPage() {
     setPending(true);
   };
 
-  // Dev-only: exercise the full funnel end to end. Order creation is moved
-  // here (post-payment) — the existing /api/orders backend is untouched.
+  // Dev-only: run the funnel end to end — payment success -> confirm hold -> order.
   const demoComplete = async () => {
-    if (!handoff || submitting) return;
+    if (!handoff || submitting || holdExpired) return;
     setSubmitting(true);
     try {
       const res = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(handoff.request),
+        body: JSON.stringify({
+          ...handoff.request,
+          reservationId,
+          deliveryZoneId: handoff.reservation?.deliveryZoneId ?? null,
+        }),
       });
       const data = (await res.json().catch(() => null)) as CreateOrderResult | null;
       if (res.ok && data && data.ok) {
@@ -138,11 +201,14 @@ export function PaymentPage() {
         router.push(`/siparis-basarili?order=${encodeURIComponent(data.order.orderNumber)}`);
         return;
       }
+      if (res.status === 409) {
+        setHoldError(data && !data.ok ? data.error : "Ayırdığınız kapasitenin süresi doldu.");
+      }
     } catch {
-      /* fall through to the plain success route for the demo */
+      /* fall through */
     }
     setSubmitting(false);
-    router.push("/siparis-basarili");
+    if (!holdError) router.push("/siparis-basarili");
   };
 
   return (
@@ -168,24 +234,40 @@ export function PaymentPage() {
 
           <PaymentSteps />
 
+          {reservationId && !holdExpired && remainingMs !== null && (
+            <p className="mt-4 inline-flex items-center gap-2 rounded-md border border-burgundy/15 bg-burgundy/[0.03] px-3 py-1.5 font-sans text-[12.5px] text-warm-brown">
+              Teslimat kapasiteniz ayrıldı · kalan süre
+              <span className="font-semibold tabular-nums text-burgundy">{mmss(remainingMs)}</span>
+            </p>
+          )}
+          {holdExpired && (
+            <p className="mt-4 rounded-md border border-chocolate-light/30 bg-chocolate-light/[0.05] px-3 py-2 font-sans text-[12.5px] text-chocolate-light">
+              Ayırdığınız teslimat kapasitesinin süresi doldu.{" "}
+              <Link href="/checkout" className="font-semibold underline">
+                Teslimat saatini yeniden seçin.
+              </Link>
+            </p>
+          )}
+          {holdError && !holdExpired && (
+            <p className="mt-4 rounded-md border border-chocolate-light/30 bg-chocolate-light/[0.05] px-3 py-2 font-sans text-[12.5px] text-chocolate-light">
+              {holdError}
+            </p>
+          )}
+
           <div className="mt-7 grid gap-10 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-14 lg:items-start">
             <div>
               <DeliverySummary handoff={handoff} />
 
               <div className="mt-8 border-t border-sand-light pt-8">
-                <PaymentForm
-                  value={card}
-                  errors={errors}
-                  onChange={patchCard}
-                  onBlurField={blurField}
-                />
+                <PaymentForm value={card} errors={errors} onChange={patchCard} onBlurField={blurField} />
               </div>
 
               <div className="mt-7">
                 <button
                   type="button"
                   onClick={completePayment}
-                  className="h-12 w-full rounded-md bg-burgundy font-sans text-[15px] font-semibold text-cream-light transition-colors hover:bg-chocolate-light sm:w-auto sm:px-10"
+                  disabled={holdExpired}
+                  className="h-12 w-full rounded-md bg-burgundy font-sans text-[15px] font-semibold text-cream-light transition-colors hover:bg-chocolate-light disabled:cursor-not-allowed disabled:bg-burgundy/40 sm:w-auto sm:px-10"
                 >
                   Ödemeyi Tamamla
                 </button>
@@ -205,7 +287,7 @@ export function PaymentPage() {
                     <button
                       type="button"
                       onClick={demoComplete}
-                      disabled={!handoff || submitting}
+                      disabled={!handoff || submitting || holdExpired}
                       className="font-sans text-[12.5px] font-semibold text-taupe underline decoration-taupe/40 underline-offset-4 transition-colors hover:text-burgundy disabled:opacity-50"
                     >
                       {submitting ? "Demo akışı çalışıyor…" : "Demo Akışı Tamamla (yalnızca geliştirme)"}

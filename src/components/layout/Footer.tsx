@@ -18,8 +18,8 @@ const cornerLinks = [
 export function Footer() {
   return (
     <footer className="bg-burgundy text-cream/75">
-      <Container className="py-16 md:py-20">
-        <div className="grid grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1.1fr] gap-x-8 gap-y-12">
+      <Container className="py-14 md:py-16">
+        <div className="grid grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1.1fr] gap-x-8 gap-y-9">
           {/* Brand */}
           <div className="col-span-2 lg:col-span-1">
             <div className="flex items-baseline gap-2">
@@ -108,7 +108,7 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="mt-14 pt-6 border-t border-cream/15 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+        <div className="mt-10 pt-6 border-t border-cream/15 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <p className="font-sans text-[13px] text-cream/45">
             © {new Date().getFullYear()} Funda 1959. Tüm hakları saklıdır.
           </p>

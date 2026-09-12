@@ -8,9 +8,18 @@ type ProductCardProps = {
   size?: "default" | "large";
   /** explicit demo photo; when omitted the category's first photo is used */
   image?: string | null;
+  /** override the image box's aspect ratio; defaults to the standard 4:5 used on category pages */
+  imageAspectClassName?: string;
+  /** tighter body spacing for denser homepage placements — visual only, same content */
+  compact?: boolean;
 };
 
-export function ProductCard({ product, image }: ProductCardProps) {
+export function ProductCard({
+  product,
+  image,
+  imageAspectClassName = "aspect-[4/5]",
+  compact = false,
+}: ProductCardProps) {
   const src = image ?? productImagesForCategory(product.categorySlug)[0] ?? null;
 
   return (
@@ -20,7 +29,7 @@ export function ProductCard({ product, image }: ProductCardProps) {
     >
       {/* Image — the primary element */}
       <div
-        className={`relative w-full aspect-[4/5] overflow-hidden rounded-lg bg-gradient-to-br ${product.gradient}`}
+        className={`relative w-full ${imageAspectClassName} overflow-hidden rounded-lg bg-gradient-to-br ${product.gradient}`}
       >
         {src ? (
           <Image
@@ -40,12 +49,12 @@ export function ProductCard({ product, image }: ProductCardProps) {
       </div>
 
       {/* Body */}
-      <div className="pt-3.5">
+      <div className={compact ? "pt-2.5" : "pt-3.5"}>
         <h3 className="font-serif text-[16px] font-medium text-burgundy leading-snug">
           {product.name}
         </h3>
         <p className="mt-0.5 font-sans text-[12px] text-taupe">{product.categoryName}</p>
-        <p className="mt-2 font-sans text-[14px] font-semibold text-espresso">
+        <p className={`${compact ? "mt-1.5" : "mt-2"} font-sans text-[14px] font-semibold text-espresso`}>
           {product.price ?? "Fiyat için sorunuz"}
         </p>
       </div>

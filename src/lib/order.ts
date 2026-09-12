@@ -59,6 +59,9 @@ export type OrderDraft = {
 /* Persistence model                                                          */
 /* -------------------------------------------------------------------------- */
 
+/** Where the order was placed from — Funda Puan only accrues for "web"/"mobile". */
+export type SalesChannel = "web" | "mobile" | "store";
+
 export type OrderStatus =
   | "new"
   | "confirmed"

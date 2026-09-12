@@ -7,7 +7,7 @@ import { FadeIn } from "@/components/shared/FadeIn";
 
 export function CategoryGrid() {
   return (
-    <section className="bg-cream-light py-16 md:py-24">
+    <section className="bg-cream-light py-12 md:py-20">
       <Container>
         <SectionHeader
           centered={false}
@@ -16,7 +16,7 @@ export function CategoryGrid() {
           action={{ label: "Tüm kategoriler", href: "/lezzetlerimiz" }}
         />
 
-        <div className="grid grid-cols-2 gap-3 md:gap-3.5 lg:grid-cols-4 lg:auto-rows-[190px]">
+        <div className="grid grid-cols-2 gap-3 md:gap-3.5 lg:grid-cols-4 lg:auto-rows-[170px]">
           {homeCategories.map((category, index) => (
             <FadeIn
               key={category.name}
@@ -28,7 +28,7 @@ export function CategoryGrid() {
               <Link
                 href={category.href}
                 className={`group relative block h-full w-full overflow-hidden rounded-lg bg-gradient-to-br ${category.gradient} ${
-                  category.feature ? "min-h-[240px] lg:min-h-0" : "min-h-[150px]"
+                  category.feature ? "min-h-[210px] lg:min-h-0" : "min-h-[135px]"
                 }`}
               >
                 {category.image && (

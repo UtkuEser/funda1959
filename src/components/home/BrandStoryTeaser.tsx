@@ -6,7 +6,7 @@ import { FadeIn } from "@/components/shared/FadeIn";
 
 export function BrandStoryTeaser() {
   return (
-    <section className="bg-cream py-16 md:py-24">
+    <section className="bg-cream py-14 md:py-20">
       <Container>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
           {/* Left — historical image */}

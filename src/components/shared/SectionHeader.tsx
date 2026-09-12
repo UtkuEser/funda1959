@@ -20,7 +20,7 @@ export function SectionHeader({
 }: SectionHeaderProps) {
   return (
     <div
-      className={`mb-8 md:mb-10 ${
+      className={`mb-6 md:mb-8 ${
         centered
           ? "text-center"
           : "flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"

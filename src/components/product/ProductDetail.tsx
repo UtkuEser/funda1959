@@ -2,11 +2,14 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Container } from "@/components/shared/Container";
 import { ProductGridCard } from "@/components/catalog/ProductGridCard";
 import { addToCart } from "@/lib/cart";
-import { branches, type ProductDetail as ProductDetailType } from "@/lib/data";
+import { type ProductDetail as ProductDetailType } from "@/lib/data";
+import { useDelivery } from "@/lib/delivery/context";
+import { cartHasBranchConflict } from "@/lib/cart-fulfillment";
+import { ProductFulfillment, type FulfillmentSelection } from "./ProductFulfillment";
 
 /** demo photo (public path) vs. a gradient class fragment */
 const isPhoto = (src: string) => src.startsWith("/");
@@ -33,31 +36,23 @@ export function ProductDetail({ product }: { product: ProductDetailType }) {
   const hasVariants = product.variants.length > 0;
   const showCakeFields = product.variantKind === "serving" || product.customizable;
 
+  const { context: deliveryContext } = useDelivery();
+
   const [activeImage, setActiveImage] = useState(0);
   const [variantId, setVariantId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [note, setNote] = useState("");
   const [extras, setExtras] = useState<string[]>([]);
-  const [deliveryType, setDeliveryType] = useState<"address" | "pickup">(
-    product.availableDeliveryTypes[0] ?? "address",
-  );
-  const [branch, setBranch] = useState<string | null>(null);
-  const [date, setDate] = useState("");
-  const [time, setTime] = useState<string | null>(null);
   const [qty, setQty] = useState(1);
-  const [minDate, setMinDate] = useState("");
   const [added, setAdded] = useState(false);
+  const [fulfillment, setFulfillment] = useState<FulfillmentSelection | null>(null);
+  const [addError, setAddError] = useState<string | null>(null);
+  const [checking, setChecking] = useState(false);
 
-  useEffect(() => {
-    // Depends on the viewer's wall clock, so it must run client-side only.
-    const d = new Date();
-    const addDays =
-      product.preparationTimeHours >= 24 ? Math.ceil(product.preparationTimeHours / 24) : 0;
-    d.setDate(d.getDate() + addDays);
-    const pad = (n: number) => String(n).padStart(2, "0");
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setMinDate(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`);
-  }, [product.preparationTimeHours]);
+  const handleFulfillmentChange = useCallback((sel: FulfillmentSelection) => {
+    setFulfillment(sel);
+    setAddError(null);
+  }, []);
 
   const selectedVariant = useMemo(
     () => product.variants.find((v) => v.id === variantId) ?? null,
@@ -66,24 +61,66 @@ export function ProductDetail({ product }: { product: ProductDetailType }) {
   const unitPrice = selectedVariant?.price ?? product.basePrice;
   const total = unitPrice * qty;
 
-  const needsBranch = deliveryType === "pickup";
-  const showTimeSlots =
-    Boolean(date) && (deliveryType === "address" || Boolean(needsBranch && branch));
-
   const cta = (() => {
     if (hasVariants && !variantId)
       return { disabled: true, label: product.variantKind === "serving" ? "Boyut Seçin" : "Seçenek Seçin" };
-    if (needsBranch && !branch) return { disabled: true, label: "Mağaza Seçin" };
-    if (!date) return { disabled: true, label: "Teslimat Tarihi Seçin" };
-    if (showTimeSlots && !time) return { disabled: true, label: "Teslimat Saati Seçin" };
+    if (!fulfillment?.canAddToCart) return { disabled: true, label: "Teslimat Seçin" };
+    if (checking) return { disabled: true, label: "Kontrol ediliyor…" };
     return { disabled: false, label: added ? "Sepete Eklendi ✓" : "Sepete Ekle" };
   })();
 
   const toggleExtra = (o: string) =>
     setExtras((cur) => (cur.includes(o) ? cur.filter((x) => x !== o) : [...cur, o]));
 
-  const handleAdd = () => {
-    if (cta.disabled) return;
+  const handleAdd = async () => {
+    if (cta.disabled || !fulfillment?.canAddToCart || !fulfillment.branchId) return;
+    setAddError(null);
+
+    // one order = one branch
+    if (cartHasBranchConflict(fulfillment.branchId)) {
+      setAddError(
+        "Sepetinizde başka bir şubeden ürün var. Önce mevcut siparişi tamamlayın ya da sepeti boşaltın.",
+      );
+      return;
+    }
+
+    // revalidate against server truth — the last slot may have gone since the view loaded
+    setChecking(true);
+    try {
+      const res = await fetch("/api/availability", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          kind: "product",
+          productId: product.id,
+          productSlug: product.slug,
+          variantId,
+          quantity: qty,
+          context: deliveryContext,
+          date: fulfillment.date,
+        }),
+      });
+      const check = (await res.json().catch(() => null)) as
+        | { available?: boolean; slots?: { label: string; available: boolean }[]; earliestAvailableSlot?: { label: string } | null }
+        | null;
+      const slotOk =
+        check?.available &&
+        check.slots?.some((s) => s.label === fulfillment.slotLabel && s.available);
+      if (!slotOk) {
+        const earliest = check?.earliestAvailableSlot;
+        setAddError(
+          earliest
+            ? `Seçtiğiniz saat aralığı az önce doldu. En erken ${earliest.label}.`
+            : "Bu ürün seçtiğiniz teslimat koşullarında şu an uygun değil.",
+        );
+        return;
+      }
+    } catch {
+      /* network hiccup — fall through and let the cart page re-check */
+    } finally {
+      setChecking(false);
+    }
+
     addToCart({
       productId: product.id,
       slug: product.slug,
@@ -100,10 +137,10 @@ export function ProductDetail({ product }: { product: ProductDetailType }) {
         note: note.trim() || undefined,
         extras,
       },
-      deliveryType,
-      deliveryDate: date || null,
-      deliveryTime: showTimeSlots ? time : null,
-      branch: needsBranch ? branch : null,
+      deliveryType: fulfillment.deliveryType === "delivery" ? "address" : "pickup",
+      deliveryDate: fulfillment.date,
+      deliveryTime: fulfillment.slotLabel,
+      branch: fulfillment.branchId,
       addedAt: Date.now(),
     });
     setAdded(true);
@@ -310,101 +347,14 @@ export function ProductDetail({ product }: { product: ProductDetailType }) {
               </Field>
             )}
 
-            {/* Delivery type */}
-            <Field label="Nasıl teslim almak istersiniz?">
-              <div className="grid grid-cols-2 gap-2">
-                {product.availableDeliveryTypes.map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => {
-                      setDeliveryType(t);
-                      setTime(null);
-                    }}
-                    className={`rounded-md border px-3 py-2.5 font-sans text-[13.5px] font-medium transition-colors ${
-                      deliveryType === t
-                        ? "border-burgundy bg-burgundy/[0.05] text-burgundy"
-                        : "border-sand text-warm-brown hover:border-burgundy/40"
-                    }`}
-                  >
-                    {t === "address" ? "Adrese Teslim" : "Mağazadan Teslim"}
-                  </button>
-                ))}
-              </div>
-              {deliveryType === "address" && (
-                <p className="mt-2 font-sans text-[12px] text-taupe">
-                  Teslimat uygunluğu adres bilgisi sırasında kontrol edilecektir.
-                </p>
-              )}
-            </Field>
-
-            {/* Branch (pickup) */}
-            {needsBranch && (
-              <Field label="Teslim Alacağınız Mağaza">
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                  {branches.map((b) => (
-                    <button
-                      key={b.id}
-                      type="button"
-                      onClick={() => {
-                        setBranch(b.id);
-                        setTime(null);
-                      }}
-                      className={`rounded-md border px-3 py-2.5 font-sans text-[13px] font-medium transition-colors ${
-                        branch === b.id
-                          ? "border-burgundy bg-burgundy/[0.05] text-burgundy"
-                          : "border-sand text-warm-brown hover:border-burgundy/40"
-                      }`}
-                    >
-                      {b.shortName}
-                    </button>
-                  ))}
-                </div>
-              </Field>
-            )}
-
-            {/* Delivery date */}
-            <Field label="Teslimat Tarihi">
-              <input
-                type="date"
-                value={date}
-                min={minDate || undefined}
-                onChange={(e) => {
-                  setDate(e.target.value);
-                  setTime(null);
-                }}
-                className="w-full rounded-md border border-sand bg-cream-light px-3.5 py-2.5 font-sans text-[14px] text-espresso focus:border-burgundy focus:outline-none"
-              />
-              {product.preparationTimeHours >= 24 && (
-                <p className="mt-1 font-sans text-[12px] text-taupe">
-                  Bu ürün için en erken teslimat {Math.ceil(product.preparationTimeHours / 24)} gün sonrasıdır.
-                </p>
-              )}
-            </Field>
-
-            {/* Time slots */}
-            {showTimeSlots && (
-              <Field label="Teslimat Saati">
-                <div className="flex flex-wrap gap-2">
-                  {["10:00 – 12:00", "12:00 – 14:00", "14:00 – 16:00", "16:00 – 18:00", "18:00 – 20:00"].map(
-                    (slot) => (
-                      <button
-                        key={slot}
-                        type="button"
-                        onClick={() => setTime(slot)}
-                        className={`rounded-md border px-3 py-2 font-sans text-[13px] font-medium transition-colors ${
-                          time === slot
-                            ? "border-burgundy bg-burgundy/[0.05] text-burgundy"
-                            : "border-sand text-warm-brown hover:border-burgundy/40"
-                        }`}
-                      >
-                        {slot}
-                      </button>
-                    ),
-                  )}
-                </div>
-              </Field>
-            )}
+            {/* Fulfillment — branch routing + availability engine */}
+            <ProductFulfillment
+              productId={product.id}
+              productSlug={product.slug}
+              variantId={variantId}
+              quantity={qty}
+              onChange={handleFulfillmentChange}
+            />
 
             {/* Quantity */}
             {product.quantityEnabled && (
@@ -450,6 +400,11 @@ export function ProductDetail({ product }: { product: ProductDetailType }) {
           {qty > 1 && !cta.disabled && (
             <p className="mt-2 text-center font-sans text-[13px] text-warm-brown">
               Toplam <span className="font-semibold text-burgundy">{tl(total)}</span>
+            </p>
+          )}
+          {addError && (
+            <p role="alert" className="mt-2 font-sans text-[13px] leading-relaxed text-chocolate-light">
+              {addError}
             </p>
           )}
 

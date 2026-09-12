@@ -6,7 +6,7 @@ import { FadeIn } from "@/components/shared/FadeIn";
 
 export function FeaturedProducts() {
   return (
-    <section className="bg-cream py-16 md:py-24">
+    <section className="bg-cream py-10 md:py-16">
       <Container>
         <SectionHeader
           centered={false}
@@ -14,19 +14,19 @@ export function FeaturedProducts() {
           subtitle="Yıllardır vitrinimizin değişmeyen favorileri."
         />
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-9 md:gap-x-7">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-7 md:gap-x-7">
           {signatureProducts.map((product, index) => (
             <FadeIn
               key={product.id}
               delay={([0, 100, 200, 300] as const)[index] ?? 0}
             >
-              <ProductCard product={product} />
+              <ProductCard product={product} imageAspectClassName="aspect-[10/11]" compact />
             </FadeIn>
           ))}
         </div>
 
         <FadeIn delay={200}>
-          <p className="mt-8 font-sans text-[12px] text-taupe">
+          <p className="mt-6 font-sans text-[12px] text-taupe">
             Fiyatlar bilgi amaçlıdır; güncel fiyat ve sipariş için mağazalarımızla iletişime geçin.
           </p>
         </FadeIn>

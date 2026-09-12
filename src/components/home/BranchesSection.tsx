@@ -6,7 +6,7 @@ import { FadeIn } from "@/components/shared/FadeIn";
 
 export function BranchesSection() {
   return (
-    <section className="bg-cream py-16 md:py-24">
+    <section className="bg-cream py-10 md:py-16">
       <Container>
         <SectionHeader
           centered={false}
@@ -18,7 +18,7 @@ export function BranchesSection() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-7 md:gap-8">
           {branches.map((branch, index) => (
             <FadeIn key={branch.id} delay={([0, 100, 200] as const)[index]}>
-              <BranchCard branch={branch} />
+              <BranchCard branch={branch} variant="compact" />
             </FadeIn>
           ))}
         </div>
