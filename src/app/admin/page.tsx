@@ -1,3 +1,4 @@
+import "@/lib/campaigns/server-init";
 import Link from "next/link";
 import { listBranches, getBranch, type Weekday } from "@/lib/branch";
 import { dailySlotStates, slotLabel } from "@/lib/delivery/slots";
@@ -277,8 +278,8 @@ function StockSection({
 
 /* -------------------------------------------------------------------------- */
 
-function CampaignsSection({ scope, as }: { scope: AdminScope; as: string }) {
-  const campaigns = getCampaignRepository().list();
+async function CampaignsSection({ scope, as }: { scope: AdminScope; as: string }) {
+  const campaigns = await getCampaignRepository().list();
   const branches = listBranches().map((b) => ({ id: b.id, name: b.name }));
   const canManage = scope.user.role === "SUPER_ADMIN";
 

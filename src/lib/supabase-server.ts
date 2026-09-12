@@ -22,7 +22,16 @@ function serviceKey(): string {
   return key;
 }
 
-async function rest<T>(path: string, init?: RequestInit): Promise<T> {
+/** True once both the URL and the service-role key are present — used to pick a real vs. mock repository. */
+export function isSupabaseConfigured(): boolean {
+  return Boolean(
+    (process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL) &&
+      process.env.SUPABASE_SERVICE_ROLE_KEY,
+  );
+}
+
+/** Thin PostgREST client, shared by every domain module that persists to Supabase. */
+export async function supabaseRest<T>(path: string, init?: RequestInit): Promise<T> {
   const key = serviceKey();
   const res = await fetch(`${baseUrl()}/rest/v1${path}`, {
     ...init,
@@ -67,7 +76,7 @@ function toSummary(row: PublicOrderRow | null): OrderSummary | null {
 
 /** Atomic order creation via the security-definer RPC. */
 export async function createOrder(payload: unknown): Promise<OrderSummary> {
-  const row = await rest<PublicOrderRow | null>("/rpc/create_order", {
+  const row = await supabaseRest<PublicOrderRow | null>("/rpc/create_order", {
     method: "POST",
     body: JSON.stringify({ p_payload: payload }),
   });
@@ -78,7 +87,7 @@ export async function createOrder(payload: unknown): Promise<OrderSummary> {
 
 /** PII-free order summary for the confirmation page. */
 export async function getOrderSummary(orderNumber: string): Promise<OrderSummary | null> {
-  const row = await rest<PublicOrderRow | null>("/rpc/get_order_public", {
+  const row = await supabaseRest<PublicOrderRow | null>("/rpc/get_order_public", {
     method: "POST",
     body: JSON.stringify({ p_order_number: orderNumber }),
   });

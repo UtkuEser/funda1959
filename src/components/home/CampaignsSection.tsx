@@ -1,3 +1,4 @@
+import "@/lib/campaigns/server-init";
 import { getHomepageCampaignPool, type Campaign } from "@/lib/campaigns";
 import { resolvePublicAsset } from "@/lib/public-asset";
 import { Container } from "@/components/shared/Container";
@@ -37,10 +38,11 @@ function resolveCampaignImage(campaign: Campaign): string {
   );
 }
 
-export function CampaignsSection() {
+export async function CampaignsSection() {
   // eslint-disable-next-line react-hooks/purity
   const nowMs = Date.now();
-  const pool: CampaignWithImage[] = getHomepageCampaignPool(new Date(nowMs)).map((c) => ({
+  const active = await getHomepageCampaignPool(new Date(nowMs));
+  const pool: CampaignWithImage[] = active.map((c) => ({
     ...c,
     resolvedImage: resolveCampaignImage(c),
   }));

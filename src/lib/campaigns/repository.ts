@@ -1,11 +1,12 @@
 /**
  * Campaign repository abstraction.
  *
- * Same shape as `orders/repository.ts` / `reservations/index.ts`: an
- * in-memory store kept on `globalThis` (shared by a Route Handler and a
- * Server Component in the same process), behind an interface a
- * Supabase-backed implementation can drop into later via
- * `setCampaignRepository()`.
+ * The interface is async — real persistence (Supabase, over the network)
+ * can't be synchronous, so every method returns a Promise even though the
+ * in-memory fallback below resolves them instantly. `getCampaignRepository()`
+ * defaults to the in-memory mock; `campaigns/server-init.ts` swaps in the
+ * Supabase-backed implementation when Supabase is configured (see that file
+ * for why the swap happens there and not in this one).
  */
 
 import type { Campaign, NewCampaignInput } from "./types";
@@ -13,13 +14,13 @@ import { CAMPAIGN_SEED } from "./mock";
 
 export interface CampaignRepository {
   /** every campaign, priority ASC then createdAt ASC */
-  list(): Campaign[];
-  get(id: string): Campaign | null;
+  list(): Promise<Campaign[]>;
+  get(id: string): Promise<Campaign | null>;
   /** active + within window + branch-eligible, sorted priority ASC then startAt DESC */
-  listActive(now: Date, branchId?: string | null): Campaign[];
-  create(input: NewCampaignInput): Campaign;
-  update(id: string, patch: Partial<NewCampaignInput>): Campaign | null;
-  remove(id: string): boolean;
+  listActive(now: Date, branchId?: string | null): Promise<Campaign[]>;
+  create(input: NewCampaignInput): Promise<Campaign>;
+  update(id: string, patch: Partial<NewCampaignInput>): Promise<Campaign | null>;
+  remove(id: string): Promise<boolean>;
 }
 
 function makeId(): string {
@@ -35,8 +36,11 @@ function makeId(): string {
  * candidate then (branch-specific ones just carry a "GOP & Panora'da
  * geçerli" style label so the visitor knows before it applies to them).
  * Once a branch is known, only "all" + that branch's campaigns qualify.
+ *
+ * Exported so `SupabaseCampaignRepository` applies the exact same rule
+ * after its DB-side date filter, instead of re-implementing it.
  */
-function isEligibleForBranch(campaign: Campaign, branchId?: string | null): boolean {
+export function isEligibleForBranch(campaign: Campaign, branchId?: string | null): boolean {
   if (campaign.branchIds === "all") return true;
   if (!branchId) return true;
   return campaign.branchIds.includes(branchId);
@@ -52,17 +56,17 @@ class InMemoryCampaignRepository implements CampaignRepository {
     this.rows = globalStore.__fundaCampaigns;
   }
 
-  list(): Campaign[] {
+  async list(): Promise<Campaign[]> {
     return [...this.rows.values()].sort(
       (a, b) => a.priority - b.priority || a.createdAt.localeCompare(b.createdAt),
     );
   }
 
-  get(id: string): Campaign | null {
+  async get(id: string): Promise<Campaign | null> {
     return this.rows.get(id) ?? null;
   }
 
-  listActive(now: Date, branchId?: string | null): Campaign[] {
+  async listActive(now: Date, branchId?: string | null): Promise<Campaign[]> {
     const t = now.getTime();
     return [...this.rows.values()]
       .filter(
@@ -75,14 +79,14 @@ class InMemoryCampaignRepository implements CampaignRepository {
       .sort((a, b) => a.priority - b.priority || b.startAt.localeCompare(a.startAt));
   }
 
-  create(input: NewCampaignInput): Campaign {
+  async create(input: NewCampaignInput): Promise<Campaign> {
     const nowISO = new Date().toISOString();
     const campaign: Campaign = { ...input, id: makeId(), createdAt: nowISO, updatedAt: nowISO };
     this.rows.set(campaign.id, campaign);
     return campaign;
   }
 
-  update(id: string, patch: Partial<NewCampaignInput>): Campaign | null {
+  async update(id: string, patch: Partial<NewCampaignInput>): Promise<Campaign | null> {
     const cur = this.rows.get(id);
     if (!cur) return null;
     const next: Campaign = { ...cur, ...patch, updatedAt: new Date().toISOString() };
@@ -90,7 +94,7 @@ class InMemoryCampaignRepository implements CampaignRepository {
     return next;
   }
 
-  remove(id: string): boolean {
+  async remove(id: string): Promise<boolean> {
     return this.rows.delete(id);
   }
 }

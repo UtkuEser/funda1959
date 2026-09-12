@@ -106,7 +106,7 @@ const HOMEPAGE_CAMPAIGN_LIMIT = 4;
  * branch is known (see `selectHomepageCampaigns`). Already sorted
  * priority ASC, then startAt DESC.
  */
-export function getHomepageCampaignPool(now: Date = new Date()): Campaign[] {
+export async function getHomepageCampaignPool(now: Date = new Date()): Promise<Campaign[]> {
   return getCampaignRepository().listActive(now, null);
 }
 

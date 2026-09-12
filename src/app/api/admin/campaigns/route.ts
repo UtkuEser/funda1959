@@ -1,3 +1,4 @@
+import "@/lib/campaigns/server-init";
 import { NextResponse } from "next/server";
 import { resolveAdminScope } from "@/lib/admin/access";
 import { listBranches } from "@/lib/branch";
@@ -31,6 +32,15 @@ function toInput(body: Body): NewCampaignInput {
   };
 }
 
+/** Never a silent fake success — a Supabase failure surfaces as a real error to the admin form. */
+function persistenceFailed(action: string, err: unknown) {
+  console.error(`[campaigns] ${action} failed`, err);
+  return NextResponse.json(
+    { error: "Kampanya kaydedilemedi — veritabanına ulaşılamadı. Lütfen tekrar deneyin." },
+    { status: 502 },
+  );
+}
+
 /** POST — create a campaign. */
 export async function POST(request: Request) {
   let body: Body;
@@ -48,8 +58,13 @@ export async function POST(request: Request) {
   const errors = validateCampaignInput(input, validBranchIds);
   if (errors.length > 0) return NextResponse.json({ error: errors[0], errors }, { status: 400 });
 
-  getCampaignRepository().create(input);
-  return NextResponse.json({ ok: true, campaigns: getCampaignRepository().list() });
+  try {
+    await getCampaignRepository().create(input);
+    const campaigns = await getCampaignRepository().list();
+    return NextResponse.json({ ok: true, campaigns });
+  } catch (err) {
+    return persistenceFailed("create", err);
+  }
 }
 
 /** PATCH — update a campaign (id in body). */
@@ -70,9 +85,14 @@ export async function PATCH(request: Request) {
   const errors = validateCampaignInput(input, validBranchIds);
   if (errors.length > 0) return NextResponse.json({ error: errors[0], errors }, { status: 400 });
 
-  const updated = getCampaignRepository().update(body.id, input);
-  if (!updated) return NextResponse.json({ error: "Kampanya bulunamadı." }, { status: 404 });
-  return NextResponse.json({ ok: true, campaigns: getCampaignRepository().list() });
+  try {
+    const updated = await getCampaignRepository().update(body.id, input);
+    if (!updated) return NextResponse.json({ error: "Kampanya bulunamadı." }, { status: 404 });
+    const campaigns = await getCampaignRepository().list();
+    return NextResponse.json({ ok: true, campaigns });
+  } catch (err) {
+    return persistenceFailed("update", err);
+  }
 }
 
 /** DELETE ?id=&as= — remove a campaign. */
@@ -85,6 +105,11 @@ export async function DELETE(request: Request) {
   }
   if (!id) return NextResponse.json({ error: "id gerekli." }, { status: 400 });
 
-  getCampaignRepository().remove(id);
-  return NextResponse.json({ ok: true, campaigns: getCampaignRepository().list() });
+  try {
+    await getCampaignRepository().remove(id);
+    const campaigns = await getCampaignRepository().list();
+    return NextResponse.json({ ok: true, campaigns });
+  } catch (err) {
+    return persistenceFailed("delete", err);
+  }
 }

@@ -9,6 +9,15 @@ import { InstagramContentSection } from "@/components/home/InstagramContentSecti
 import { GiftSelectionSection } from "@/components/home/GiftSelectionSection";
 import { BranchesSection } from "@/components/home/BranchesSection";
 
+/**
+ * Campaigns now read from Supabase (see `lib/campaigns`), so this route must
+ * not be statically prerendered at build time — an admin edit would never
+ * show up. `CampaignsSection`'s Supabase reads already use `no-store`, which
+ * would force this anyway; this is the explicit version of the same thing,
+ * matching the pattern already used by `/admin`.
+ */
+export const dynamic = "force-dynamic";
+
 export default function HomePage() {
   return (
     <>
