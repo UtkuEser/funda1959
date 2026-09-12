@@ -1,4 +1,5 @@
 import "@/lib/campaigns/server-init";
+import { redirect } from "next/navigation";
 import Link from "next/link";
 import { listBranches, getBranch, type Weekday } from "@/lib/branch";
 import { dailySlotStates, slotLabel } from "@/lib/delivery/slots";
@@ -30,6 +31,7 @@ import {
   PageIntro,
 } from "@/components/admin/ui";
 import { requireAdminScope, repoScope, type AdminScope } from "@/lib/admin/access";
+import { isSectionAllowed } from "@/lib/admin/section-access";
 
 export const dynamic = "force-dynamic";
 
@@ -56,6 +58,14 @@ export default async function AdminPage({ searchParams }: Props) {
   const sp = await searchParams;
   const scope = await requireAdminScope({ branch: sp.branch });
   const section = sp.section ?? "overview";
+
+  // Single source of truth (see section-access.ts) — a BRANCH_MANAGER can
+  // never reach a SUPER_ADMIN-only section's content, not even by typing
+  // the URL directly. No per-section duplicate of this check below.
+  if (!isSectionAllowed(scope.user.role, section)) {
+    redirect("/admin");
+  }
+
   const date = sp.date && /^\d{4}-\d{2}-\d{2}$/.test(sp.date) ? sp.date : todayISO();
   // eslint-disable-next-line react-hooks/purity
   const renderedAt = Date.now();
@@ -76,12 +86,12 @@ export default async function AdminPage({ searchParams }: Props) {
         <StockSection scope={scope} branchId={scopedBranchId} date={date} />
       )}
       {section === "campaigns" && <CampaignsSection scope={scope} />}
-      {section === "instagram" && <InstagramContentSection scope={scope} />}
+      {section === "instagram" && <InstagramContentSection />}
       {section === "funda-puan" && <FundaPointsSection scope={scope} />}
       {section === "zones" && <ZonesSection scope={scope} />}
       {section === "slots" && <SlotsSection branchId={scopedBranchId} date={date} />}
       {section === "reservations" && <ReservationsSection scope={scope} renderedAt={renderedAt} />}
-      {section === "branches" && <BranchesSection scope={scope} date={date} />}
+      {section === "branches" && <BranchesSection date={date} />}
     </>
   );
 }
@@ -294,15 +304,8 @@ async function CampaignsSection({ scope }: { scope: AdminScope }) {
 
 /* -------------------------------------------------------------------------- */
 
-function InstagramContentSection({ scope }: { scope: AdminScope }) {
-  if (scope.user.role !== "SUPER_ADMIN") {
-    return (
-      <PageIntro>
-        Bu bölüm sadece merkez yönetim (Super Admin) tarafından yönetilir. Görüntüleme yetkiniz yok.
-      </PageIntro>
-    );
-  }
-
+function InstagramContentSection() {
+  // Reachable only for SUPER_ADMIN — see the section-access guard in AdminPage above.
   const items = getInstagramContentRepository()
     .list()
     .map((i) => ({ ...i, posterPreview: resolvePublicAsset(i.posterImage) }));
@@ -321,14 +324,10 @@ function InstagramContentSection({ scope }: { scope: AdminScope }) {
 /* -------------------------------------------------------------------------- */
 
 function FundaPointsSection({ scope }: { scope: AdminScope }) {
-  if (scope.user.role !== "SUPER_ADMIN") {
-    return (
-      <PageIntro>
-        Bu bölüm sadece merkez yönetim (Super Admin) tarafından görüntülenebilir. Erişim yetkiniz yok.
-      </PageIntro>
-    );
-  }
-
+  // Reachable only for SUPER_ADMIN — see the section-access guard in AdminPage above.
+  // `getFundaPointsOverview`/`listPointAccountsForAdmin` still assert the role
+  // themselves (their own domain boundary — see lib/funda-points), so this
+  // isn't the only thing standing between a manager and this data.
   const overview = getFundaPointsOverview(scope.user.role);
   const accounts = listPointAccountsForAdmin(scope.user.role);
 
@@ -509,15 +508,14 @@ function ReservationsSection({
 
 /* -------------------------------------------------------------------------- */
 
-function BranchesSection({ scope, date }: { scope: AdminScope; date: string }) {
-  const branches = listBranches(repoScope(scope));
+function BranchesSection({ date }: { date: string }) {
+  // Reachable only for SUPER_ADMIN — see the section-access guard in AdminPage above.
+  const branches = listBranches();
   const wd = new Date(`${date}T12:00:00`).getDay() as Weekday;
 
   return (
     <>
-      <PageIntro>
-        {scope.user.role === "SUPER_ADMIN" ? "Tüm şubeler." : "Yetkili olduğunuz şube."}
-      </PageIntro>
+      <PageIntro>Tüm şubeler.</PageIntro>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {branches.map((b) => {
           const h = b.openingHours[wd];

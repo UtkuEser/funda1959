@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { listBranches } from "@/lib/branch";
 import type { AdminUser } from "@/lib/admin/access";
+import { isSectionAllowed } from "@/lib/admin/section-access";
 
 const NAV = [
   { key: "overview", label: "Genel Bakış" },
@@ -12,7 +13,7 @@ const NAV = [
   { key: "stock", label: "Şube Stokları" },
   { key: "campaigns", label: "Kampanyalar" },
   { key: "instagram", label: "Instagram İçerikleri" },
-  { key: "funda-puan", label: "Funda Puan", superAdminOnly: true },
+  { key: "funda-puan", label: "Funda Puan" },
   { key: "zones", label: "Teslimat Bölgeleri" },
   { key: "slots", label: "Teslimat Slotları" },
   { key: "reservations", label: "Rezervasyonlar" },
@@ -55,7 +56,7 @@ function Chrome({ children, user }: { children: React.ReactNode; user: AdminUser
   };
 
   const branches = listBranches();
-  const navItems = NAV.filter((item) => !("superAdminOnly" in item && item.superAdminOnly) || isSuper);
+  const navItems = NAV.filter((item) => isSectionAllowed(user.role, item.key));
   const roleLabel = isSuper ? "Merkez Yönetim" : "Şube Yöneticisi";
 
   return (
