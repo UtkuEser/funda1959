@@ -11,21 +11,21 @@ const todayISO = () => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 };
 
-/** manager may only touch a branch in their authorized set */
-function authorized(as: string | undefined, branchId: string): boolean {
-  const scope = resolveAdminScope({ as });
+/** manager may only touch a branch in their authorized set — resolved from the session, never a client-supplied field */
+async function authorized(branchId: string): Promise<boolean> {
+  const scope = await resolveAdminScope();
+  if (!scope) return false;
   return scope.authorizedBranchIds ? scope.authorizedBranchIds.includes(branchId) : true;
 }
 
-/** GET ?as=&branch=&date= — effective stock rows for a branch */
+/** GET ?branch=&date= — effective stock rows for a branch */
 export async function GET(request: Request) {
   const url = new URL(request.url);
-  const as = url.searchParams.get("as") ?? undefined;
   const branchId = url.searchParams.get("branch") ?? "";
   const date = url.searchParams.get("date") ?? todayISO();
 
   if (!branchId) return NextResponse.json({ error: "branch gerekli." }, { status: 400 });
-  if (!authorized(as, branchId)) {
+  if (!(await authorized(branchId))) {
     return NextResponse.json({ error: "Bu şube için yetkiniz yok." }, { status: 403 });
   }
 
@@ -33,7 +33,6 @@ export async function GET(request: Request) {
 }
 
 type PatchBody = {
-  as?: string;
   branchId?: string;
   date?: string;
   changes?: Record<
@@ -59,7 +58,7 @@ export async function PATCH(request: Request) {
   const branchId = body.branchId ?? "";
   const changes = body.changes ?? {};
   if (!branchId) return NextResponse.json({ error: "branchId gerekli." }, { status: 400 });
-  if (!authorized(body.as, branchId)) {
+  if (!(await authorized(branchId))) {
     return NextResponse.json({ error: "Bu şube için yetkiniz yok." }, { status: 403 });
   }
 

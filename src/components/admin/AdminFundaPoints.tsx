@@ -36,10 +36,8 @@ const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
 export function AdminFundaPoints({
   initialAccounts,
-  as,
 }: {
   initialAccounts: FundaPointAccount[];
-  as: string;
 }) {
   const [accounts, setAccounts] = useState<FundaPointAccount[]>(initialAccounts);
   const [search, setSearch] = useState("");
@@ -114,9 +112,7 @@ export function AdminFundaPoints({
     setAdjustDescription("");
     setAdjustError(null);
     try {
-      const res = await fetch(
-        `/api/admin/funda-points?customerId=${encodeURIComponent(customerId)}&as=${encodeURIComponent(as)}`,
-      );
+      const res = await fetch(`/api/admin/funda-points?customerId=${encodeURIComponent(customerId)}`);
       const data = (await res.json()) as {
         ok?: boolean;
         account?: FundaPointAccount;
@@ -172,7 +168,6 @@ export function AdminFundaPoints({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          as,
           customerId: openAccount.customerId,
           direction: adjustDirection,
           points,

@@ -3,29 +3,28 @@
  *
  * Roles:
  *   SUPER_ADMIN     — every branch
- *   BRANCH_MANAGER  — only the branch(es) they are linked to
+ *   BRANCH_MANAGER  — only the branch they logged in as
  *
- * A user is never `user.branchId` — the link is many-to-many via
- * `AdminUserBranch`, so a manager can cover more than one branch later.
- *
- * No auth is wired yet: the demo resolves scope from a `?as=` query param.
- * Every repository read in the admin pages passes `authorizedBranchIds` so the
- * same boundary holds once Supabase RLS is in place.
+ * Scope comes ONLY from the signed session cookie (see `./session.ts`) —
+ * never from a query param. `resolveAdminScope`'s `branch` argument is a
+ * pure view-selector (which branch a SUPER_ADMIN is currently looking at in
+ * Stock/Slots/Overview); it can never widen a BRANCH_MANAGER's own
+ * authorized set, since it's clamped against `scopeIds` below.
  */
+import { redirect } from "next/navigation";
+import { listBranches, getBranch } from "../branch";
+import { getAdminSession } from "./session";
 
-import { listBranches } from "../branch";
+if (typeof window !== "undefined") {
+  throw new Error("admin/access.ts must never be imported on the client");
+}
 
 export type AdminRole = "SUPER_ADMIN" | "BRANCH_MANAGER";
 
 export type AdminUser = {
-  id: string;
+  /** display name for the sidebar/topbar — a branch short name, or "Merkez Yönetim" */
   name: string;
   role: AdminRole;
-};
-
-export type AdminUserBranch = {
-  userId: string;
-  branchId: string;
 };
 
 export type AdminScope = {
@@ -36,49 +35,25 @@ export type AdminScope = {
   activeBranchId: string | null;
 };
 
-/** demo directory — replace with an admin_users + admin_user_branches query */
-const DEMO_USERS: AdminUser[] = [
-  { id: "u-super", name: "Merkez Ekip", role: "SUPER_ADMIN" },
-  { id: "u-gop", name: "GOP Müdürü", role: "BRANCH_MANAGER" },
-  { id: "u-panora", name: "Panora Müdürü", role: "BRANCH_MANAGER" },
-  { id: "u-incek", name: "İncek Müdürü", role: "BRANCH_MANAGER" },
-];
-
-const DEMO_LINKS: AdminUserBranch[] = [
-  { userId: "u-gop", branchId: "gop" },
-  { userId: "u-panora", branchId: "panora" },
-  { userId: "u-incek", branchId: "incek" },
-];
-
-export function adminUsers(): AdminUser[] {
-  return DEMO_USERS;
-}
-
-function branchesForUser(user: AdminUser): string[] | null {
-  if (user.role === "SUPER_ADMIN") return null;
-  return DEMO_LINKS.filter((l) => l.userId === user.id).map((l) => l.branchId);
+function branchDisplayName(branchId: string): string {
+  return getBranch(branchId)?.name.replace("Funda 1959 ", "") ?? branchId;
 }
 
 /**
- * `as` values: "super" | "manager:<branchId>" | "<userId>"
- * `branch` selects the active branch view within the authorized set.
+ * Resolves the admin scope from the session cookie. Returns `null` when
+ * there is no valid session — callers that render UI should use
+ * `requireAdminScope` instead, which redirects.
  */
-export function resolveAdminScope(params: {
-  as?: string;
-  branch?: string;
-}): AdminScope {
-  const as = params.as ?? "super";
-  let user: AdminUser | undefined;
+export async function resolveAdminScope(params: { branch?: string } = {}): Promise<AdminScope | null> {
+  const session = await getAdminSession();
+  if (!session) return null;
 
-  if (as === "super") user = DEMO_USERS.find((u) => u.role === "SUPER_ADMIN");
-  else if (as.startsWith("manager:")) {
-    const bid = as.slice("manager:".length);
-    user = DEMO_USERS.find((u) => branchesForUser(u)?.includes(bid));
-  } else user = DEMO_USERS.find((u) => u.id === as);
+  const user: AdminUser =
+    session.role === "SUPER_ADMIN"
+      ? { name: "Merkez Yönetim", role: "SUPER_ADMIN" }
+      : { name: branchDisplayName(session.branchId), role: "BRANCH_MANAGER" };
 
-  user ??= DEMO_USERS[0];
-
-  const authorizedBranchIds = branchesForUser(user);
+  const authorizedBranchIds = session.role === "SUPER_ADMIN" ? null : [session.branchId];
   const allBranchIds = listBranches().map((b) => b.id);
   const scopeIds = authorizedBranchIds ?? allBranchIds;
 
@@ -86,6 +61,13 @@ export function resolveAdminScope(params: {
   const activeBranchId = wanted ?? (authorizedBranchIds ? authorizedBranchIds[0] : null);
 
   return { user, authorizedBranchIds, activeBranchId };
+}
+
+/** Same as `resolveAdminScope`, but redirects to the branch login instead of returning null. */
+export async function requireAdminScope(params: { branch?: string } = {}): Promise<AdminScope> {
+  const scope = await resolveAdminScope(params);
+  if (!scope) redirect("/admin-giris");
+  return scope;
 }
 
 /** repositories take `{ authorizedBranchIds?: string[] }` — undefined = all */

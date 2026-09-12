@@ -126,12 +126,10 @@ function validateForm(f: FormState): string | null {
 export function AdminCampaigns({
   initialCampaigns,
   canManage,
-  as,
   branches,
 }: {
   initialCampaigns: Campaign[];
   canManage: boolean;
-  as: string;
   branches: Branch[];
 }) {
   const [campaigns, setCampaigns] = useState<Campaign[]>(initialCampaigns);
@@ -168,8 +166,7 @@ export function AdminCampaigns({
     }
     setSaving(true);
     setFormError(null);
-    const payload: { as: string; id?: string } & NewCampaignInput = {
-      as,
+    const payload: { id?: string } & NewCampaignInput = {
       ...(editing !== "new" && editing ? { id: editing.id } : {}),
       title: form.title.trim(),
       description: form.description.trim(),
@@ -206,7 +203,7 @@ export function AdminCampaigns({
   const remove = async (id: string) => {
     if (!window.confirm("Bu kampanyayı silmek istediğinize emin misiniz?")) return;
     try {
-      const res = await fetch(`/api/admin/campaigns?id=${encodeURIComponent(id)}&as=${encodeURIComponent(as)}`, {
+      const res = await fetch(`/api/admin/campaigns?id=${encodeURIComponent(id)}`, {
         method: "DELETE",
       });
       const data = (await res.json()) as { ok?: boolean; campaigns?: Campaign[]; error?: string };

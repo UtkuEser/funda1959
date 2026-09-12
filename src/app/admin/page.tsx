@@ -29,7 +29,7 @@ import {
   Metric,
   PageIntro,
 } from "@/components/admin/ui";
-import { resolveAdminScope, repoScope, type AdminScope } from "@/lib/admin/access";
+import { requireAdminScope, repoScope, type AdminScope } from "@/lib/admin/access";
 
 export const dynamic = "force-dynamic";
 
@@ -49,12 +49,12 @@ const mmss = (ms: number) => {
 };
 
 type Props = {
-  searchParams: Promise<{ as?: string; branch?: string; section?: string; date?: string }>;
+  searchParams: Promise<{ branch?: string; section?: string; date?: string }>;
 };
 
 export default async function AdminPage({ searchParams }: Props) {
   const sp = await searchParams;
-  const scope = resolveAdminScope(sp);
+  const scope = await requireAdminScope({ branch: sp.branch });
   const section = sp.section ?? "overview";
   const date = sp.date && /^\d{4}-\d{2}-\d{2}$/.test(sp.date) ? sp.date : todayISO();
   // eslint-disable-next-line react-hooks/purity
@@ -73,11 +73,11 @@ export default async function AdminPage({ searchParams }: Props) {
       )}
       {section === "orders" && <OrdersSection scope={scope} />}
       {section === "stock" && (
-        <StockSection scope={scope} branchId={scopedBranchId} date={date} as={sp.as ?? "super"} />
+        <StockSection scope={scope} branchId={scopedBranchId} date={date} />
       )}
-      {section === "campaigns" && <CampaignsSection scope={scope} as={sp.as ?? "super"} />}
-      {section === "instagram" && <InstagramContentSection scope={scope} as={sp.as ?? "super"} />}
-      {section === "funda-puan" && <FundaPointsSection scope={scope} as={sp.as ?? "super"} />}
+      {section === "campaigns" && <CampaignsSection scope={scope} />}
+      {section === "instagram" && <InstagramContentSection scope={scope} />}
+      {section === "funda-puan" && <FundaPointsSection scope={scope} />}
       {section === "zones" && <ZonesSection scope={scope} />}
       {section === "slots" && <SlotsSection branchId={scopedBranchId} date={date} />}
       {section === "reservations" && <ReservationsSection scope={scope} renderedAt={renderedAt} />}
@@ -245,12 +245,10 @@ function StockSection({
   scope,
   branchId,
   date,
-  as,
 }: {
   scope: AdminScope;
   branchId: string;
   date: string;
-  as: string;
 }) {
   const rows = getBranchStockRows(branchId, date);
   const branch = getBranch(branchId);
@@ -270,7 +268,6 @@ function StockSection({
         locked={locked}
         initialRows={rows}
         date={date}
-        as={as}
       />
     </>
   );
@@ -278,7 +275,7 @@ function StockSection({
 
 /* -------------------------------------------------------------------------- */
 
-async function CampaignsSection({ scope, as }: { scope: AdminScope; as: string }) {
+async function CampaignsSection({ scope }: { scope: AdminScope }) {
   const campaigns = await getCampaignRepository().list();
   const branches = listBranches().map((b) => ({ id: b.id, name: b.name }));
   const canManage = scope.user.role === "SUPER_ADMIN";
@@ -290,14 +287,14 @@ async function CampaignsSection({ scope, as }: { scope: AdminScope; as: string }
         (öncelik) artan, başlangıç tarihi azalan şekilde gösterilir.
         {!canManage && " Bu görünüm salt-okunur."}
       </PageIntro>
-      <AdminCampaigns initialCampaigns={campaigns} canManage={canManage} as={as} branches={branches} />
+      <AdminCampaigns initialCampaigns={campaigns} canManage={canManage} branches={branches} />
     </>
   );
 }
 
 /* -------------------------------------------------------------------------- */
 
-function InstagramContentSection({ scope, as }: { scope: AdminScope; as: string }) {
+function InstagramContentSection({ scope }: { scope: AdminScope }) {
   if (scope.user.role !== "SUPER_ADMIN") {
     return (
       <PageIntro>
@@ -316,14 +313,14 @@ function InstagramContentSection({ scope, as }: { scope: AdminScope; as: string 
         Homepage&apos;deki &quot;Funda&apos;dan Kareler&quot; bölümünü besler. Yayında olan ilk 4 içerik,
         sıraya göre gösterilir.
       </PageIntro>
-      <AdminInstagramContent initialItems={items} as={as} />
+      <AdminInstagramContent initialItems={items} />
     </>
   );
 }
 
 /* -------------------------------------------------------------------------- */
 
-function FundaPointsSection({ scope, as }: { scope: AdminScope; as: string }) {
+function FundaPointsSection({ scope }: { scope: AdminScope }) {
   if (scope.user.role !== "SUPER_ADMIN") {
     return (
       <PageIntro>
@@ -350,7 +347,7 @@ function FundaPointsSection({ scope, as }: { scope: AdminScope; as: string }) {
       </div>
 
       <div className="mt-6">
-        <AdminFundaPoints initialAccounts={accounts} as={as} />
+        <AdminFundaPoints initialAccounts={accounts} />
       </div>
     </>
   );

@@ -1,9 +1,10 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { listBranches } from "@/lib/branch";
+import type { AdminUser } from "@/lib/admin/access";
 
 const NAV = [
   { key: "overview", label: "Genel Bakış" },
@@ -20,26 +21,16 @@ const NAV = [
 
 const TITLES: Record<string, string> = Object.fromEntries(NAV.map((n) => [n.key, n.label]));
 
-const ROLE_OPTIONS = [
-  { value: "super", label: "Merkez Yönetim" },
-  ...listBranches().map((b) => ({
-    value: `manager:${b.id}`,
-    label: `${b.name.replace("Funda 1959 ", "")} Müdürü`,
-  })),
-];
-
-function Chrome({ children }: { children: React.ReactNode }) {
+function Chrome({ children, user }: { children: React.ReactNode; user: AdminUser }) {
   const router = useRouter();
   const params = useSearchParams();
-  const as = params.get("as") ?? "super";
   const section = params.get("section") ?? "overview";
   const branch = params.get("branch") ?? "";
-  const isSuper = !as.startsWith("manager:");
-  const managerBranch = as.startsWith("manager:") ? as.slice("manager:".length) : null;
+  const isSuper = user.role === "SUPER_ADMIN";
+  const [loggingOut, setLoggingOut] = useState(false);
 
   const hrefFor = (nextSection: string) => {
     const q = new URLSearchParams();
-    q.set("as", as);
     q.set("section", nextSection);
     if (branch) q.set("branch", branch);
     return `/admin?${q.toString()}`;
@@ -52,8 +43,20 @@ function Chrome({ children }: { children: React.ReactNode }) {
     router.push(`/admin?${q.toString()}`);
   };
 
+  const logout = async () => {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    try {
+      await fetch("/api/admin/auth/logout", { method: "POST" });
+    } finally {
+      // Full navigation — no stale client-router cache after the session goes away.
+      window.location.href = isSuper ? "/merkez-giris" : "/admin-giris";
+    }
+  };
+
   const branches = listBranches();
   const navItems = NAV.filter((item) => !("superAdminOnly" in item && item.superAdminOnly) || isSuper);
+  const roleLabel = isSuper ? "Merkez Yönetim" : "Şube Yöneticisi";
 
   return (
     <div className="min-h-screen bg-white text-neutral-900">
@@ -84,8 +87,17 @@ function Chrome({ children }: { children: React.ReactNode }) {
                 );
               })}
             </nav>
-            <div className="border-t border-neutral-200 px-4 py-3 text-[11px] text-neutral-400">
-              {isSuper ? "Tüm şubeler" : `${branches.find((b) => b.id === managerBranch)?.name ?? ""}`}
+            <div className="border-t border-neutral-200 px-4 py-3">
+              <p className="text-[12.5px] font-semibold text-neutral-800">{user.name}</p>
+              {!isSuper && <p className="text-[11px] text-neutral-400">{roleLabel}</p>}
+              <button
+                type="button"
+                onClick={logout}
+                disabled={loggingOut}
+                className="mt-2 text-[12px] font-medium text-neutral-500 underline decoration-neutral-300 underline-offset-2 hover:text-neutral-900 disabled:opacity-60"
+              >
+                {loggingOut ? "Çıkış yapılıyor…" : "Çıkış Yap"}
+              </button>
             </div>
           </div>
         </aside>
@@ -120,34 +132,14 @@ function Chrome({ children }: { children: React.ReactNode }) {
                     ))}
                   </select>
                 </label>
-              ) : !isSuper ? (
-                <span className="hidden items-center gap-1.5 text-[12px] text-neutral-500 sm:flex">
-                  Şube
-                  <span className="rounded-md border border-neutral-200 bg-neutral-50 px-2 py-1 text-[12.5px] font-semibold text-neutral-900">
-                    {branches.find((b) => b.id === managerBranch)?.name.replace("Funda 1959 ", "")}
-                  </span>
-                </span>
               ) : null}
 
-              <label className="flex items-center gap-1.5 text-[12px] text-neutral-500">
-                <span className="hidden sm:inline">Demo rol</span>
-                <select
-                  value={as}
-                  onChange={(e) => {
-                    const q = new URLSearchParams();
-                    q.set("as", e.target.value);
-                    q.set("section", section);
-                    router.push(`/admin?${q.toString()}`);
-                  }}
-                  className="h-8 rounded-md border border-neutral-300 bg-white px-2 text-[12.5px] font-medium text-neutral-900 focus:border-neutral-900 focus:outline-none"
-                >
-                  {ROLE_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <span className="flex items-center gap-1.5 text-[12px] text-neutral-500">
+                <span className="hidden sm:inline">{isSuper ? "" : "Şube"}</span>
+                <span className="rounded-md border border-neutral-200 bg-neutral-50 px-2 py-1 text-[12.5px] font-semibold text-neutral-900">
+                  {user.name}
+                </span>
+              </span>
             </div>
           </header>
 
@@ -166,6 +158,14 @@ function Chrome({ children }: { children: React.ReactNode }) {
                 {item.label}
               </Link>
             ))}
+            <button
+              type="button"
+              onClick={logout}
+              disabled={loggingOut}
+              className="ml-auto shrink-0 rounded-md px-2.5 py-1 text-[12.5px] font-medium text-neutral-500 disabled:opacity-60"
+            >
+              Çıkış
+            </button>
           </div>
 
           <main className="flex-1 px-4 py-6 md:px-6 md:py-7">
@@ -177,10 +177,10 @@ function Chrome({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function AdminShell({ children }: { children: React.ReactNode }) {
+export function AdminShell({ children, user }: { children: React.ReactNode; user: AdminUser }) {
   return (
     <Suspense fallback={<div className="min-h-screen bg-white" />}>
-      <Chrome>{children}</Chrome>
+      <Chrome user={user}>{children}</Chrome>
     </Suspense>
   );
 }

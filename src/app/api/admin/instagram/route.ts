@@ -8,12 +8,13 @@ import {
 
 export const dynamic = "force-dynamic";
 
-/** Instagram content management is SUPER_ADMIN-only. */
-function authorized(as: string | undefined): boolean {
-  return resolveAdminScope({ as }).user.role === "SUPER_ADMIN";
+/** Instagram content management is SUPER_ADMIN-only. Derived from the session, never a client-supplied field. */
+async function authorized(): Promise<boolean> {
+  const scope = await resolveAdminScope();
+  return scope?.user.role === "SUPER_ADMIN";
 }
 
-type Body = { as?: string; id?: string } & Partial<NewInstagramContentInput>;
+type Body = { id?: string } & Partial<NewInstagramContentInput>;
 
 function toInput(body: Body): NewInstagramContentInput {
   return {
@@ -34,7 +35,7 @@ export async function POST(request: Request) {
   } catch {
     return NextResponse.json({ error: "Geçersiz istek." }, { status: 400 });
   }
-  if (!authorized(body.as)) {
+  if (!(await authorized())) {
     return NextResponse.json({ error: "Bu işlem için yetkiniz yok." }, { status: 403 });
   }
 
@@ -54,7 +55,7 @@ export async function PATCH(request: Request) {
   } catch {
     return NextResponse.json({ error: "Geçersiz istek." }, { status: 400 });
   }
-  if (!authorized(body.as)) {
+  if (!(await authorized())) {
     return NextResponse.json({ error: "Bu işlem için yetkiniz yok." }, { status: 403 });
   }
   if (!body.id) return NextResponse.json({ error: "id gerekli." }, { status: 400 });
@@ -68,12 +69,11 @@ export async function PATCH(request: Request) {
   return NextResponse.json({ ok: true, items: getInstagramContentRepository().list() });
 }
 
-/** DELETE ?id=&as= — remove an item. */
+/** DELETE ?id= — remove an item. */
 export async function DELETE(request: Request) {
   const url = new URL(request.url);
-  const as = url.searchParams.get("as") ?? undefined;
   const id = url.searchParams.get("id") ?? "";
-  if (!authorized(as)) {
+  if (!(await authorized())) {
     return NextResponse.json({ error: "Bu işlem için yetkiniz yok." }, { status: 403 });
   }
   if (!id) return NextResponse.json({ error: "id gerekli." }, { status: 400 });

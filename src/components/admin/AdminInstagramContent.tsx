@@ -42,7 +42,7 @@ function validateForm(f: FormState): string | null {
   return null;
 }
 
-export function AdminInstagramContent({ initialItems, as }: { initialItems: ListItem[]; as: string }) {
+export function AdminInstagramContent({ initialItems }: { initialItems: ListItem[] }) {
   const [items, setItems] = useState<ListItem[]>(initialItems);
 
   /** API responses carry plain InstagramContent; keep each row's previously resolved thumbnail by id. */
@@ -78,8 +78,7 @@ export function AdminInstagramContent({ initialItems, as }: { initialItems: List
     }
     setSaving(true);
     setFormError(null);
-    const payload: { as: string; id?: string } & NewInstagramContentInput = {
-      as,
+    const payload: { id?: string } & NewInstagramContentInput = {
       ...(editing !== "new" && editing ? { id: editing.id } : {}),
       title: form.title.trim() || undefined,
       videoUrl: form.videoUrl.trim(),
@@ -112,7 +111,7 @@ export function AdminInstagramContent({ initialItems, as }: { initialItems: List
   const remove = async (id: string) => {
     if (!window.confirm("Bu içeriği silmek istediğinize emin misiniz?")) return;
     try {
-      const res = await fetch(`/api/admin/instagram?id=${encodeURIComponent(id)}&as=${encodeURIComponent(as)}`, {
+      const res = await fetch(`/api/admin/instagram?id=${encodeURIComponent(id)}`, {
         method: "DELETE",
       });
       const data = (await res.json()) as { ok?: boolean; items?: InstagramContent[]; error?: string };

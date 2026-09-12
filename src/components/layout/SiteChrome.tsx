@@ -10,7 +10,9 @@ import { Footer } from "./Footer";
  */
 export function SiteChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  if (pathname?.startsWith("/admin")) {
+  // /admin (and /admin-giris) and /merkez-giris get their own minimal auth
+  // chrome — never the public Header/Footer.
+  if (pathname?.startsWith("/admin") || pathname?.startsWith("/merkez-giris")) {
     return <>{children}</>;
   }
   return (

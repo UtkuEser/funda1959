@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { resolveAdminScope } from "@/lib/admin/access";
+import { resolveAdminScope, type AdminRole } from "@/lib/admin/access";
 import {
   adjustPointsAsAdmin,
   getCustomerPointDetailForAdmin,
@@ -8,32 +8,36 @@ import {
 
 export const dynamic = "force-dynamic";
 
-/** Funda Puan is SUPER_ADMIN-only — resolved fresh per request, never trusted from the client. */
-function scopeRole(as: string | null | undefined) {
-  return resolveAdminScope({ as: as ?? undefined }).user.role;
+/** Funda Puan is SUPER_ADMIN-only — resolved from the session, never trusted from the client. `null` = no session at all. */
+async function scopeRole(): Promise<AdminRole | null> {
+  const scope = await resolveAdminScope();
+  return scope?.user.role ?? null;
 }
 
-/** GET ?as=&customerId= — account + transaction history for the detail drawer. */
+const FORBIDDEN = { error: "Bu işlem için yetkiniz yok." } as const;
+
+/** GET ?customerId= — account + transaction history for the detail drawer. */
 export async function GET(request: Request) {
   const url = new URL(request.url);
-  const as = url.searchParams.get("as");
   const customerId = url.searchParams.get("customerId") ?? "";
   if (!customerId) return NextResponse.json({ error: "customerId gerekli." }, { status: 400 });
 
+  const role = await scopeRole();
+  if (!role) return NextResponse.json(FORBIDDEN, { status: 403 });
+
   try {
-    const detail = getCustomerPointDetailForAdmin(scopeRole(as), customerId);
+    const detail = getCustomerPointDetailForAdmin(role, customerId);
     if (!detail) return NextResponse.json({ error: "Müşteri bulunamadı." }, { status: 404 });
     return NextResponse.json({ ok: true, ...detail });
   } catch (err) {
     if (err instanceof FundaPointsAccessError) {
-      return NextResponse.json({ error: "Bu işlem için yetkiniz yok." }, { status: 403 });
+      return NextResponse.json(FORBIDDEN, { status: 403 });
     }
     throw err;
   }
 }
 
 type AdjustBody = {
-  as?: string;
   customerId?: string;
   direction?: "add" | "subtract";
   points?: number;
@@ -60,8 +64,10 @@ export async function POST(request: Request) {
   }
   if (!description) return NextResponse.json({ error: "Açıklama gerekli." }, { status: 400 });
 
+  const role = await scopeRole();
+  if (!role) return NextResponse.json(FORBIDDEN, { status: 403 });
+
   try {
-    const role = scopeRole(body.as);
     const result = adjustPointsAsAdmin(role, { customerId, direction, points, description });
     if (!result.ok) {
       const message =
@@ -76,7 +82,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, transaction: result.transaction, ...detail });
   } catch (err) {
     if (err instanceof FundaPointsAccessError) {
-      return NextResponse.json({ error: "Bu işlem için yetkiniz yok." }, { status: 403 });
+      return NextResponse.json(FORBIDDEN, { status: 403 });
     }
     throw err;
   }

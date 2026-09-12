@@ -29,7 +29,6 @@ export function BranchStockManager({
   locked,
   initialRows,
   date,
-  as,
 }: {
   role: AdminRole;
   branchId: string;
@@ -37,7 +36,6 @@ export function BranchStockManager({
   locked: boolean;
   initialRows: BranchStockRow[];
   date: string;
-  as: string;
 }) {
   void role;
   const [rows, setRows] = useState<BranchStockRow[]>(initialRows);
@@ -99,7 +97,7 @@ export function BranchStockManager({
       const res = await fetch("/api/admin/inventory", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ as, branchId, date, changes }),
+        body: JSON.stringify({ branchId, date, changes }),
       });
       const data = (await res.json()) as { ok?: boolean; rows?: BranchStockRow[]; error?: string };
       if (res.ok && data.ok && data.rows) {
