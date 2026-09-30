@@ -1,69 +1,60 @@
 import "@/lib/campaigns/server-init";
 import { getHomepageCampaignPool, type Campaign } from "@/lib/campaigns";
-import { resolvePublicAsset } from "@/lib/public-asset";
-import { Container } from "@/components/shared/Container";
-import { FadeIn } from "@/components/shared/FadeIn";
-import { CampaignsCarousel, type CampaignWithImage } from "@/components/home/CampaignsCarousel";
+import { publicImageSize, resolvePublicAsset } from "@/lib/public-asset";
+import { isSupabaseConfigured } from "@/lib/supabase-server";
+import { CampaignShowcase, type CampaignWithImage } from "@/components/home/CampaignShowcase";
 
 /**
- * Image resolution — server-only (fs check via `resolvePublicAsset`), so it
- * lives here rather than in the client carousel. Priority:
+ * Image resolution — server-only (fs check via `resolvePublicAsset`, pixel
+ * size via `publicImageSize`), so it lives here rather than in the client
+ * carousel. Priority:
  *   1. the admin-set `campaign.image`, if that file actually exists
  *   2. a project-wide default campaign visual, if one has been added
  *   3. a deterministic (never random) pick from real product photography,
  *      keyed off a keyword in the title/description
  */
 const CAMPAIGN_DEFAULT_IMAGE = "/home/campaigns/default.webp";
-const CAMPAIGN_FALLBACK_DEFAULT = "/products/yas-pastalar/yaspasta1.jpg";
-const CAMPAIGN_FALLBACK_RULES: { keywords: string[]; image: string }[] = [
-  { keywords: ["çikolata", "cikolata"], image: "/products/cikolatalar/cikolatalar1-detay.jpg" },
-  { keywords: ["kahve", "kuru pasta", "kurabiye"], image: "/products/kuru-pastalar/kurupasta4.jpg" },
+
+type ResolvedImage = { src: string; position: string };
+
+/**
+ * Fallback photography with a focal point each: the cards show every image in
+ * the same 4:3 frame, and these square studio shots keep their tops (lattice,
+ * strawberry) only when the crop leans upward.
+ */
+const CAMPAIGN_FALLBACK_DEFAULT: ResolvedImage = { src: "/products/adet-pastalar/adetpasta10.jpg", position: "50% 32%" };
+const CAMPAIGN_FALLBACK_RULES: { keywords: string[]; image: ResolvedImage }[] = [
+  { keywords: ["çikolata", "cikolata"], image: { src: "/products/cikolatalar/cikolatalar1-detay.jpg", position: "50% 55%" } },
+  { keywords: ["kahve", "kuru pasta", "kurabiye"], image: { src: "/products/kuru-pastalar/kurupasta4.jpg", position: "50% 50%" } },
   {
     keywords: ["kutlama", "doğum günü", "dogum gunu", "özel gün", "ozel gun", "pasta"],
-    image: "/products/adet-pastalar/adetpasta1.jpg",
+    image: { src: "/products/adet-pastalar/adetpasta4.jpg", position: "50% 38%" },
   },
 ];
 
-function fallbackImageFor(campaign: Pick<Campaign, "title" | "description">): string {
+function fallbackImageFor(campaign: Pick<Campaign, "title" | "description">): ResolvedImage {
   const haystack = `${campaign.title} ${campaign.description}`.toLocaleLowerCase("tr");
   const rule = CAMPAIGN_FALLBACK_RULES.find((r) => r.keywords.some((k) => haystack.includes(k)));
   return rule?.image ?? CAMPAIGN_FALLBACK_DEFAULT;
 }
 
-function resolveCampaignImage(campaign: Campaign): string {
-  return (
-    resolvePublicAsset(campaign.image) ??
-    resolvePublicAsset(CAMPAIGN_DEFAULT_IMAGE) ??
-    fallbackImageFor(campaign)
-  );
+function resolveCampaignImage(campaign: Campaign): ResolvedImage {
+  const own = resolvePublicAsset(campaign.image) ?? resolvePublicAsset(CAMPAIGN_DEFAULT_IMAGE);
+  return own ? { src: own, position: "50% 50%" } : fallbackImageFor(campaign);
 }
 
 export async function CampaignsSection() {
   // eslint-disable-next-line react-hooks/purity
   const nowMs = Date.now();
   const active = await getHomepageCampaignPool(new Date(nowMs));
-  const pool: CampaignWithImage[] = active.map((c) => ({
-    ...c,
-    resolvedImage: resolveCampaignImage(c),
-  }));
+  const pool: CampaignWithImage[] = active.map((c) => {
+    const image = resolveCampaignImage(c);
+    // real pixel size -> the carousel frames the visual at its own aspect ratio
+    const size = publicImageSize(image.src);
+    return { ...c, resolvedImage: image.src, imagePosition: image.position, imageSize: size };
+  });
   if (pool.length === 0) return null;
 
-  return (
-    <section className="bg-cream-light pb-10 md:pb-16">
-      <Container>
-        <FadeIn>
-          <p className="mb-2 font-sans text-[12px] font-semibold tracking-[0.16em] uppercase text-burgundy/50">
-            Sınırlı Süreli
-          </p>
-        </FadeIn>
-        <FadeIn delay={100}>
-          <h2 className="mb-6 font-serif text-[26px] font-medium leading-[1.12] text-burgundy md:mb-8 md:text-[32px]">
-            Aktif Kampanyalar
-          </h2>
-        </FadeIn>
-
-        <CampaignsCarousel pool={pool} nowMs={nowMs} />
-      </Container>
-    </section>
-  );
+  // no Supabase store -> the in-memory seed (campaigns/mock.ts) is serving
+  return <CampaignShowcase pool={pool} nowMs={nowMs} isSample={!isSupabaseConfigured()} />;
 }

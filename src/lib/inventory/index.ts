@@ -1,25 +1,30 @@
 /**
  * Inventory domain — per-branch sale state for a single product record.
  *
- * There is ONE product (`src/lib/data.ts`). Its availability, stock and
- * capacity differ per branch and live here as `BranchProduct` rows. Three
- * stock models are supported:
- *
- *   "quantity"       ready physical stock (chocolate boxes, dry pastries)
- *   "daily_capacity" units producible per day (yaş pasta)
- *   "made_to_order"  built on order; no quantity, gated by preparation time
+ * There is ONE product (`src/lib/data.ts`). Per branch it has:
+ *   - `active` — general publish status: the branch carries it at all
+ *     (from product data; not edited in the ops panel);
+ *   - `status` — branch stock availability, set by the branch team:
+ *       "active"  deliverable from today,
+ *       "passive" still listed and orderable, earliest delivery tomorrow.
+ *     A passive product stays passive until someone changes it.
+ *   - preparation time and same-day eligibility.
+ * The older quantity/capacity figures are kept as data (and used once to
+ * derive the initial status) but no longer drive availability.
  */
 
 import { catalogProducts, getProductDetail, type CatalogProduct } from "../data";
 import { listBranches } from "../branch";
-import { getInventoryOverride } from "./overrides";
+import { getInventoryOverride, type BranchStockStatus, type InventoryOverride } from "./overrides";
 
 export {
   getInventoryOverride,
   setInventoryOverride,
+  setInventoryOverrides,
   clearInventoryOverride,
   allInventoryOverrides,
   type InventoryOverride,
+  type BranchStockStatus,
 } from "./overrides";
 
 export type StockMode = "quantity" | "daily_capacity" | "made_to_order";
@@ -27,7 +32,10 @@ export type StockMode = "quantity" | "daily_capacity" | "made_to_order";
 export type BranchProduct = {
   branchId: string;
   productId: string;
+  /** general publish status at this branch (the branch carries the product) */
   active: boolean;
+  /** branch stock availability — see the module note */
+  status: BranchStockStatus;
   stockMode: StockMode;
   /** meaningful for "quantity" */
   stockQuantity: number;
@@ -46,7 +54,7 @@ export type BranchProduct = {
 };
 
 /* -------------------------------------------------------------------------- */
-/* Derivation rules + demo overrides                                           */
+/* Derivation rules + demo overrides — SAMPLE DATA (see ./source.ts)            */
 /* -------------------------------------------------------------------------- */
 
 const SERVING_CATEGORIES = new Set(["yas-pastalar", "ozel-gun"]);
@@ -89,7 +97,7 @@ function deriveBranchProduct(branchId: string, p: CatalogProduct): BranchProduct
   const prepHours = detail?.preparationTimeHours ?? 24;
   const mode = baseStockMode(p);
 
-  const derived: BranchProduct = {
+  const derived: Omit<BranchProduct, "status"> = {
     branchId,
     productId: p.id,
     active: (p.availableBranches?.includes(branchId) ?? true) && p.priceValue > 0,
@@ -108,20 +116,37 @@ function deriveBranchProduct(branchId: string, p: CatalogProduct): BranchProduct
   };
 
   const override = OVERRIDES[`${branchId}:${p.id}`];
-  return override ? { ...derived, ...override } : derived;
+  const merged = override ? { ...derived, ...override } : derived;
+  return { ...merged, status: statusFromQuantity(merged) };
+}
+
+/** One-time migration from the quantity model: an empty shelf starts "passive". */
+function statusFromQuantity(bp: Pick<BranchProduct, "stockMode" | "stockQuantity">): BranchStockStatus {
+  return bp.stockMode === "quantity" && bp.stockQuantity <= 0 ? "passive" : "active";
+}
+
+/**
+ * Effective status: an explicit panel choice wins; otherwise an edit saved
+ * under the old model is translated (off-sale or empty shelf -> passive).
+ */
+function effectiveStatus(seed: BranchProduct, o: InventoryOverride): BranchStockStatus {
+  if (o.status) return o.status;
+  if (o.active === false) return "passive";
+  if (o.stockQuantity !== undefined) return statusFromQuantity({ stockMode: seed.stockMode, stockQuantity: o.stockQuantity });
+  return seed.status;
 }
 
 /* -------------------------------------------------------------------------- */
 /* Repository                                                                  */
 /* -------------------------------------------------------------------------- */
 
-/** Merge the ops-panel override onto a seed row (v1: active + stock + capacity). */
+/** Merge the ops-panel override onto a seed row. Legacy figures are carried, not used. */
 function withOverride(bp: BranchProduct): BranchProduct {
   const o = getInventoryOverride(bp.branchId, bp.productId);
   if (!o) return bp;
   return {
     ...bp,
-    active: o.active ?? bp.active,
+    status: effectiveStatus(bp, o),
     stockQuantity: o.stockQuantity ?? bp.stockQuantity,
     dailyCapacity: o.dailyCapacity ?? bp.dailyCapacity,
   };
@@ -172,16 +197,6 @@ export function getInventoryRepository(): InventoryRepository {
 
 export function getBranchProduct(branchId: string, productId: string): BranchProduct | null {
   return repo.get(branchId, productId);
-}
-
-/* -------------------------------------------------------------------------- */
-/* Demo per-day capacity consumption ("confirmed")                             */
-/* -------------------------------------------------------------------------- */
-
-/** deterministic confirmed units for a daily_capacity product on a date */
-export function dailyConfirmedUnits(bp: BranchProduct, isoDate: string): number {
-  if (bp.stockMode !== "daily_capacity") return 0;
-  return hash(`${bp.branchId}|${bp.productId}|${isoDate}`, Math.max(1, Math.ceil(bp.dailyCapacity * 0.7)));
 }
 
 /** current price for a branch product (override or product base) */

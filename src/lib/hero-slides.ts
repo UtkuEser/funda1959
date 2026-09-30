@@ -20,6 +20,12 @@ export type HeroSlide = {
   secondary: { label: string; href: string };
   /** optional "signature of the week" card floating over the visual */
   signature?: { label: string; value: string };
+  /**
+   * Focal point for the desktop scene, where the photo fills the stage
+   * (CSS object-position). Keeps the subject in frame when the stage is wider
+   * than the photo.
+   */
+  focal: string;
   mediaType: HeroMediaType;
   /** intended still image under /public (verified at build by resolveHeroSlides) */
   image: string;
@@ -44,6 +50,7 @@ export const heroSlides: HeroSlide[] = [
     primary: { label: "Pastaları Keşfet", href: "/lezzetlerimiz/yas-pastalar" },
     secondary: { label: "1959'dan Bugüne", href: "/hikayemiz" },
     signature: { label: "Bu haftanın imzası", value: "Çikolatalı Çilekli Pasta" },
+    focal: "50% 20%",
     mediaType: "image",
     image: "/home/hero/1.png",
     fallbackVisual: "heritage",
@@ -55,6 +62,7 @@ export const heroSlides: HeroSlide[] = [
     text: "Sabah böreklerinden çay saatine, mini tatlılardan el yapımı çikolatalara; günlük vitrinimizin sevilen lezzetleri her gün taze.",
     primary: { label: "Günlük Lezzetleri Keşfet", href: "/lezzetlerimiz" },
     secondary: { label: "Tüm Ürünler", href: "/lezzetlerimiz" },
+    focal: "50% 60%",
     mediaType: "image",
     image: "/home/hero/2.png",
     fallbackVisual: "daily",
@@ -66,6 +74,7 @@ export const heroSlides: HeroSlide[] = [
     text: "Doğum günü, nişan ve söz törenlerinden özel davetlere; anınıza özel tasarlanan, kişiye özel pastalar.",
     primary: { label: "Özel Gün Pastalarını Keşfet", href: "/ozel-gun" },
     secondary: { label: "Kişiye Özel Pasta", href: "/ozel-gun" },
+    focal: "50% 24%",
     mediaType: "image",
     image: "/home/hero/3.png",
     fallbackVisual: "celebration",

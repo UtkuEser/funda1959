@@ -6,14 +6,12 @@ import { useMemo, useState } from "react";
 import type { CatalogProduct } from "@/lib/data";
 import { addToCart } from "@/lib/cart";
 import { formatTL } from "@/lib/cart-utils";
-import { cartHasBranchConflict } from "@/lib/cart-fulfillment";
+import { planCartLine } from "@/lib/cart-fulfillment";
 import { getQuickOrderMode } from "@/lib/quick-order-utils";
 import { useDelivery } from "@/lib/delivery/context";
-import {
-  reasonMessage,
-  type CatalogAvailabilityVerdict,
-  type AvailabilityResult,
-} from "@/lib/availability";
+import { reasonMessage, type CatalogAvailabilityVerdict } from "@/lib/availability";
+import { deliveryLabel } from "@/lib/delivery/labels";
+import { DeliveryPill } from "@/components/delivery/DeliveryPill";
 
 /** Frontend-only quantity ceiling — mirrors the cart's own clamp (cart.ts). */
 const MAX_QTY = 20;
@@ -54,27 +52,19 @@ function Stepper({
   );
 }
 
-function AvailabilityLine({ v, todayISO }: { v: CatalogAvailabilityVerdict; todayISO: string }) {
-  if (v.reason === "PRODUCT_DISABLED_AT_BRANCH" || v.reason === "OUT_OF_STOCK") {
-    return <span className="text-chocolate-light">{reasonMessage(v.reason)}</span>;
+/** Same engine verdict and wording as the product cards and the product page. */
+function AvailabilityLine({ v }: { v: CatalogAvailabilityVerdict }) {
+  if (v.reason === "PRODUCT_DISABLED_AT_BRANCH") {
+    return <span className="text-taupe">{reasonMessage(v.reason)}</span>;
   }
-  if (v.available) {
-    return (
-      <span className="text-burgundy">
-        Bugün teslim edilebilir{v.slotLabel ? ` · en erken ${v.slotLabel}` : ""}
-      </span>
-    );
-  }
-  if (v.earliestDate) {
-    const label = v.earliestDate === todayISO ? "bugün" : "yarın ve sonrası";
-    return (
-      <span className="text-taupe">
-        Bugün uygun değil · {label} teslim edilebilir
-        {v.earliestLabel ? ` (${v.earliestLabel})` : ""}
-      </span>
-    );
-  }
-  return <span className="text-taupe">{reasonMessage(v.reason)}</span>;
+  const label = deliveryLabel(v);
+  if (!label) return <span className="text-taupe">{reasonMessage(v.reason)}</span>;
+  return (
+    <span className="inline-flex flex-wrap items-center gap-2">
+      <DeliveryPill label={label} />
+      {v.available && v.slotLabel && <span className="text-taupe">en erken {v.slotLabel}</span>}
+    </span>
+  );
 }
 
 export function QuickOrderProductRow({
@@ -85,7 +75,7 @@ export function QuickOrderProductRow({
   verdict: CatalogAvailabilityVerdict | null;
 }) {
   const mode = useMemo(() => getQuickOrderMode(product), [product]);
-  const { context, isResolved } = useDelivery();
+  const { context, isResolved, openSelector } = useDelivery();
 
   const [qty, setQty] = useState(1);
   const [added, setAdded] = useState(false);
@@ -103,62 +93,27 @@ export function QuickOrderProductRow({
   const unitPrice = selectedVariant ? selectedVariant.price : product.priceValue;
   const priceLabel = selectedVariant ? formatTL(unitPrice) : product.displayPrice;
 
-  const pad = (n: number) => String(n).padStart(2, "0");
-  const now = new Date();
-  const todayISO = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 
   const handleAdd = async () => {
     setError(null);
+    // no branch yet -> stock is unknown; send the customer to the picker first
+    if (!isResolved) {
+      openSelector("cart");
+      return;
+    }
 
-    let branch: string | null = null;
-    let deliveryDate: string | null = null;
-    let deliveryTime: string | null = null;
-    let deliveryType: "address" | "pickup" | null = null;
-
-    if (isResolved) {
-      setBusy(true);
-      // authoritative check (reservation- + ops-panel-override-aware)
-      const check = await fetch("/api/availability", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          kind: "product",
-          productId: product.id,
-          productSlug: product.slug,
-          variantId: selectedVariant?.id ?? null,
-          quantity: qty,
-          context,
-        }),
-      })
-        .then((r) => r.json() as Promise<AvailabilityResult>)
-        .catch(() => null);
-      setBusy(false);
-
-      if (!check) {
-        setError("Uygunluk kontrol edilemedi. Lütfen tekrar deneyin.");
-        return;
-      }
-      if (check.reason === "PRODUCT_DISABLED_AT_BRANCH" || check.reason === "OUT_OF_STOCK") {
-        setError(reasonMessage(check.reason));
-        return;
-      }
-      if (cartHasBranchConflict(check.branchId)) {
-        setError("Sepetinizde başka bir şubeden ürün var. Önce mevcut siparişi tamamlayın.");
-        return;
-      }
-      const target = check.available
-        ? { date: check.requestedDate, slot: check.slots.find((s) => s.available) ?? null }
-        : check.earliestAvailableSlot
-          ? { date: check.earliestAvailableSlot.date, slot: check.earliestAvailableSlot }
-          : null;
-      if (!target || !target.slot) {
-        setError(reasonMessage(check.reason));
-        return;
-      }
-      branch = check.branchId;
-      deliveryDate = target.date;
-      deliveryTime = target.slot.label;
-      deliveryType = context.fulfillmentType === "delivery" ? "address" : "pickup";
+    setBusy(true);
+    const plan = await planCartLine({
+      productId: product.id,
+      productSlug: product.slug,
+      variantId: selectedVariant?.id ?? null,
+      quantity: qty,
+      context,
+    });
+    setBusy(false);
+    if (!plan.ok) {
+      setError(plan.message);
+      return;
     }
 
     addToCart({
@@ -173,10 +128,10 @@ export function QuickOrderProductRow({
       quantity: qty,
       quantityEnabled: true,
       customization: { extras: [] },
-      deliveryType,
-      deliveryDate,
-      deliveryTime,
-      branch,
+      deliveryType: plan.deliveryType,
+      deliveryDate: plan.date,
+      deliveryTime: plan.slotLabel,
+      branch: plan.branchId,
       addedAt: Date.now(),
     });
     setAdded(true);
@@ -184,9 +139,7 @@ export function QuickOrderProductRow({
     window.setTimeout(() => setAdded(false), 1600);
   };
 
-  const helper = product.sameDayDelivery
-    ? `${product.categoryName} · Aynı gün`
-    : product.categoryName;
+  const helper = product.categoryName;
 
   return (
     <article className="border-b border-sand-light py-4 last:border-b-0">
@@ -243,7 +196,7 @@ export function QuickOrderProductRow({
           {/* Availability line */}
           {mode.kind !== "detailed" && isResolved && verdict && (
             <p className="mt-2 font-sans text-[12px] leading-snug">
-              <AvailabilityLine v={verdict} todayISO={todayISO} />
+              <AvailabilityLine v={verdict} />
             </p>
           )}
 

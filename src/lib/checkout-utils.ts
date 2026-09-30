@@ -1,13 +1,9 @@
+import { HOURLY_SLOT_LABELS } from "./delivery/slots";
 import type { CartItem } from "./cart";
 import { getProductDetail } from "./data";
 
-export const DELIVERY_TIME_SLOTS = [
-  "10:00 – 12:00",
-  "12:00 – 14:00",
-  "14:00 – 16:00",
-  "16:00 – 18:00",
-  "18:00 – 20:00",
-];
+/** One-hour delivery windows, generated from the branches' delivery hours. */
+export const DELIVERY_TIME_SLOTS: string[] = HOURLY_SLOT_LABELS;
 
 /** Demo district list — designed to be replaced by an admin-managed source. */
 export const ANKARA_DISTRICTS = [

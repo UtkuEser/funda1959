@@ -4,12 +4,15 @@ import Link from "next/link";
 import Image from "next/image";
 import { useCallback, useMemo, useState } from "react";
 import { Container } from "@/components/shared/Container";
-import { ProductGridCard } from "@/components/catalog/ProductGridCard";
+import { ProductCardGrid } from "@/components/catalog/ProductCardGrid";
 import { addToCart } from "@/lib/cart";
 import { type ProductDetail as ProductDetailType } from "@/lib/data";
 import { useDelivery } from "@/lib/delivery/context";
 import { cartHasBranchConflict } from "@/lib/cart-fulfillment";
+import { earliestLabel } from "@/lib/delivery/labels";
+import { DeliveryPill } from "@/components/delivery/DeliveryPill";
 import { ProductFulfillment, type FulfillmentSelection } from "./ProductFulfillment";
+import { SampleDataNote } from "@/components/delivery/SampleDataNote";
 
 /** demo photo (public path) vs. a gradient class fragment */
 const isPhoto = (src: string) => src.startsWith("/");
@@ -23,10 +26,10 @@ const VARIANT_TITLE: Record<string, string> = {
 
 const tl = (n: number) => `₺${n.toLocaleString("tr-TR")}`;
 
+/** Merchandising labels only — delivery timing comes from the engine (see the pill below). */
 function badgesFor(p: ProductDetailType): string[] {
   const out: string[] = [];
   if (p.isBestSeller) out.push("Çok Satan");
-  if (out.length < 2 && p.sameDayDelivery) out.push("Aynı Gün Teslim");
   if (out.length < 2 && p.customizable) out.push("Kişiye Özel");
   if (out.length < 2 && p.isNew) out.push("Yeni");
   return out.slice(0, 2);
@@ -36,7 +39,7 @@ export function ProductDetail({ product }: { product: ProductDetailType }) {
   const hasVariants = product.variants.length > 0;
   const showCakeFields = product.variantKind === "serving" || product.customizable;
 
-  const { context: deliveryContext } = useDelivery();
+  const { context: deliveryContext, isResolved, openSelector } = useDelivery();
 
   const [activeImage, setActiveImage] = useState(0);
   const [variantId, setVariantId] = useState<string | null>(null);
@@ -64,6 +67,9 @@ export function ProductDetail({ product }: { product: ProductDetailType }) {
   const cta = (() => {
     if (hasVariants && !variantId)
       return { disabled: true, label: product.variantKind === "serving" ? "Boyut Seçin" : "Seçenek Seçin" };
+    // no branch yet: delivery -> the CTA opens the address picker; pickup -> choose a store in the block
+    if (!isResolved && deliveryContext.fulfillmentType === "pickup") return { disabled: true, label: "Mağaza Seçin" };
+    if (!isResolved) return { disabled: false, label: "Adresinizi Girin", selectAddress: true };
     if (!fulfillment?.canAddToCart) return { disabled: true, label: "Teslimat Seçin" };
     if (checking) return { disabled: true, label: "Kontrol ediliyor…" };
     return { disabled: false, label: added ? "Sepete Eklendi ✓" : "Sepete Ekle" };
@@ -73,6 +79,10 @@ export function ProductDetail({ product }: { product: ProductDetailType }) {
     setExtras((cur) => (cur.includes(o) ? cur.filter((x) => x !== o) : [...cur, o]));
 
   const handleAdd = async () => {
+    if ("selectAddress" in cta) {
+      openSelector("cart");
+      return;
+    }
     if (cta.disabled || !fulfillment?.canAddToCart || !fulfillment.branchId) return;
     setAddError(null);
 
@@ -148,6 +158,8 @@ export function ProductDetail({ product }: { product: ProductDetailType }) {
   };
 
   const badges = badgesFor(product);
+  // same engine result as the date cards and calendar in ProductFulfillment
+  const topDelivery = isResolved && fulfillment?.earliestDate ? earliestLabel(fulfillment.earliestDate) : null;
 
   const accordion = [
     { title: "Ürün İçeriği", body: product.ingredients },
@@ -171,7 +183,7 @@ export function ProductDetail({ product }: { product: ProductDetailType }) {
       </nav>
 
       {/* Hero */}
-      <div className="grid gap-8 lg:grid-cols-[1.15fr_1fr] lg:gap-14">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1.15fr_1fr] lg:gap-14 [&>*]:min-w-0">
         {/* Gallery */}
         <div>
           {(() => {
@@ -252,8 +264,8 @@ export function ProductDetail({ product }: { product: ProductDetailType }) {
             {product.name}
           </h1>
 
-          {badges.length > 0 && (
-            <div className="mt-3 flex flex-wrap gap-1.5">
+          {(badges.length > 0 || topDelivery) && (
+            <div className="mt-3 flex flex-wrap items-center gap-1.5">
               {badges.map((b) => (
                 <span
                   key={b}
@@ -262,6 +274,7 @@ export function ProductDetail({ product }: { product: ProductDetailType }) {
                   {b}
                 </span>
               ))}
+              {topDelivery && <DeliveryPill label={topDelivery} />}
             </div>
           )}
 
@@ -270,6 +283,7 @@ export function ProductDetail({ product }: { product: ProductDetailType }) {
           </p>
 
           <p className="mt-4 font-sans text-[24px] font-semibold text-burgundy">{tl(unitPrice)}</p>
+          <SampleDataNote className="mt-1" />
 
           <div className="mt-7 space-y-6">
             {/* Variants */}
@@ -408,13 +422,6 @@ export function ProductDetail({ product }: { product: ProductDetailType }) {
             </p>
           )}
 
-          <p className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 font-sans text-[12px] text-taupe">
-            <span>Günlük üretim</span>
-            <span aria-hidden>·</span>
-            <span>Özenli paketleme</span>
-            <span aria-hidden>·</span>
-            <span>Güvenli teslimat</span>
-          </p>
         </div>
       </div>
 
@@ -434,7 +441,10 @@ export function ProductDetail({ product }: { product: ProductDetailType }) {
                 <span className={`text-burgundy transition-transform ${open ? "rotate-45" : ""}`}>+</span>
               </button>
               {open && (
-                <p className="pb-5 font-sans text-[14px] leading-relaxed text-warm-brown">{item.body}</p>
+                <div className="pb-5">
+                  <p className="font-sans text-[14px] leading-relaxed text-warm-brown">{item.body}</p>
+                  {item.title === "Teslimat Bilgileri" && <SampleDataNote className="mt-2" />}
+                </div>
               )}
             </div>
           );
@@ -447,11 +457,10 @@ export function ProductDetail({ product }: { product: ProductDetailType }) {
           <h2 className="mb-8 font-serif text-[24px] md:text-[28px] font-medium text-burgundy">
             Benzer Lezzetler
           </h2>
-          <div className="grid grid-cols-2 gap-x-4 gap-y-9 sm:gap-x-5 md:grid-cols-4 md:gap-x-6">
-            {product.relatedProducts.map((p) => (
-              <ProductGridCard key={p.id} product={p} />
-            ))}
-          </div>
+          <ProductCardGrid
+            products={product.relatedProducts}
+            className="grid grid-cols-2 gap-x-4 gap-y-9 sm:gap-x-5 md:grid-cols-4 md:gap-x-6"
+          />
         </section>
       )}
     </Container>

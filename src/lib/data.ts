@@ -479,64 +479,63 @@ export const signatureProducts = (() => {
   return picks;
 })();
 
-/* Homepage — Kutlamalarınız İçin. Celebration cakes are, visually, yaş
- * pastalar; the ozel-gun-pastalari/ folder is not shot yet. */
-export const celebrationCategories = [
-  {
-    title: "Doğum Günü Pastaları",
-    description: "Her yaşa özel, kişiselleştirilebilen tasarımlar.",
-    href: "/ozel-gun",
-    gradient: "from-[#EBD3C6] to-[#D9AF9C]",
-    image: imageFromFolders(["ozel-gun-pastalari", "yas-pastalar"], 0),
-  },
-  {
-    title: "Düğün & Nişan Pastaları",
-    description: "İki hayatı birleştiren, zarif ve çok katlı pastalar.",
-    href: "/ozel-gun",
-    gradient: "from-[#EEE4D3] to-[#DCC7AE]",
-    image: imageFromFolders(["ozel-gun-pastalari", "yas-pastalar"], 1),
-  },
-  {
-    title: "Kişiye Özel Pastalar",
-    description: "Fikrinizi anlatın, ustalarımız hayata geçirsin.",
-    href: "/ozel-gun",
-    gradient: "from-[#E6D0CF] to-[#C9A7AB]",
-    image: imageFromFolders(["ozel-gun-pastalari", "yas-pastalar"], 2),
-  },
-];
+/* Homepage — kategori kartları. Every href is a real route; `links` are the
+ * card's sub-options (revealed on hover/focus) and the card's "N farklı
+ * seçenek" line counts exactly those links. */
+export type HomeCategory = {
+  name: string;
+  href: string;
+  image: string;
+  alt: string;
+  links: { label: string; href: string }[];
+};
 
-/* Homepage — "Bugün ne ikram edelim?" kategori mozaiği */
-export const homeCategories = [
+export const homeCategories: HomeCategory[] = [
   {
     name: "Pastalar",
     href: "/lezzetlerimiz/yas-pastalar",
-    gradient: "from-[#E7C9BA] to-[#C99A86]",
-    feature: true,
-    image: imageFromFolders(["yas-pastalar", "adet-pastalar", "ozel-gun-pastalari"], 2),
-  },
-  {
-    name: "Tatlılar",
-    href: "/lezzetlerimiz/sutlu-tatlilar",
-    gradient: "from-[#EFE6D4] to-[#DCC9AC]",
-    image: imageFromFolders(["sutlu-tatlilar", "serbetli-tatlilar", "mini-lezzetler"], 0),
-  },
-  {
-    name: "Börekler",
-    href: "/lezzetlerimiz/borekler-ve-mayalilar",
-    gradient: "from-[#E9DAC3] to-[#D3BE9C]",
-    image: imageFromFolders(["borekler-ve-mayalilar"], 0),
+    image: "/products/yas-pastalar/yaspasta3.jpg",
+    alt: "Çikolata yapraklarıyla çevrili, kakaolu yaş pasta",
+    links: [
+      { label: "Yaş Pastalar", href: "/lezzetlerimiz/yas-pastalar" },
+      { label: "Adet Pastalar", href: "/lezzetlerimiz/adet-pastalar" },
+      { label: "Özel Gün Pastaları", href: "/lezzetlerimiz/ozel-gun" },
+      { label: "Kutlama Pastanızı Bulun", href: "/ozel-gun" },
+    ],
   },
   {
     name: "Çikolatalar",
     href: "/lezzetlerimiz/cikolatalar",
-    gradient: "from-[#D8C1A8] to-[#B89A7C]",
-    image: imageFromFolders(["cikolatalar"], 0),
+    image: "/products/cikolatalar/cikolatalar1-detay.jpg",
+    alt: "Siyah kutuda el yapımı çikolatalar",
+    links: [
+      { label: "El Yapımı Trüf Çikolata", href: "/urunler/el-yapimi-truf-cikolata" },
+      { label: "Pralinli Çikolata Kutusu", href: "/urunler/pralinli-cikolata-kutusu" },
+      { label: "Hediye Seçkileri", href: "/hediyelikler" },
+    ],
   },
   {
-    name: "Hediyelikler",
-    href: "/hediyelikler",
-    gradient: "from-[#E7D6D2] to-[#CBAAA6]",
-    image: imageFromFolders(["atistirmaliklar", "kuru-pastalar", "cikolatalar"], 0),
+    name: "Tatlılar",
+    href: "/lezzetlerimiz/tatlilar",
+    image: "/products/sutlu-tatlilar/sutlu3.jpg",
+    alt: "Cam kasede, üstü karamelize sütlü tatlı",
+    links: [
+      { label: "Sütlü Tatlılar", href: "/lezzetlerimiz/sutlu-tatlilar" },
+      { label: "Şerbetli Tatlılar", href: "/lezzetlerimiz/serbetli-tatlilar" },
+      { label: "Mini Lezzetler", href: "/lezzetlerimiz/mini-lezzetler" },
+      { label: "Kekler", href: "/lezzetlerimiz/kekler" },
+    ],
+  },
+  {
+    name: "Börekler",
+    href: "/lezzetlerimiz/borekler",
+    image: "/products/borekler-ve-mayalilar/borek2.jpg",
+    alt: "Mermer tabakta çıtır börekler",
+    links: [
+      { label: "Börekler & Mayalılar", href: "/lezzetlerimiz/borekler-ve-mayalilar" },
+      { label: "Atıştırmalıklar", href: "/lezzetlerimiz/atistirmaliklar" },
+      { label: "Kuru Pastalar", href: "/lezzetlerimiz/kuru-pastalar" },
+    ],
   },
 ];
 
@@ -673,6 +672,77 @@ export function catalogProductsForCategory(slug: string): CatalogProduct[] {
   if (!cat) return catalogProducts;
   return catalogProducts.filter((p) => cat.sources.includes(p.categorySlug));
 }
+
+/* ---------------------------------------------------------------------------
+ * Listing routes — one taxonomy for /lezzetlerimiz and /lezzetlerimiz/[kategori]
+ * ------------------------------------------------------------------------- */
+
+export type CatalogListing = {
+  slug: string;
+  title: string;
+  description: string;
+  /** catalog group highlighted in the category nav */
+  navSlug: string;
+  products: CatalogProduct[];
+};
+
+const GROUP_COPY: Record<string, { title: string; description: string }> = {
+  tatlilar: {
+    title: "Tatlılar",
+    description: "Sütlü ve şerbetli tatlılardan mini lezzetlere ve keklere, Funda'nın tatlı seçkisi.",
+  },
+  borekler: {
+    title: "Börekler & Mayalılar",
+    description: "Börekler, mayalılar ve tuzlu atıştırmalıklar; kahvaltıdan çay saatine Funda'nın tuzlu lezzetleri.",
+  },
+};
+
+/**
+ * Resolves a listing URL slug: "tumu", a catalog group (yas-pastalar, tatlilar,
+ * borekler, …) or a single data category (sutlu-tatlilar, mini-lezzetler, …).
+ * Hediyelikler has its own page (/hediyelikler) and is not a listing route.
+ */
+export function resolveCatalogListing(slug: string): CatalogListing | null {
+  if (slug === "tumu") {
+    return {
+      slug,
+      title: "Lezzetlerimiz",
+      description: "Funda'nın günlük üretiminden kutlama pastalarına, tüm lezzetleri keşfedin.",
+      navSlug: "tumu",
+      products: catalogProducts,
+    };
+  }
+  const group = catalogCategories.find((c) => c.slug === slug && c.sources.length > 0);
+  if (group) {
+    const category = categories.find((c) => c.slug === slug);
+    const copy = GROUP_COPY[slug];
+    return {
+      slug,
+      title: copy?.title ?? category?.name ?? group.label,
+      description: copy?.description ?? category?.description ?? "",
+      navSlug: slug,
+      products: catalogProductsForCategory(slug),
+    };
+  }
+  const category = categories.find((c) => c.slug === slug);
+  if (!category) return null;
+  const parent = catalogCategories.find((c) => c.sources.includes(slug));
+  return {
+    slug,
+    title: category.name,
+    description: category.description,
+    navSlug: parent?.slug ?? "tumu",
+    products: catalogProducts.filter((p) => p.categorySlug === slug),
+  };
+}
+
+/** every slug /lezzetlerimiz/[kategori] can render */
+export const catalogListingSlugs: string[] = [
+  ...new Set([
+    ...catalogCategories.filter((c) => c.sources.length > 0).map((c) => c.slug),
+    ...categories.map((c) => c.slug),
+  ]),
+];
 
 /* ---------------------------------------------------------------------------
  * Product detail

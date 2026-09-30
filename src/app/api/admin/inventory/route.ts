@@ -1,52 +1,43 @@
+import "@/lib/inventory/server-init";
 import { NextResponse } from "next/server";
 import { resolveAdminScope } from "@/lib/admin/access";
-import { setInventoryOverride, getInventoryRepository } from "@/lib/inventory";
-import { getBranchStockRows } from "@/lib/inventory/stock-view";
+import { getInventoryRepository, setInventoryOverrides, type BranchStockStatus } from "@/lib/inventory";
+import { getBranchStockView } from "@/lib/inventory/stock-view";
 
 export const dynamic = "force-dynamic";
 
-const pad = (n: number) => String(n).padStart(2, "0");
-const todayISO = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-};
-
-/** manager may only touch a branch in their authorized set — resolved from the session, never a client-supplied field */
-async function authorized(branchId: string): Promise<boolean> {
+/**
+ * Branch managers may only touch their own branch. The scope comes from the
+ * signed session cookie on every request — never from a client field.
+ */
+async function authorize(branchId: string) {
   const scope = await resolveAdminScope();
-  if (!scope) return false;
-  return scope.authorizedBranchIds ? scope.authorizedBranchIds.includes(branchId) : true;
+  if (!scope) return { ok: false as const, status: 401, error: "Oturum açmanız gerekiyor." };
+  const allowed = scope.authorizedBranchIds ? scope.authorizedBranchIds.includes(branchId) : true;
+  return allowed ? { ok: true as const, scope } : { ok: false as const, status: 403, error: "Bu şube için yetkiniz yok." };
 }
 
-/** GET ?branch=&date= — effective stock rows for a branch */
+/** GET ?branch= — the branch's product rows */
 export async function GET(request: Request) {
-  const url = new URL(request.url);
-  const branchId = url.searchParams.get("branch") ?? "";
-  const date = url.searchParams.get("date") ?? todayISO();
-
+  const branchId = new URL(request.url).searchParams.get("branch") ?? "";
   if (!branchId) return NextResponse.json({ error: "branch gerekli." }, { status: 400 });
-  if (!(await authorized(branchId))) {
-    return NextResponse.json({ error: "Bu şube için yetkiniz yok." }, { status: 403 });
-  }
-
-  return NextResponse.json({ branchId, date, rows: getBranchStockRows(branchId, date) });
+  const auth = await authorize(branchId);
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+  return NextResponse.json({ branchId, ...getBranchStockView(branchId) });
 }
 
 type PatchBody = {
   branchId?: string;
-  date?: string;
-  changes?: Record<
-    string,
-    { active?: boolean; stockQuantity?: number; dailyCapacity?: number }
-  >;
+  updates?: { productId?: unknown; status?: unknown }[];
 };
 
-const clampInt = (v: unknown, max = 9999): number | null => {
-  const n = Math.floor(Number(v));
-  return Number.isFinite(n) && n >= 0 && n <= max ? n : null;
-};
+const isStatus = (v: unknown): v is BranchStockStatus => v === "active" || v === "passive";
 
-/** PATCH — apply row edits as inventory overrides (demo persistence) */
+/**
+ * PATCH { branchId, updates: [{ productId, status }] } — one or many rows.
+ * All-or-nothing: an invalid row rejects the request, a failed save restores
+ * the previous state. Only this branch's rows are written.
+ */
 export async function PATCH(request: Request) {
   let body: PatchBody;
   try {
@@ -55,60 +46,32 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Geçersiz istek." }, { status: 400 });
   }
 
-  const branchId = body.branchId ?? "";
-  const changes = body.changes ?? {};
+  const branchId = typeof body.branchId === "string" ? body.branchId : "";
   if (!branchId) return NextResponse.json({ error: "branchId gerekli." }, { status: 400 });
-  if (!(await authorized(branchId))) {
-    return NextResponse.json({ error: "Bu şube için yetkiniz yok." }, { status: 403 });
+  const auth = await authorize(branchId);
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+
+  const updates = Array.isArray(body.updates) ? body.updates : [];
+  if (updates.length === 0 || updates.length > 500) {
+    return NextResponse.json({ error: "Güncellenecek ürün yok." }, { status: 400 });
   }
 
   const repo = getInventoryRepository();
-  const applied: string[] = [];
-
-  for (const [productId, patch] of Object.entries(changes)) {
-    const seed = repo.getSeed(branchId, productId);
-    if (!seed) continue; // unknown product for this branch — skip silently
-
-    const next: { active?: boolean; stockQuantity?: number; dailyCapacity?: number } = {};
-
-    if (typeof patch.active === "boolean") next.active = patch.active;
-
-    if (seed.stockMode === "quantity" && patch.stockQuantity !== undefined) {
-      const q = clampInt(patch.stockQuantity);
-      if (q === null) {
-        return NextResponse.json(
-          { error: `${productId}: geçersiz stok değeri.` },
-          { status: 400 },
-        );
-      }
-      next.stockQuantity = q;
-    }
-
-    if (
-      (seed.stockMode === "daily_capacity" || seed.stockMode === "made_to_order") &&
-      patch.dailyCapacity !== undefined
-    ) {
-      const c = clampInt(patch.dailyCapacity, 999);
-      if (c === null) {
-        return NextResponse.json(
-          { error: `${productId}: geçersiz kapasite değeri.` },
-          { status: 400 },
-        );
-      }
-      next.dailyCapacity = c;
-    }
-
-    if (Object.keys(next).length > 0) {
-      setInventoryOverride(branchId, productId, next);
-      applied.push(productId);
-    }
+  const patches: { productId: string; patch: { status: BranchStockStatus; updatedBy: string } }[] = [];
+  for (const u of updates) {
+    const productId = typeof u.productId === "string" ? u.productId : "";
+    const bp = productId ? repo.get(branchId, productId) : null;
+    if (!bp || !bp.active) return NextResponse.json({ error: `${productId || "?"}: bu şubede tanımlı ürün değil.` }, { status: 400 });
+    if (!isStatus(u.status)) return NextResponse.json({ error: `${productId}: geçersiz durum.` }, { status: 400 });
+    patches.push({ productId, patch: { status: u.status, updatedBy: auth.scope.user.name } });
   }
 
-  const date = body.date ?? todayISO();
-  return NextResponse.json({
-    ok: true,
-    updated: applied.length,
-    branchId,
-    rows: getBranchStockRows(branchId, date),
-  });
+  try {
+    setInventoryOverrides(branchId, patches);
+  } catch (err) {
+    console.error("[inventory] save failed", err);
+    return NextResponse.json({ error: "Değişiklik kaydedilemedi." }, { status: 500 });
+  }
+
+  return NextResponse.json({ ok: true, updated: patches.length, branchId, ...getBranchStockView(branchId) });
 }

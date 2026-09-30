@@ -5,27 +5,63 @@ import Image from "next/image";
 import { useState } from "react";
 import { canQuickAddToCart, type CatalogProduct } from "@/lib/data";
 import { addToCart } from "@/lib/cart";
+import { planCartLine } from "@/lib/cart-fulfillment";
+import { useDelivery } from "@/lib/delivery/context";
+import { deliveryLabel } from "@/lib/delivery/labels";
+import type { CatalogAvailabilityVerdict } from "@/lib/availability";
+import { DeliveryPill } from "@/components/delivery/DeliveryPill";
 
+/** Merchandising label (one at most). Delivery timing lives in the delivery pill. */
 function badgesFor(p: CatalogProduct): string[] {
   const out: string[] = [];
   if (p.isBestSeller) out.push("Çok Satan");
   if (p.isNew) out.push("Yeni");
-  if (out.length < 2 && p.sameDayDelivery) out.push("Aynı Gün");
-  if (out.length < 2 && p.customizable) out.push("Kişiye Özel");
-  return out.slice(0, 2);
+  if (p.customizable) out.push("Kişiye Özel");
+  return out.slice(0, 1); // one label at most — the card stays quiet
 }
 
-export function ProductGridCard({ product }: { product: CatalogProduct }) {
+export function ProductGridCard({
+  product,
+  showBadges = true,
+  verdict,
+}: {
+  product: CatalogProduct;
+  /** off where the section title already says it (e.g. "Çok Satanlar") */
+  showBadges?: boolean;
+  /** delivery verdict at the customer's branch (from useCatalogVerdicts) */
+  verdict?: CatalogAvailabilityVerdict | null;
+}) {
   const [fav, setFav] = useState(false);
   const [added, setAdded] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { context, isResolved, openSelector } = useDelivery();
   const href = `/urunler/${product.slug}`;
   const quickAdd = canQuickAddToCart(product);
-  const badges = badgesFor(product);
+  const badges = showBadges ? badgesFor(product) : [];
+  const delivery = isResolved ? deliveryLabel(verdict) : null;
 
-  const handleQuickAdd = (e: React.MouseEvent) => {
+  const handleQuickAdd = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    // Simple, single-price product -> add straight to the real cart.
+    setError(null);
+    if (!isResolved) {
+      openSelector("cart");
+      return;
+    }
+    setBusy(true);
+    const plan = await planCartLine({
+      productId: product.id,
+      productSlug: product.slug,
+      variantId: null,
+      quantity: 1,
+      context,
+    });
+    setBusy(false);
+    if (!plan.ok) {
+      setError(plan.message);
+      return;
+    }
     addToCart({
       productId: product.id,
       slug: product.slug,
@@ -38,10 +74,10 @@ export function ProductGridCard({ product }: { product: CatalogProduct }) {
       quantity: 1,
       quantityEnabled: true,
       customization: { extras: [] },
-      deliveryType: null,
-      deliveryDate: null,
-      deliveryTime: null,
-      branch: null,
+      deliveryType: plan.deliveryType,
+      deliveryDate: plan.date,
+      deliveryTime: plan.slotLabel,
+      branch: plan.branchId,
       addedAt: Date.now(),
     });
     setAdded(true);
@@ -100,6 +136,7 @@ export function ProductGridCard({ product }: { product: CatalogProduct }) {
               </span>
             )}
           </div>
+          {delivery && <DeliveryPill label={delivery} className="mt-2" />}
         </div>
       </Link>
 
@@ -132,13 +169,21 @@ export function ProductGridCard({ product }: { product: CatalogProduct }) {
           <span aria-hidden>→</span>
         </Link>
       ) : (
-        <button
-          type="button"
-          onClick={handleQuickAdd}
-          className="mt-2.5 inline-flex self-start rounded-md bg-burgundy px-4 py-2 font-sans text-[13px] font-semibold text-cream-light transition-colors hover:bg-chocolate-light"
-        >
-          {added ? "Sepete Eklendi ✓" : "Sepete Ekle"}
-        </button>
+        <>
+          <button
+            type="button"
+            onClick={handleQuickAdd}
+            disabled={busy}
+            className="mt-2.5 inline-flex self-start rounded-md bg-burgundy px-4 py-2 font-sans text-[13px] font-semibold text-cream-light transition-colors hover:bg-chocolate-light disabled:opacity-60"
+          >
+            {added ? "Sepete Eklendi ✓" : busy ? "Kontrol ediliyor…" : "Sepete Ekle"}
+          </button>
+          {error && (
+            <p role="alert" className="mt-1.5 font-sans text-[12px] text-chocolate-light">
+              {error}
+            </p>
+          )}
+        </>
       )}
     </article>
   );

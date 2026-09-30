@@ -39,6 +39,16 @@ export type CelebrationRecommendation = {
   reasons: string[];
 };
 
+/** Celebration types — the quiz's first question and the home page teaser. */
+export const CELEBRATION_OCCASIONS: { value: string; label: string }[] = [
+  { value: "dogum-gunu", label: "Doğum Günü" },
+  { value: "nisan-soz", label: "Nişan & Söz" },
+  { value: "dugun", label: "Düğün" },
+  { value: "yildonumu", label: "Yıldönümü" },
+  { value: "ozel-davet", label: "Özel Davet" },
+  { value: "kurumsal", label: "Kurumsal Kutlama" },
+];
+
 /* -- copy maps (reason text, kept next to the rules that produce them) ----- */
 
 const OCCASION_REASON: Record<string, string> = {

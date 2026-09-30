@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { navItems } from "./navigation";
+import { isNavItemActive, navItems } from "./navigation";
+import { NavIcon } from "./NavIcons";
+import { useDelivery } from "@/lib/delivery/context";
 
 type MobileMenuProps = {
   isOpen: boolean;
@@ -12,6 +14,8 @@ type MobileMenuProps = {
 
 export function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
   const pathname = usePathname();
+  const { openSelector, context, addressStatus } = useDelivery();
+  const neighborhood = addressStatus !== "none" ? context.neighborhood : null;
   const [expanded, setExpanded] = useState<string | null>(null);
 
   // Close on route change
@@ -69,12 +73,61 @@ export function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
         {/* Nav — accordion */}
         <nav className="flex-1 overflow-y-auto px-2 py-3">
           {navItems.map((item) => {
-            if (!item.children) {
+            if (item.action === "address") {
+              return (
+                <button
+                  key={item.label}
+                  type="button"
+                  aria-haspopup="dialog"
+                  onClick={() => {
+                    onClose();
+                    openSelector();
+                  }}
+                  aria-label={neighborhood ? `Adres: ${context.district}, ${neighborhood}. Değiştir` : "Adres seçin"}
+                  className="flex min-h-[48px] w-full items-center justify-between gap-3 rounded-md border-l-2 border-transparent px-4 text-left font-sans text-[15.5px] font-semibold text-espresso transition-colors hover:bg-cream"
+                >
+                  <span className="flex min-w-0 items-baseline gap-1">
+                    {neighborhood ? (
+                      <>
+                        <span className="shrink-0">{item.label}:</span>
+                        <span className="min-w-0 truncate text-burgundy">{neighborhood}</span>
+                      </>
+                    ) : (
+                      `${item.label} seçin`
+                    )}
+                  </span>
+                  {neighborhood && <span className="shrink-0 font-sans text-[13px] font-normal text-taupe">Değiştir</span>}
+                </button>
+              );
+            }
+
+            if (item.pending) {
+              return (
+                <span
+                  key={item.label}
+                  aria-disabled="true"
+                  className="flex min-h-[48px] items-center gap-2 border-l-2 border-transparent px-4 font-sans text-[15.5px] font-semibold text-taupe"
+                >
+                  {item.label}
+                  <span className="rounded-full bg-sand-light px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.08em]">
+                    {item.pending}
+                  </span>
+                </span>
+              );
+            }
+
+            if (!item.groups) {
+              const active = isNavItemActive(item, pathname);
               return (
                 <Link
                   key={item.label}
                   href={item.href}
-                  className="flex min-h-[46px] items-center rounded-md px-4 font-sans text-[15px] font-semibold text-burgundy hover:bg-cream transition-colors"
+                  // close explicitly: a hash link on the current page doesn't change the pathname
+                  onClick={onClose}
+                  aria-current={active ? "page" : undefined}
+                  className={`flex min-h-[48px] items-center rounded-md border-l-2 px-4 font-sans text-[15.5px] font-semibold transition-colors hover:bg-cream ${
+                    active ? "border-burgundy bg-cream/60 text-burgundy" : "border-transparent text-espresso"
+                  }`}
                 >
                   {item.label}
                 </Link>
@@ -86,7 +139,7 @@ export function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
               <div key={item.label} className="border-b border-sand-light/60 last:border-0">
                 <button
                   onClick={() => setExpanded(open ? null : item.label)}
-                  className="flex w-full min-h-[46px] items-center justify-between rounded-md px-4 font-sans text-[15px] font-semibold text-burgundy hover:bg-cream transition-colors"
+                  className="flex w-full min-h-[48px] items-center justify-between rounded-md border-l-2 border-transparent px-4 font-sans text-[15.5px] font-semibold text-espresso hover:bg-cream transition-colors"
                   aria-expanded={open}
                 >
                   {item.label}
@@ -102,23 +155,36 @@ export function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
                 </button>
 
                 {open && (
-                  <div className="pb-2">
-                    {item.children.map((child) => {
-                      const isAll = child.label.startsWith("Tüm");
-                      return (
-                        <Link
-                          key={child.label}
-                          href={child.href}
-                          className={`flex min-h-[44px] items-center rounded-md pl-7 pr-4 font-sans text-[14px] transition-colors ${
-                            isAll
-                              ? "font-semibold text-burgundy hover:bg-cream"
-                              : "text-warm-brown hover:bg-cream hover:text-burgundy"
-                          }`}
-                        >
-                          {child.label}
-                        </Link>
-                      );
-                    })}
+                  <div className="pb-3">
+                    {item.groups.map((group) => (
+                      <div key={group.label} className="mt-2 first:mt-1">
+                        <p className="flex items-center gap-2.5 px-4 pb-1 pt-2 font-serif text-[17px] font-semibold text-burgundy">
+                          <NavIcon name={group.icon} className="h-[22px] w-[22px] shrink-0 text-burgundy/80" />
+                          {group.label}
+                        </p>
+                        {group.links.map((link) => (
+                          <Link
+                            key={link.href}
+                            href={link.href}
+                            onClick={onClose}
+                            className={`flex min-h-[44px] items-center rounded-md pl-[46px] pr-4 font-sans text-[15px] transition-colors hover:bg-cream hover:text-burgundy ${
+                              link.label.startsWith("Tüm ") ? "font-medium text-burgundy/85" : "text-warm-brown"
+                            }`}
+                          >
+                            {link.label}
+                          </Link>
+                        ))}
+                      </div>
+                    ))}
+                    {item.allLink && (
+                      <Link
+                        href={item.allLink.href}
+                        onClick={onClose}
+                        className="mx-4 mt-2 flex min-h-[44px] items-center border-t border-sand-light pr-4 font-sans text-[15px] font-semibold text-burgundy hover:text-chocolate-light"
+                      >
+                        {item.allLink.label} <span aria-hidden className="ml-1.5">→</span>
+                      </Link>
+                    )}
                   </div>
                 )}
               </div>
@@ -126,19 +192,13 @@ export function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
           })}
         </nav>
 
-        {/* CTA + social */}
+        {/* social */}
         <div className="shrink-0 border-t border-sand-light px-4 pt-4 pb-6">
-          <Link
-            href="/hizli-siparis"
-            className="flex min-h-[48px] w-full items-center justify-center rounded-md bg-burgundy px-5 font-sans text-sm font-semibold tracking-wide text-cream-light hover:bg-chocolate-light transition-colors"
-          >
-            Sipariş Ver
-          </Link>
           <a
             href="https://instagram.com/funda.1959"
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-4 flex items-center gap-2 px-1 font-sans text-[13px] text-warm-brown hover:text-burgundy transition-colors"
+            className="flex min-h-[44px] items-center gap-2 px-1 font-sans text-[13px] text-warm-brown hover:text-burgundy transition-colors"
           >
             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
               <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z" />

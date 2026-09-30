@@ -97,7 +97,8 @@ export function campaignDurationLabel(c: Campaign, now: Date = new Date()): stri
 /* Homepage selection                                                          */
 /* -------------------------------------------------------------------------- */
 
-const HOMEPAGE_CAMPAIGN_LIMIT = 4;
+/** the homepage shows them in a carousel, so this is only a sanity cap */
+const HOMEPAGE_CAMPAIGN_LIMIT = 12;
 
 /**
  * Every active campaign, regardless of branch — the candidate pool the
@@ -112,7 +113,7 @@ export async function getHomepageCampaignPool(now: Date = new Date()): Promise<C
 
 /**
  * Narrows the active pool to what a given branch should see, then caps it
- * at 4:
+ * at HOMEPAGE_CAMPAIGN_LIMIT:
  * - no resolved branch yet -> every candidate qualifies (branch-specific
  *   ones just carry a label — see `campaignBranchLabel`)
  * - resolved branch -> "all" campaigns + this branch's campaigns only

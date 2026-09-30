@@ -1,3 +1,4 @@
+import "@/lib/inventory/server-init";
 import { NextResponse } from "next/server";
 import { getCartAvailability, type DeliveryContext } from "@/lib/availability";
 import { createReservation, getReservation, RESERVATION_TTL_MS } from "@/lib/reservations";

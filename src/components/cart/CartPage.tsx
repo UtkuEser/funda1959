@@ -9,6 +9,7 @@ import { CartItemRow } from "./CartItem";
 import { CartSummary } from "./CartSummary";
 import { CartFulfillmentBanner } from "./CartFulfillmentBanner";
 import { EmptyCart } from "./EmptyCart";
+import { useCatalogVerdicts } from "@/lib/delivery/use-catalog-verdicts";
 
 function Breadcrumb() {
   return (
@@ -24,6 +25,7 @@ function Breadcrumb() {
 
 export function CartPage() {
   const items = useCart();
+  const verdicts = useCatalogVerdicts(items.map((i) => i.productId));
 
   if (items.length === 0) {
     return (
@@ -64,6 +66,7 @@ export function CartPage() {
               <CartItemRow
                 key={item.id}
                 item={item}
+                verdict={verdicts[item.productId]}
                 onQuantity={(next) => updateQuantity(item.id, next)}
                 onRemove={() => removeItem(item.id)}
               />

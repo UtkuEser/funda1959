@@ -14,12 +14,12 @@ import { QuickOrderCategories } from "./QuickOrderCategories";
 import { QuickOrderProductRow } from "./QuickOrderProductRow";
 import { QuickOrderCartSummary } from "./QuickOrderCartSummary";
 
-type QuickFilter = "all" | "bestseller" | "sameday";
+type QuickFilter = "all" | "bestseller";
 
+/** Delivery timing is filtered by the engine's verdict ("Bugün Teslim" below), not a product flag. */
 const QUICK_FILTERS: { value: QuickFilter; label: string }[] = [
   { value: "all", label: "Tümü" },
   { value: "bestseller", label: "Çok Satanlar" },
-  { value: "sameday", label: "Aynı Gün" },
 ];
 
 function textFilter(list: CatalogProduct[], query: string): CatalogProduct[] {
@@ -54,12 +54,13 @@ export function QuickOrderPage() {
   const count = quantityTotal(items);
   const sub = subtotal(items);
 
+  const activeQuick = quick;
+
   const baseList = useMemo(() => {
     let list = catalogProductsForCategory(category);
-    if (quick === "bestseller") list = list.filter((p) => p.isBestSeller);
-    else if (quick === "sameday") list = list.filter((p) => p.sameDayDelivery);
+    if (activeQuick === "bestseller") list = list.filter((p) => p.isBestSeller);
     return textFilter(list, query);
-  }, [category, quick, query]);
+  }, [category, activeQuick, query]);
 
   // server availability verdict per visible product (reservation + ops overrides aware)
   const [verdicts, setVerdicts] = useState<Record<string, CatalogAvailabilityVerdict>>({});
@@ -101,7 +102,7 @@ export function QuickOrderPage() {
           Lezzetleri hızlıca seçin.
         </h1>
         <p className="mt-2 max-w-xl font-sans text-[14px] leading-relaxed text-warm-brown md:text-[15px]">
-          Teslimat bölgenizi seçin; her ürünün bugün teslim edilebilirliğini anında görün.
+          Adresinizi girin; her ürünün bölgenizde bugün teslim edilebilirliğini görün.
         </p>
 
         <DeliveryContextControl className="mt-5" />
@@ -126,7 +127,7 @@ export function QuickOrderPage() {
 
             <div className="mt-3 flex flex-wrap items-center gap-2">
               {QUICK_FILTERS.map((f) => {
-                const on = f.value === quick;
+                const on = f.value === activeQuick;
                 return (
                   <button
                     key={f.value}
@@ -174,7 +175,7 @@ export function QuickOrderPage() {
               <div className="mt-6 rounded-lg border border-sand-light bg-cream-light p-6 text-center">
                 <p className="font-sans text-[14px] text-warm-brown">
                   {availableTodayOnly
-                    ? "Seçtiğiniz bölgede bugün teslim edilebilecek ürün bulunamadı."
+                    ? "Bölgenizde bugün teslim edilebilecek ürün bulunamadı."
                     : "Aramanıza uygun ürün bulunamadı."}
                 </p>
                 <button

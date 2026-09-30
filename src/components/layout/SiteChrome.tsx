@@ -18,7 +18,9 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
   return (
     <>
       <Header />
-      <main>{children}</main>
+      {/* pages offset themselves for the header's top row; on desktop the
+          fixed header also has a 48px menu row (+1px hairline), reserved here once */}
+      <main className="lg:pt-[49px]">{children}</main>
       <Footer />
     </>
   );

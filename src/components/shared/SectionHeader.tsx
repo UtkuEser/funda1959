@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { FadeIn } from "./FadeIn";
 
 type SectionHeaderProps = {
@@ -8,6 +9,8 @@ type SectionHeaderProps = {
   centered?: boolean;
   light?: boolean;
   action?: { label: string; href: string };
+  /** extra controls on the right of a left-aligned header (e.g. carousel buttons) */
+  aside?: ReactNode;
 };
 
 export function SectionHeader({
@@ -17,6 +20,7 @@ export function SectionHeader({
   centered = true,
   light = false,
   action,
+  aside,
 }: SectionHeaderProps) {
   return (
     <div
@@ -59,6 +63,8 @@ export function SectionHeader({
           </FadeIn>
         )}
       </div>
+
+      {aside && !centered && <div className="shrink-0">{aside}</div>}
 
       {action && !centered && (
         <FadeIn delay={150}>

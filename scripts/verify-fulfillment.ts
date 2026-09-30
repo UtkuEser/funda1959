@@ -57,7 +57,7 @@ async function main() {
   });
   check("LOCATION_REQUIRED", noLoc.reason === "LOCATION_REQUIRED");
 
-  console.log("\n── pickup @ GOP, product out of stock (p8) ──");
+  console.log("\n── pickup @ GOP, product set passive at the branch (p8) ──");
   const oos = getProductAvailability({
     productId: "p8",
     quantity: 1,
@@ -70,7 +70,7 @@ async function main() {
     },
     now: NOW,
   });
-  check("p8 @ gop OUT_OF_STOCK", oos.reason === "OUT_OF_STOCK");
+  check("p8 @ gop passive -> next day only", oos.reason === "NEXT_DAY_ONLY" && oos.slots.every((s) => !s.available));
 
   console.log("\n── branch switch changes behaviour (p1 @ Panora = made-to-order) ──");
   const panora = getProductAvailability({

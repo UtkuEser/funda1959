@@ -92,7 +92,7 @@ export function SearchOverlay({ open, onClose }: { open: boolean; onClose: () =>
         role="dialog"
         aria-modal="true"
         aria-label="Ürün arama"
-        className="fixed inset-x-0 top-0 z-[61] sm:top-[68px] md:top-[76px]"
+        className="fixed inset-x-0 top-0 z-[61] sm:top-[68px] md:top-[76px] lg:top-[125px]"
       >
         <div className="mx-auto flex h-[100dvh] w-full flex-col bg-cream-light sm:h-auto sm:max-h-[72vh] sm:max-w-[820px] sm:rounded-b-xl sm:border sm:border-t-0 sm:border-sand-light sm:shadow-[0_24px_60px_-28px_rgba(42,35,32,0.35)]">
           {/* Input row — real search form so Enter / mobile "Search" submit natively */}

@@ -1,6 +1,6 @@
 import { Container } from "@/components/shared/Container";
 import { SectionHeader } from "@/components/shared/SectionHeader";
-import { ProductGridCard } from "@/components/catalog/ProductGridCard";
+import { ProductCardGrid } from "@/components/catalog/ProductCardGrid";
 import type { CatalogProduct } from "@/lib/data";
 
 type FeaturedProductStripProps = {
@@ -35,11 +35,7 @@ export function FeaturedProductStrip({
           subtitle={subtitle}
           action={action}
         />
-        <div className="grid grid-cols-2 gap-x-5 gap-y-9 lg:grid-cols-4">
-          {products.map((product) => (
-            <ProductGridCard key={product.id} product={product} />
-          ))}
-        </div>
+        <ProductCardGrid products={products} className="grid grid-cols-2 gap-x-5 gap-y-9 lg:grid-cols-4" />
       </Container>
     </section>
   );

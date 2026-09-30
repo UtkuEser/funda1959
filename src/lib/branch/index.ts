@@ -17,6 +17,8 @@ export type OpeningHours = {
 export type Branch = {
   id: string;
   name: string;
+  /** how customers know it — "GOP", "Panora AVM", "İncek TONA" */
+  shortName: string;
   slug: string;
   address: string;
   phone: string;
@@ -44,6 +46,7 @@ const BRANCH_SEED: Branch[] = [
   {
     id: "gop",
     name: "Funda 1959 GOP",
+    shortName: "GOP",
     slug: "gop",
     address: "Kızkulesi Sokak No:12/A, Gaziosmanpaşa, Ankara",
     phone: "+90 312 447 00 00",
@@ -63,6 +66,7 @@ const BRANCH_SEED: Branch[] = [
   {
     id: "panora",
     name: "Funda 1959 Panora",
+    shortName: "Panora AVM",
     slug: "panora",
     address: "Panora AVM, Kızılay, Ankara",
     phone: "+90 312 448 00 00",
@@ -74,6 +78,7 @@ const BRANCH_SEED: Branch[] = [
   {
     id: "incek",
     name: "Funda 1959 İncek",
+    shortName: "İncek TONA",
     slug: "incek",
     address: "TONA Residence, İncek, Ankara",
     phone: "+90 312 449 00 00",
@@ -137,6 +142,11 @@ export function getBranch(id: string | null | undefined): Branch | null {
 
 export function getBranchBySlug(slug: string | null | undefined): Branch | null {
   return slug ? repo.getBySlug(slug) : null;
+}
+
+/** Active branches a customer can shop from — the site-wide branch picker. */
+export function shoppableBranches(): Branch[] {
+  return repo.list().filter((b) => b.active && (b.pickupEnabled || b.deliveryEnabled));
 }
 
 /** Pickup-eligible, active branches — for the "Mağazadan Teslim" picker. */

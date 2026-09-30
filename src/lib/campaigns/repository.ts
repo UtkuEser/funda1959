@@ -46,14 +46,22 @@ export function isEligibleForBranch(campaign: Campaign, branchId?: string | null
   return campaign.branchIds.includes(branchId);
 }
 
-const globalStore = globalThis as unknown as { __fundaCampaigns?: Map<string, Campaign> };
+const globalStore = globalThis as unknown as {
+  __fundaCampaignStore?: { seedKey: string; rows: Map<string, Campaign> };
+};
+
+/** content signature (not module identity — every server bundle has its own copy of the seed) */
+const SEED_KEY = CAMPAIGN_SEED.map((c) => `${c.id}:${c.image}`).join("|");
 
 class InMemoryCampaignRepository implements CampaignRepository {
   private readonly rows: Map<string, Campaign>;
 
   constructor() {
-    globalStore.__fundaCampaigns ??= new Map(CAMPAIGN_SEED.map((c) => [c.id, c]));
-    this.rows = globalStore.__fundaCampaigns;
+    // shared across bundles via globalThis; a changed seed starts a fresh store
+    if (globalStore.__fundaCampaignStore?.seedKey !== SEED_KEY) {
+      globalStore.__fundaCampaignStore = { seedKey: SEED_KEY, rows: new Map(CAMPAIGN_SEED.map((c) => [c.id, c])) };
+    }
+    this.rows = globalStore.__fundaCampaignStore.rows;
   }
 
   async list(): Promise<Campaign[]> {

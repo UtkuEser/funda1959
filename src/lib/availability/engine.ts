@@ -24,13 +24,9 @@ import {
   slotLabel,
   type DeliverySlotDefinition,
 } from "../delivery/slots";
-import {
-  getBranchProduct,
-  dailyConfirmedUnits,
-  branchUnitPrice,
-  type BranchProduct,
-} from "../inventory";
-import { reservedProductUnits, reservedSlotUnits } from "../reservations";
+import { getBranchProduct, branchUnitPrice, type BranchProduct } from "../inventory";
+import { addDaysISO, istanbulDateISO, istanbulInstant, weekdayOfISO } from "../time/istanbul";
+import { reservedSlotUnits } from "../reservations";
 import type { ReasonCode } from "./reasons";
 import type {
   AvailabilityResult,
@@ -42,30 +38,13 @@ import type {
   SlotAvailability,
 } from "./types";
 
-const HORIZON_DAYS = 14;
+/** days evaluated from today — covers the product page's month calendar */
+export const HORIZON_DAYS = 60;
 const WEEKDAY_TR = ["Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi"];
 
-const pad = (n: number) => String(n).padStart(2, "0");
-const toISO = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-
-function startOfDay(d: Date): Date {
-  const x = new Date(d);
-  x.setHours(0, 0, 0, 0);
-  return x;
-}
-
-function addDays(d: Date, n: number): Date {
-  const x = startOfDay(d);
-  x.setDate(x.getDate() + n);
-  return x;
-}
-
-/** Date object at a given ISO date + "HH:MM". */
-function at(iso: string, time: string): Date {
-  const [y, m, day] = iso.split("-").map(Number);
-  const [h, min] = time.split(":").map(Number);
-  return new Date(y, m - 1, day, h, min, 0, 0);
-}
+/* All calendar math is Europe/Istanbul, whatever the server's own time zone. */
+const toISO = (d: Date) => istanbulDateISO(d);
+const at = (iso: string, time: string) => istanbulInstant(iso, time);
 
 function resolveProduct(idOrSlug: string, slug?: string): CatalogProduct | null {
   return (
@@ -98,15 +77,23 @@ export function resolveContextBranch(ctx: DeliveryContext): BranchResolution {
     return { ok: true, branch, zoneId: null, deliveryFee: 0 };
   }
 
-  // delivery — a pinned zone id (carried by the reservation/order flow) wins;
-  // otherwise we need a district + neighbourhood to look one up.
+  // delivery — a pinned zone id (carried by the reservation/order flow) wins,
+  // then an address (district + neighbourhood) served by the chosen branch.
   const pinnedZone = ctx.deliveryZoneId ? getZone(ctx.deliveryZoneId) : null;
   let zone = pinnedZone;
-  if (!zone) {
-    if (!ctx.district || !ctx.neighborhood) return { ok: false, reason: "LOCATION_REQUIRED" };
-    zone = resolveZone(ctx.district, ctx.neighborhood);
+  if (!zone && ctx.district && ctx.neighborhood) {
+    zone = resolveZone(ctx.district, ctx.neighborhood, ctx.branchId);
+    if (!zone) return { ok: false, reason: "DELIVERY_ZONE_NOT_FOUND" };
   }
-  if (!zone) return { ok: false, reason: "DELIVERY_ZONE_NOT_FOUND" };
+  if (!zone) {
+    // Branch chosen, address not known yet: evaluate the branch itself (stock,
+    // capacity, hours). The address and its fee are settled at checkout.
+    if (!ctx.branchId) return { ok: false, reason: "BRANCH_REQUIRED" };
+    const branch = getBranch(ctx.branchId);
+    if (!branch || !branch.active) return { ok: false, reason: "BRANCH_DISABLED" };
+    if (!branch.deliveryEnabled) return { ok: false, reason: "DELIVERY_UNAVAILABLE" };
+    return { ok: true, branch, zoneId: null, deliveryFee: 0 };
+  }
   const branch = getBranch(zone.branchId);
   if (!branch || !branch.active) return { ok: false, reason: "BRANCH_DISABLED" };
   if (!branch.deliveryEnabled) return { ok: false, reason: "DELIVERY_UNAVAILABLE" };
@@ -119,21 +106,13 @@ export function resolveContextBranch(ctx: DeliveryContext): BranchResolution {
 
 type StockCheck = { ok: boolean; reason: ReasonCode | null };
 
-/** date-independent hard stock check (quantity pool) */
-function poolStockCheck(bp: BranchProduct, qty: number): StockCheck {
-  if (bp.stockMode !== "quantity") return { ok: true, reason: null };
-  const reserved = reservedProductUnits(bp.branchId, bp.productId, undefined);
-  return bp.stockQuantity - reserved >= qty
-    ? { ok: true, reason: null }
-    : { ok: false, reason: "OUT_OF_STOCK" };
-}
-
-/** per-date capacity check (daily_capacity / made_to_order) */
-function dateStockCheck(bp: BranchProduct, iso: string, qty: number): StockCheck {
-  if (bp.stockMode === "quantity") return { ok: true, reason: null };
-  const reserved = reservedProductUnits(bp.branchId, bp.productId, iso);
-  const remaining = bp.dailyCapacity - dailyConfirmedUnits(bp, iso) - reserved;
-  return remaining >= qty ? { ok: true, reason: null } : { ok: false, reason: "DAILY_CAPACITY_FULL" };
+/**
+ * Branch availability for a date. Quantities no longer decide anything: a
+ * product the branch has set "passive" can't go out today but stays orderable
+ * from tomorrow; preparation time and slots are checked separately.
+ */
+function branchDayCheck(bp: BranchProduct, iso: string, todayISO: string): StockCheck {
+  return bp.status === "passive" && iso === todayISO ? { ok: false, reason: "NEXT_DAY_ONLY" } : { ok: true, reason: null };
 }
 
 type SlotEval = SlotAvailability & { prepFeasible: boolean };
@@ -153,7 +132,7 @@ function evalSlot(
     label: slotLabel(def),
   };
 
-  const weekday = at(iso, def.startTime).getDay() as Weekday;
+  const weekday = weekdayOfISO(iso) as Weekday;
   if (!isBranchOpenAt(branch, weekday, def.startTime)) {
     return { ...base, available: false, remaining: 0, reason: "BRANCH_CLOSED", prepFeasible: false };
   }
@@ -211,7 +190,6 @@ function emptyResult(
 export function getProductAvailability(req: ProductAvailabilityRequest): AvailabilityResult {
   const now = req.now ?? new Date();
   const todayISO = toISO(now);
-  const qty = Math.max(1, Math.floor(req.quantity || 1));
   const requestedDate = req.date && req.date >= todayISO ? req.date : todayISO;
 
   const product = resolveProduct(req.productId, req.productSlug);
@@ -240,17 +218,6 @@ export function getProductAvailability(req: ProductAvailabilityRequest): Availab
 
   const unitPrice = branchUnitPrice(bp, unitPriceFor(product, req.variantId));
 
-  const pool = poolStockCheck(bp, qty);
-  if (!pool.ok) {
-    return emptyResult(pool.reason ?? "OUT_OF_STOCK", requestedDate, {
-      branchId: branch.id,
-      branchName: branch.name,
-      deliveryZoneId: zoneId,
-      deliveryFee,
-      unitPrice,
-    });
-  }
-
   const slotRepo = getSlotRepository();
 
   const dates: DateAvailability[] = [];
@@ -260,9 +227,8 @@ export function getProductAvailability(req: ProductAvailabilityRequest): Availab
   let earliestAvailableSlot: AvailabilityResult["earliestAvailableSlot"] = null;
 
   for (let i = 0; i < HORIZON_DAYS; i += 1) {
-    const day = addDays(now, i);
-    const iso = toISO(day);
-    const weekday = day.getDay() as Weekday;
+    const iso = addDaysISO(todayISO, i);
+    const weekday = weekdayOfISO(iso) as Weekday;
 
     let dayReason: ReasonCode | null = null;
     let daySlots: SlotAvailability[] = [];
@@ -270,7 +236,7 @@ export function getProductAvailability(req: ProductAvailabilityRequest): Availab
     if (!isBranchOpenOn(branch, weekday)) {
       dayReason = "BRANCH_CLOSED";
     } else {
-      const stock = dateStockCheck(bp, iso, qty);
+      const stock = branchDayCheck(bp, iso, todayISO);
       if (!stock.ok) {
         dayReason = stock.reason;
       } else {
@@ -415,7 +381,7 @@ export function getCartAvailability(req: CartAvailabilityRequest): CartAvailabil
   // Order-level slots for the requested date: a slot works only if EVERY item
   // is available in it.
   const slotRepo = getSlotRepository();
-  const weekday = at(requestedDate, "12:00").getDay() as Weekday;
+  const weekday = weekdayOfISO(requestedDate) as Weekday;
   const defs = slotRepo.forBranchDay(branch.id, weekday);
 
   const slots: SlotAvailability[] = defs.map((def) => {
@@ -423,10 +389,8 @@ export function getCartAvailability(req: CartAvailabilityRequest): CartAvailabil
       const bp = getBranchProduct(branch.id, resolveProduct(item.productId, item.productSlug)?.id ?? "");
       if (!bp) return { available: false, reason: "PRODUCT_DISABLED_AT_BRANCH" as ReasonCode, remaining: 0 };
       const e = evalSlot(def, requestedDate, branch, bp, now, req.reservationScope);
-      const dateStock = dateStockCheck(bp, requestedDate, item.quantity);
+      const dateStock = branchDayCheck(bp, requestedDate, todayISO);
       if (!dateStock.ok) return { available: false, reason: dateStock.reason as ReasonCode, remaining: 0 };
-      const poolStock = poolStockCheck(bp, item.quantity);
-      if (!poolStock.ok) return { available: false, reason: poolStock.reason as ReasonCode, remaining: 0 };
       return { available: e.available, reason: e.reason, remaining: e.remaining };
     });
     const worst = perItemSlot.find((s) => !s.available);
@@ -445,14 +409,13 @@ export function getCartAvailability(req: CartAvailabilityRequest): CartAvailabil
   let earliest: CartAvailabilityResult["earliestAvailableSlot"] = null;
   const horizonDates = perItem[0]?.result.dates ?? [];
   for (const d of horizonDates) {
-    const wd = at(d.date, "12:00").getDay() as Weekday;
+    const wd = weekdayOfISO(d.date) as Weekday;
     const dayDefs = slotRepo.forBranchDay(branch.id, wd);
     const shared = dayDefs.find((def) =>
       perItem.every(({ item }) => {
         const bp = getBranchProduct(branch.id, resolveProduct(item.productId, item.productSlug)?.id ?? "");
         if (!bp) return false;
-        if (!dateStockCheck(bp, d.date, item.quantity).ok) return false;
-        if (!poolStockCheck(bp, item.quantity).ok) return false;
+        if (!branchDayCheck(bp, d.date, todayISO).ok) return false;
         return evalSlot(def, d.date, branch, bp, now, req.reservationScope).available;
       }),
     );

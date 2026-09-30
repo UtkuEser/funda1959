@@ -3,10 +3,13 @@ import { branches } from "@/lib/data";
 import { Container } from "@/components/shared/Container";
 
 const productLinks = [
-  { href: "/lezzetlerimiz", label: "Tüm Ürünler" },
   { href: "/lezzetlerimiz/yas-pastalar", label: "Pastalar" },
+  { href: "/lezzetlerimiz/tatlilar", label: "Tatlılar" },
+  { href: "/lezzetlerimiz/borekler", label: "Börekler & Mayalılar" },
   { href: "/lezzetlerimiz/cikolatalar", label: "Çikolatalar" },
-  { href: "/ozel-gun", label: "Özel Gün Pastaları" },
+  { href: "/hediyelikler", label: "Hediyelikler" },
+  { href: "/ozel-gun", label: "Kutlamalar" },
+  { href: "/lezzetlerimiz", label: "Tüm Ürünler" },
 ];
 
 const cornerLinks = [

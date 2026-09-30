@@ -222,10 +222,12 @@ export function CheckoutPage() {
     const deliveryDate = state.date && state.date >= earliest ? state.date : earliest;
     const deliveryTimeSlot = state.timeSlot ?? DELIVERY_TIME_SLOTS[0];
 
-    // branch routing: pickup uses the chosen branch, delivery resolves via zone
+    // branch routing: pickup uses the chosen branch; delivery uses the zone of
+    // the branch the cart was built for (falls back to the first serving zone)
     const zone =
       state.deliveryType === "delivery"
-        ? resolveZone(state.address.district, state.address.neighborhood)
+        ? resolveZone(state.address.district, state.address.neighborhood, items[0]?.branch) ??
+          resolveZone(state.address.district, state.address.neighborhood)
         : null;
     const branchId = state.deliveryType === "pickup" ? state.branch : zone?.branchId ?? null;
     const slotStart = deliveryTimeSlot.match(/(\d{2}:\d{2})/)?.[1] ?? "10:00";

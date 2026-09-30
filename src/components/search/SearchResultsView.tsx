@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Container } from "@/components/shared/Container";
-import { ProductGridCard } from "@/components/catalog/ProductGridCard";
+import { ProductCardGrid } from "@/components/catalog/ProductCardGrid";
 import type { SearchResults } from "@/lib/search";
 
 type SortKey = "relevance" | "bestsellers" | "price-asc" | "price-desc";
@@ -158,11 +158,10 @@ export function SearchResultsView({
           Bu kategoride sonuç yok.
         </p>
       ) : (
-        <div className="mt-7 grid grid-cols-2 gap-x-4 gap-y-9 sm:gap-x-5 md:grid-cols-3 md:gap-x-6 xl:grid-cols-4">
-          {list.map((p) => (
-            <ProductGridCard key={p.id} product={p} />
-          ))}
-        </div>
+        <ProductCardGrid
+          products={list}
+          className="mt-7 grid grid-cols-2 gap-x-4 gap-y-9 sm:gap-x-5 md:grid-cols-3 md:gap-x-6 xl:grid-cols-4"
+        />
       )}
 
       {results.categories.length > 0 && (

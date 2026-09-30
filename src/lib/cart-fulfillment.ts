@@ -12,7 +12,7 @@
 
 import { getCart, patchAllItems, removeItems, type CartItem, type CartDeliveryType } from "./cart";
 import type { DeliveryContext } from "./availability/types";
-import type { CartAvailabilityResult } from "./availability";
+import { reasonMessage, type AvailabilityResult, type CartAvailabilityResult } from "./availability";
 
 export type CartFulfillment = {
   branchId: string | null;
@@ -59,6 +59,58 @@ export function stampCartFulfillment(patch: {
 /** Clear the branch/slot stamp (e.g. after a location change). */
 export function clearCartFulfillment(): void {
   patchAllItems({ branch: null, deliveryType: null, deliveryDate: null, deliveryTime: null });
+}
+
+/* -------------------------------------------------------------------------- */
+/* Quick add                                                                   */
+/* -------------------------------------------------------------------------- */
+
+export type CartLinePlan =
+  | { ok: true; branchId: string; deliveryType: CartDeliveryType; date: string; slotLabel: string }
+  | { ok: false; message: string };
+
+/**
+ * Authoritative check before a one-tap add (quick order rows, catalog cards):
+ * asks the server for the chosen branch and stamps the line with the earliest
+ * slot. Callers must only call this once a branch is chosen.
+ */
+export async function planCartLine(input: {
+  productId: string;
+  productSlug: string;
+  variantId: string | null;
+  quantity: number;
+  context: DeliveryContext;
+}): Promise<CartLinePlan> {
+  const check = await fetch("/api/availability", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ kind: "product", ...input }),
+  })
+    .then((r) => r.json() as Promise<AvailabilityResult>)
+    .catch(() => null);
+
+  if (!check) return { ok: false, message: "Uygunluk kontrol edilemedi. Lütfen tekrar deneyin." };
+  // not deliverable today is not a dead end: the line is stamped with the earliest date (e.g. tomorrow)
+  if (check.reason === "PRODUCT_DISABLED_AT_BRANCH") {
+    return { ok: false, message: reasonMessage(check.reason) };
+  }
+  if (cartHasBranchConflict(check.branchId)) {
+    return { ok: false, message: "Sepetinizde başka bir şubeden ürün var. Önce mevcut siparişi tamamlayın." };
+  }
+  const target = check.available
+    ? { date: check.requestedDate, slot: check.slots.find((s) => s.available) ?? null }
+    : check.earliestAvailableSlot
+      ? { date: check.earliestAvailableSlot.date, slot: check.earliestAvailableSlot }
+      : null;
+  if (!target?.slot || !check.branchId) return { ok: false, message: reasonMessage(check.reason) };
+
+  return {
+    ok: true,
+    branchId: check.branchId,
+    deliveryType: toCartDeliveryType(input.context.fulfillmentType),
+    date: target.date,
+    slotLabel: target.slot.label,
+  };
 }
 
 /* -------------------------------------------------------------------------- */
@@ -124,10 +176,13 @@ export async function revalidateCart(
   if (unavailableItemIds.length > 0) {
     status = "unavailable";
     message = "Sepetinizdeki bazı ürünler seçtiğiniz teslimat koşullarında şu an uygun değil.";
-  } else if (branchChanged || (fulfillment.slotLabel && !availability.available)) {
+  } else if (branchChanged) {
     status = "updated";
     message =
-      "Teslimat konumunuz değişti. Sepetiniz yeni bölgenin stok ve teslimat durumuna göre yeniden kontrol edildi.";
+      "Teslimat bölgeniz değişti. Sepetiniz yeni bölgenin teslimat tarihlerine göre yeniden kontrol edildi.";
+  } else if (fulfillment.slotLabel && !availability.available) {
+    status = "updated";
+    message = "Seçtiğiniz teslimat günü veya saati artık uygun değil; sepetiniz en erken uygun teslimata taşındı.";
   }
 
   return { status, availability, unavailableItemIds, message };

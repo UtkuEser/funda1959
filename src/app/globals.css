@@ -45,6 +45,17 @@
 }
 
 /* Animations */
+/* hero slide progress — the fill's animationend advances the slider */
+@keyframes hero-fill-x {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+@keyframes hero-fill-y {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+
 @keyframes fadeUp {
   from {
     opacity: 0;

@@ -2,22 +2,42 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Container } from "@/components/shared/Container";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import type { ResolvedHeroSlide } from "@/lib/hero-slides";
 import { HeroVisual } from "./HeroVisual";
 
 const AUTOPLAY_MS = 7500;
 
-function Arrow({ dir }: { dir: "prev" | "next" }) {
+const pad2 = (n: number) => String(n).padStart(2, "0");
+
+/*
+ * Desktop scene (lg+): the photo fills the whole stage — one image, cover-
+ * fitted around the slide's focal point, never stretched — and the copy sits
+ * on its left. The only overlay is SCENE_LIGHT, the same on every slide.
+ *   --stage-h     scene height: 3/4 of the width's photo share (58vw lg, 62vw
+ *                 xl), capped so the branch section below stays above the fold
+ *                 (76px header + ~204px section), never shorter than the copy
+ *   --text-left   copy start = the site container's content edge (header logo)
+ *   --text-w      copy width, kept to the left ~44% of the stage
+ */
+const STAGE_VARS = {
+  "--stage-h": "max(460px, min(calc(var(--photo-share) * 0.75), 900px, calc(100svh - 280px)))",
+  "--text-left": "max(96px, calc((100% - 1320px) / 2 + 40px))",
+  "--text-w": "min(32rem, calc(44% - var(--text-left)))",
+} as CSSProperties;
+
+/* A limited warm light behind the copy only: strongest at the far left, gone
+   by the end of the copy block — well before the stage's middle and the subject. */
+const SCENE_LIGHT = `linear-gradient(to right,
+  rgb(248 242 233 / 0.78) 0,
+  rgb(248 242 233 / 0.62) calc(var(--text-left) + var(--text-w) * 0.55),
+  rgb(248 242 233 / 0.26) calc(var(--text-left) + var(--text-w) * 0.85),
+  rgb(248 242 233 / 0) calc(var(--text-left) + var(--text-w) + 2rem))`;
+
+function ArrowRight() {
   return (
-    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.9}
-        d={dir === "prev" ? "M15 6l-6 6 6 6" : "M9 6l6 6-6 6"}
-      />
+    <svg aria-hidden className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} d="M5 12h14M13 6l6 6-6 6" />
     </svg>
   );
 }
@@ -40,11 +60,18 @@ export function HeroSection({ slides }: { slides: ResolvedHeroSlide[] }) {
     return () => mq.removeEventListener("change", update);
   }, []);
 
-  useEffect(() => {
-    if (paused || reduced || count < 2) return;
-    const t = setInterval(next, AUTOPLAY_MS);
-    return () => clearInterval(t);
-  }, [paused, reduced, next, index, count]);
+  // Autoplay is the active progress segment's fill: when it ends, the next
+  // slide starts. Pausing (hover/focus) pauses the fill, so bar and timer
+  // can't drift apart. Reduced motion: no fill, no autoplay.
+  const autoplay = !reduced && count > 1;
+  const fill = (axis: "x" | "y", active: boolean): CSSProperties => {
+    if (!active) return { transform: axis === "x" ? "scaleX(0)" : "scaleY(0)" };
+    if (!autoplay) return {};
+    return {
+      animation: `hero-fill-${axis} ${AUTOPLAY_MS}ms linear forwards`,
+      animationPlayState: paused ? "paused" : "running",
+    };
+  };
 
   const onTouchStart = (e: React.TouchEvent) => {
     touchX.current = e.touches[0].clientX;
@@ -57,171 +84,203 @@ export function HeroSection({ slides }: { slides: ResolvedHeroSlide[] }) {
     touchX.current = null;
   };
 
-  const activeSignature = slides[index]?.signature;
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "ArrowRight") next();
+    else if (e.key === "ArrowLeft") prev();
+  };
 
   return (
     <section
-      className="relative bg-cream-light pt-20 md:pt-24 pb-10 md:pb-14"
+      className="relative bg-cream-light pt-[68px] md:pt-[76px] lg:[--photo-share:58vw] xl:[--photo-share:62vw]"
+      style={STAGE_VARS}
       aria-roledescription="carousel"
       aria-label="Funda 1959 öne çıkanlar"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onFocusCapture={() => setPaused(true)}
       onBlurCapture={() => setPaused(false)}
+      onKeyDown={onKeyDown}
     >
-      <Container>
+      <div className="relative lg:h-[var(--stage-h)]" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+        {/* Photo — phones/tablets: its own 4:3 box above the copy; desktop:
+            fills the stage behind the copy */}
         <div
-          className="grid grid-cols-1 items-center gap-9 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.02fr)] lg:gap-16"
-          onTouchStart={onTouchStart}
-          onTouchEnd={onTouchEnd}
+          data-hero-photo
+          className="relative aspect-[4/3] w-full overflow-hidden bg-cream-dark lg:absolute lg:inset-0 lg:aspect-auto"
         >
-          {/* Left — copy (fixed position, crossfades) */}
-          <div className="relative min-h-[326px] max-w-[35rem] sm:min-h-[336px] lg:min-h-[372px]">
-            {slides.map((slide, i) => {
-              const isActive = i === index;
-              return (
-                <div
+          {slides.map((slide, i) => {
+            const on = i === index;
+            return (
+              <div
+                key={slide.id}
+                aria-hidden={!on}
+                className={`absolute inset-0 transition-opacity duration-[1100ms] ease-out motion-reduce:transition-none ${
+                  on ? "opacity-100" : "opacity-0"
+                }`}
+              >
+                {slide.media.src ? (
+                  <Image
+                    src={slide.media.src}
+                    alt={slide.media.alt}
+                    fill
+                    priority={i === 0}
+                    sizes="100vw"
+                    className="object-cover"
+                    style={{ objectPosition: slide.focal }}
+                  />
+                ) : (
+                  <HeroVisual variant={slide.fallbackVisual} />
+                )}
+              </div>
+            );
+          })}
+        </div>
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 hidden lg:block"
+          style={{ background: SCENE_LIGHT }}
+        />
+
+        {/* Desktop rail — quiet slide number + vertical progress, in the margin */}
+        {count > 1 && (
+          <div className="absolute inset-y-0 z-10 hidden w-10 -translate-x-1/2 flex-col items-center lg:left-[calc(var(--text-left)-60px)] lg:flex">
+            <span aria-hidden className="w-px flex-1 bg-burgundy/15" />
+            <p className="py-4 text-center tabular-nums" aria-live="polite">
+              <span className="sr-only">Slayt </span>
+              <span className="block font-serif text-[17px] font-medium text-burgundy">{pad2(index + 1)}</span>
+              <span className="mt-0.5 block font-sans text-[11px] tracking-[0.12em] text-burgundy/45">
+                / {pad2(count)}
+              </span>
+            </p>
+            <div className="flex flex-col">
+              {slides.map((slide, i) => (
+                <button
                   key={slide.id}
-                  role="group"
-                  aria-roledescription="slayt"
-                  aria-label={`${i + 1} / ${count}`}
-                  aria-hidden={!isActive}
-                  className={`transition-opacity duration-700 ease-out motion-reduce:transition-none ${
-                    isActive
-                      ? "relative opacity-100"
-                      : "pointer-events-none absolute inset-0 opacity-0"
-                  }`}
+                  type="button"
+                  onClick={() => setIndex(i)}
+                  aria-label={`${i + 1}. slayt: ${slide.eyebrow}`}
+                  aria-current={i === index}
+                  className="group flex h-12 w-10 items-center justify-center"
                 >
-                  <p className="font-sans text-[11.5px] font-semibold uppercase tracking-[0.2em] text-burgundy/55">
-                    {slide.eyebrow}
-                  </p>
-                  <h1 className="mt-3.5 font-serif text-[31px] font-semibold leading-[1.08] tracking-[-0.02em] text-burgundy sm:text-[40px] lg:text-[49px]">
-                    {slide.headline[0]}
-                    <br />
-                    {slide.headline[1]}
-                  </h1>
-                  <p className="mt-5 max-w-[27rem] font-sans text-[15.5px] leading-relaxed text-warm-brown md:text-[16.5px]">
-                    {slide.text}
-                  </p>
-                  <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                  <span className="relative block h-10 w-[2px] overflow-hidden rounded-full bg-burgundy/25 transition-colors group-hover:bg-burgundy/40">
+                    <span
+                      key={i === index ? `on-${index}` : "off"}
+                      className="absolute inset-0 origin-top bg-burgundy"
+                      style={fill("y", i === index)}
+                      onAnimationEnd={i === index ? next : undefined}
+                    />
+                  </span>
+                </button>
+              ))}
+            </div>
+            <span aria-hidden className="flex-1" />
+          </div>
+        )}
+
+        {/* Copy — below the photo on phones/tablets; in the light left part of
+            the scene on desktop, clear of the photo's products */}
+        <div className="px-5 pb-10 pt-8 sm:px-8 sm:pt-10 lg:absolute lg:inset-y-0 lg:left-[var(--text-left)] lg:flex lg:w-[var(--text-w)] lg:items-center lg:p-0">
+          <div className="w-full">
+            {/* slides share one grid cell (text and links in separate stacks),
+                so every stack is as tall as its longest slide: nothing moves
+                between slides */}
+            <div className="grid">
+              {slides.map((slide, i) => {
+                const isActive = i === index;
+                return (
+                  <div
+                    key={slide.id}
+                    role="group"
+                    aria-roledescription="slayt"
+                    aria-label={`${i + 1} / ${count}`}
+                    aria-hidden={!isActive}
+                    className={`self-start [grid-area:1/1] transition-opacity duration-700 ease-out motion-reduce:transition-none ${
+                      isActive ? "opacity-100" : "pointer-events-none opacity-0"
+                    }`}
+                  >
+                    <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.24em] text-burgundy/55 xl:text-[11.5px]">
+                      {slide.eyebrow}
+                    </p>
+                    <h1 className="mt-4 font-serif text-[32px] font-semibold leading-[1.04] tracking-[-0.02em] text-burgundy sm:text-[40px] lg:text-[31px] xl:text-[42px] 2xl:text-[46px]">
+                      {slide.headline[0]}
+                      <br />
+                      {slide.headline[1]}
+                    </h1>
+                    <p className="mt-5 max-w-[28rem] font-sans text-[15.5px] leading-relaxed text-warm-brown sm:text-[16px] lg:text-[15px] xl:text-[16.5px]">
+                      {slide.text}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="mt-8 grid xl:mt-9">
+              {slides.map((slide, i) => {
+                const isActive = i === index;
+                return (
+                  <div
+                    key={slide.id}
+                    aria-hidden={!isActive}
+                    className={`flex flex-col items-start gap-5 self-start [grid-area:1/1] transition-opacity duration-700 ease-out motion-reduce:transition-none ${
+                      isActive ? "opacity-100" : "pointer-events-none opacity-0"
+                    }`}
+                  >
                     <Link
                       href={slide.primary.href}
                       tabIndex={isActive ? 0 : -1}
-                      className="inline-flex items-center justify-center rounded-md bg-burgundy px-7 py-3.5 font-sans text-[15px] font-semibold tracking-wide text-cream-light transition-colors duration-200 hover:bg-chocolate-light"
+                      className="inline-flex items-center gap-3 rounded-md bg-burgundy px-6 py-3.5 font-sans text-[14.5px] font-medium tracking-wide text-cream-light transition-colors duration-200 hover:bg-chocolate-light xl:px-7 xl:py-4 xl:text-[15px]"
                     >
                       {slide.primary.label}
+                      <ArrowRight />
                     </Link>
                     <Link
                       href={slide.secondary.href}
                       tabIndex={isActive ? 0 : -1}
-                      className="inline-flex items-center justify-center rounded-md border border-burgundy/25 px-7 py-3.5 font-sans text-[15px] font-semibold tracking-wide text-burgundy transition-colors duration-200 hover:border-burgundy hover:bg-burgundy/[0.04]"
+                      className="group inline-flex items-center gap-2 font-sans text-[14.5px] text-burgundy underline decoration-burgundy/35 underline-offset-[5px] transition-colors hover:decoration-burgundy"
                     >
                       {slide.secondary.label}
+                      <span className="transition-transform duration-200 group-hover:translate-x-0.5">
+                        <ArrowRight />
+                      </span>
                     </Link>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Right — visual (photo crossfade + subtle settle) */}
-          <div className="relative mx-auto w-full max-w-[420px] sm:max-w-[460px] lg:max-w-none">
-            <div className="relative aspect-[5/4] w-full overflow-hidden rounded-2xl bg-cream-dark shadow-[0_40px_90px_-40px_rgba(110,34,48,0.45)] ring-1 ring-espresso/[0.06] sm:aspect-[4/5] lg:aspect-auto lg:h-[490px]">
-              {slides.map((slide, i) => {
-                const on = i === index;
-                return (
-                  <div
-                    key={slide.id}
-                    aria-hidden={!on}
-                    className={`absolute inset-0 transition-[opacity,transform] duration-[1100ms] ease-out motion-reduce:transition-none motion-reduce:transform-none ${
-                      on ? "scale-100 opacity-100" : "scale-[1.045] opacity-0"
-                    }`}
-                  >
-                    {slide.media.src ? (
-                      <Image
-                        src={slide.media.src}
-                        alt={slide.media.alt}
-                        fill
-                        priority={i === 0}
-                        sizes="(max-width: 1024px) 92vw, 600px"
-                        className="object-cover"
-                      />
-                    ) : (
-                      <HeroVisual variant={slide.fallbackVisual} />
-                    )}
                   </div>
                 );
               })}
-
-              {/* legibility + depth */}
-              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-espresso/30 via-espresso/[0.04] to-transparent" />
-              <div className="pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-inset ring-cream-light/10" />
-
-              {/* quiet collection wordmark */}
-              <span className="pointer-events-none absolute bottom-3.5 right-4 font-sans text-[10.5px] font-semibold uppercase tracking-[0.24em] text-cream-light/60">
-                Funda · 1959
-              </span>
             </div>
 
-            {/* signature card — only when the slide actually has one */}
-            {activeSignature && (
-              <div
-                key={activeSignature.value}
-                className="animate-fade-in absolute -left-3 bottom-7 rounded-xl border border-cream-light/55 bg-cream-light/80 px-5 py-3.5 shadow-[0_20px_50px_-18px_rgba(42,35,32,0.4)] backdrop-blur-md sm:-left-6"
-              >
-                <p className="font-sans text-[10.5px] font-semibold uppercase tracking-[0.14em] text-burgundy/55">
-                  {activeSignature.label}
+            {/* Phone/tablet: the same number + progress, laid horizontally */}
+            {count > 1 && (
+              <div className="mt-8 flex items-center gap-4 lg:hidden">
+                <p className="font-sans text-[12.5px] tabular-nums text-burgundy/55">
+                  <span className="font-serif text-[16px] font-medium text-burgundy">{pad2(index + 1)}</span>{" "}
+                  / {pad2(count)}
                 </p>
-                <p className="mt-0.5 font-serif text-[15px] font-medium text-burgundy">
-                  {activeSignature.value}
-                </p>
+                <div className="flex items-center">
+                  {slides.map((slide, i) => (
+                    <button
+                      key={slide.id}
+                      type="button"
+                      onClick={() => setIndex(i)}
+                      aria-label={`${i + 1}. slayt: ${slide.eyebrow}`}
+                      aria-current={i === index}
+                      className="flex h-11 w-12 items-center px-1"
+                    >
+                      <span className="relative block h-[2px] w-full overflow-hidden rounded-full bg-burgundy/15">
+                        <span
+                          key={i === index ? `on-${index}` : "off"}
+                          className="absolute inset-0 origin-left bg-burgundy"
+                          style={fill("x", i === index)}
+                          onAnimationEnd={i === index ? next : undefined}
+                        />
+                      </span>
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </div>
         </div>
-
-        {/* Controls */}
-        <div className="mt-6 flex items-center gap-5 lg:mt-8">
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={prev}
-              aria-label="Önceki slayt"
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-burgundy/20 text-burgundy transition-colors hover:bg-burgundy hover:text-cream-light"
-            >
-              <Arrow dir="prev" />
-            </button>
-            <button
-              type="button"
-              onClick={next}
-              aria-label="Sonraki slayt"
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-burgundy/20 text-burgundy transition-colors hover:bg-burgundy hover:text-cream-light"
-            >
-              <Arrow dir="next" />
-            </button>
-          </div>
-
-          <span className="font-sans text-[13px] font-medium tabular-nums text-burgundy/60">
-            {String(index + 1).padStart(2, "0")}
-            <span className="text-burgundy/30"> / {String(count).padStart(2, "0")}</span>
-          </span>
-
-          <div className="flex items-center gap-1.5">
-            {slides.map((slide, i) => (
-              <button
-                key={slide.id}
-                type="button"
-                onClick={() => setIndex(i)}
-                aria-label={`${i + 1}. slayt: ${slide.eyebrow}`}
-                aria-current={i === index}
-                className={`h-1.5 rounded-full transition-all duration-300 ${
-                  i === index ? "w-7 bg-burgundy" : "w-1.5 bg-burgundy/25 hover:bg-burgundy/45"
-                }`}
-              />
-            ))}
-          </div>
-        </div>
-      </Container>
+      </div>
     </section>
   );
 }

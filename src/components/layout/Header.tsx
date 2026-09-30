@@ -7,6 +7,11 @@ import { DesktopNav } from "./DesktopNav";
 import { SearchOverlay } from "@/components/search/SearchOverlay";
 import { useCartCount } from "@/lib/use-cart";
 
+/** one size, one stroke, one hit area for every header icon */
+const ICON_BUTTON =
+  "flex h-11 w-11 items-center justify-center rounded-md text-warm-brown transition-colors hover:bg-cream hover:text-burgundy md:h-12 md:w-12";
+const ICON = "h-[22px] w-[22px] md:h-6 md:w-6";
+
 function Logo() {
   return (
     <Link href="/" className="flex items-end gap-2.5" aria-label="Funda 1959 anasayfa">
@@ -19,26 +24,6 @@ function Logo() {
           1959
         </span>
       </span>
-    </Link>
-  );
-}
-
-function IconButton({
-  href,
-  label,
-  children,
-}: {
-  href: string;
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <Link
-      href={href}
-      aria-label={label}
-      className="p-2 rounded-md text-warm-brown hover:text-burgundy hover:bg-cream transition-colors"
-    >
-      {children}
     </Link>
   );
 }
@@ -67,65 +52,62 @@ export function Header() {
             : "border-b border-sand-light"
         }`}
       >
+        {/* top row: logo left, icons right — same height as before, so page offsets hold */}
         <div className="mx-auto max-w-[1320px] px-5 sm:px-8 lg:px-10">
-          <div className="flex items-center justify-between gap-4 h-[68px] md:h-[76px]">
+          <div className="flex h-[68px] items-center justify-between gap-4 md:h-[76px]">
             <Logo />
 
-            <DesktopNav />
-
-            {/* Actions */}
-            <div className="flex items-center gap-0.5 md:gap-1">
+            <div className="flex items-center gap-0.5 sm:gap-1.5">
               <button
                 type="button"
                 onClick={() => setSearchOpen((v) => !v)}
                 aria-label="Ara"
                 aria-expanded={searchOpen}
-                className="p-2 rounded-md text-warm-brown hover:text-burgundy hover:bg-cream transition-colors"
+                className={ICON_BUTTON}
               >
-                <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className={ICON} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.6} d="M21 21l-4.3-4.3M11 18a7 7 0 100-14 7 7 0 000 14z" />
                 </svg>
               </button>
-              {/* No auth session yet -> account icon goes to sign-in.
-                  Later: session ? "/hesabim" : "/giris". */}
-              <IconButton href="/giris" label="Hesabım">
-                <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.6} d="M16 17v-1a4 4 0 00-8 0v1M12 12a4 4 0 100-8 4 4 0 000 8z" />
+              {/* customer sign-in page — sign-in is still a front-end stub (lib/auth.ts, no session) */}
+              <Link href="/giris" aria-label="Hesabım" className={ICON_BUTTON}>
+                <svg className={ICON} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.6} d="M18 20v-1.2a4.8 4.8 0 00-4.8-4.8h-2.4A4.8 4.8 0 006 18.8V20M12 11a4 4 0 100-8 4 4 0 000 8z" />
                 </svg>
-              </IconButton>
+              </Link>
               <Link
                 href="/sepet"
                 aria-label={cartCount > 0 ? `Sepetim, ${cartCount} ürün` : "Sepetim"}
-                className="relative p-2 rounded-md text-warm-brown hover:text-burgundy hover:bg-cream transition-colors"
+                className={`relative ${ICON_BUTTON}`}
               >
-                <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className={ICON} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.6} d="M6 8h12l-1 12H7L6 8zM9 8V6a3 3 0 016 0v2" />
                 </svg>
                 {cartCount > 0 && (
-                  <span className="absolute right-0.5 top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-burgundy px-1 font-sans text-[10px] font-semibold leading-none text-cream-light">
+                  <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-burgundy px-1 font-sans text-[10px] font-semibold leading-none text-cream-light">
                     {cartCount}
                   </span>
                 )}
               </Link>
 
-              <Link
-                href="/hizli-siparis"
-                className="hidden xl:inline-flex items-center whitespace-nowrap ml-1.5 2xl:ml-2 px-3 2xl:px-4 py-2 rounded-md bg-burgundy text-cream-light font-sans text-[13px] 2xl:text-[13.5px] font-semibold tracking-wide hover:bg-chocolate-light transition-colors"
-              >
-                Sipariş Ver
-              </Link>
-
               <button
                 onClick={() => setMenuOpen(true)}
-                className="xl:hidden ml-1 p-2 rounded-md text-burgundy hover:bg-cream transition-colors"
+                className={`ml-1 text-burgundy lg:hidden ${ICON_BUTTON}`}
                 aria-label="Menüyü aç"
                 aria-expanded={menuOpen}
               >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className={ICON} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.6} d="M4 7h16M4 12h16M4 17h16" />
                 </svg>
               </button>
             </div>
+          </div>
+        </div>
+
+        {/* menu row (desktop): separated by a hairline, centred on the page */}
+        <div className="hidden border-t border-sand-light lg:block">
+          <div className="mx-auto max-w-[1320px] px-10">
+            <DesktopNav />
           </div>
         </div>
       </header>

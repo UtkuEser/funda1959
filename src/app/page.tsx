@@ -1,35 +1,39 @@
 import { HeroSection } from "@/components/home/HeroSection";
+import { AddressBar } from "@/components/home/AddressBar";
 import { resolveHeroSlides } from "@/lib/hero-media";
 import { CampaignsSection } from "@/components/home/CampaignsSection";
-import { CelebrationsSection } from "@/components/home/CelebrationsSection";
-import { FeaturedProducts } from "@/components/home/FeaturedProducts";
 import { CategoryGrid } from "@/components/home/CategoryGrid";
-import { BrandStoryTeaser } from "@/components/home/BrandStoryTeaser";
+import { CelebrationQuiz } from "@/components/landing/CelebrationQuiz";
+import { BestSellers } from "@/components/home/BestSellers";
 import { InstagramContentSection } from "@/components/home/InstagramContentSection";
-import { GiftSelectionSection } from "@/components/home/GiftSelectionSection";
-import { BranchesSection } from "@/components/home/BranchesSection";
+import { catalogProducts } from "@/lib/data";
+import { celebrationPool } from "@/lib/celebration-finder";
 
 /**
- * Campaigns now read from Supabase (see `lib/campaigns`), so this route must
- * not be statically prerendered at build time — an admin edit would never
- * show up. `CampaignsSection`'s Supabase reads already use `no-store`, which
- * would force this anyway; this is the explicit version of the same thing,
- * matching the pattern already used by `/admin`.
+ * Campaigns (and social content) are read per request — from Supabase when
+ * configured — so an admin edit shows up without a rebuild.
  */
 export const dynamic = "force-dynamic";
 
+const cakePool = celebrationPool(catalogProducts);
+
+/**
+ * Fixed order: hero -> branch -> campaigns -> categories -> celebrations (the
+ * cake finder, shared with /ozel-gun) -> best sellers -> social videos -> footer.
+ */
 export default function HomePage() {
   return (
     <>
       <HeroSection slides={resolveHeroSlides()} />
-      <CampaignsSection />
-      <CelebrationsSection />
-      <FeaturedProducts />
+      <AddressBar />
+      {/* header "Fırsatlar" target (no separate campaigns page yet) */}
+      <div id="kampanyalar" className="scroll-mt-[68px] md:scroll-mt-[76px] lg:scroll-mt-[125px]">
+        <CampaignsSection />
+      </div>
       <CategoryGrid />
-      <BrandStoryTeaser />
+      <CelebrationQuiz products={cakePool} variant="section" />
+      <BestSellers />
       <InstagramContentSection />
-      <GiftSelectionSection />
-      <BranchesSection />
     </>
   );
 }

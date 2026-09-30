@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { catalogProducts } from "@/lib/data";
 import { CelebrationQuiz } from "@/components/landing/CelebrationQuiz";
+import { celebrationPool } from "@/lib/celebration-finder";
 import { FeaturedProductStrip } from "@/components/landing/FeaturedProductStrip";
 import { EditorialSteps } from "@/components/landing/EditorialSteps";
 import { EditorialSplit } from "@/components/landing/EditorialSplit";
@@ -39,14 +40,7 @@ const celebrationProducts = [
   ...catalogProducts.filter((p) => !p.isSpecialOccasion && (p.occasions?.length ?? 0) > 0),
 ].slice(0, 4);
 
-// Candidate pool for the recommendation quiz — celebration cakes only.
-const quizPool = catalogProducts.filter(
-  (p) =>
-    p.categorySlug === "yas-pastalar" ||
-    p.categorySlug === "ozel-gun" ||
-    p.isSpecialOccasion ||
-    (p.occasions?.length ?? 0) > 0,
-);
+const quizPool = celebrationPool(catalogProducts);
 
 export default function OzelGunPage() {
   return (

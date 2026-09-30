@@ -15,8 +15,7 @@ export type ReasonCode =
   | "BRANCH_DISABLED"
   | "PRODUCT_DISABLED"
   | "PRODUCT_DISABLED_AT_BRANCH"
-  | "OUT_OF_STOCK"
-  | "DAILY_CAPACITY_FULL"
+  | "NEXT_DAY_ONLY"
   | "PREPARATION_TIME"
   | "SAME_DAY_DISABLED"
   | "DELIVERY_SLOT_FULL"
@@ -29,13 +28,12 @@ const MESSAGES: Record<ReasonCode, string> = {
   OK: "Uygun.",
   LOCATION_REQUIRED: "Teslimat için önce ilçe ve mahalle seçin.",
   DELIVERY_ZONE_NOT_FOUND: "Bu adrese şu an teslimat yapamıyoruz. Mağazadan teslim alabilirsiniz.",
-  BRANCH_REQUIRED: "Lütfen bir mağaza seçin.",
+  BRANCH_REQUIRED: "Lütfen bir şube seçin.",
   BRANCH_CLOSED: "Seçtiğiniz gün mağaza kapalı.",
   BRANCH_DISABLED: "Bu mağaza şu an sipariş almıyor.",
   PRODUCT_DISABLED: "Bu ürün şu an satışta değil.",
   PRODUCT_DISABLED_AT_BRANCH: "Bu ürün seçtiğiniz bölgede/mağazada şu an sunulmuyor.",
-  OUT_OF_STOCK: "Bu ürün seçtiğiniz mağazada tükendi.",
-  DAILY_CAPACITY_FULL: "Bu ürünün seçtiğiniz gün için üretim kapasitesi doldu.",
+  NEXT_DAY_ONLY: "En erken yarına teslim.",
   PREPARATION_TIME: "Bu ürünün hazırlanması için daha fazla süre gerekiyor.",
   SAME_DAY_DISABLED: "Bu ürün aynı gün teslimata uygun değil.",
   DELIVERY_SLOT_FULL: "Bu saat aralığı doldu.",

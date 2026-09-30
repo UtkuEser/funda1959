@@ -4,9 +4,11 @@ import { useEffect, useState } from "react";
 import { useCart } from "@/lib/use-cart";
 import { useDelivery } from "@/lib/delivery/context";
 import { DeliveryContextControl } from "@/components/delivery/DeliveryContextControl";
+import { compactSlot, dateSlotText, dayWord } from "@/lib/delivery/labels";
 import {
   revalidateCart,
   dropUnavailable,
+  readCartFulfillment,
   stampCartFulfillment,
   type CartRevalidation,
 } from "@/lib/cart-fulfillment";
@@ -20,19 +22,29 @@ export function CartFulfillmentBanner() {
   const items = useCart();
   const { context, isResolved, branchChangeToken } = useDelivery();
   const [result, setResult] = useState<CartRevalidation | null>(null);
+  // the date/slot the customer chose that passed revalidation (null -> show the earliest)
+  const [kept, setKept] = useState<{ date: string; slotLabel: string } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     if (!isResolved || items.length === 0) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setResult(null);
+      setKept(null);
       return;
     }
+    const chosen = readCartFulfillment();
     revalidateCart(context).then((r) => {
       if (cancelled) return;
       setResult(r);
-      // keep the cart lines stamped with the current branch + earliest shared slot
-      if (r.status !== "unavailable" && r.availability.branchId && r.availability.earliestAvailableSlot) {
+      setKept(null);
+      if (r.status === "unavailable" || !r.availability.branchId) return;
+      // the date/slot chosen on the product page still works -> keep it (only the branch may change);
+      // otherwise move the lines to the earliest slot every item can share
+      if (r.availability.available && chosen.date && chosen.slotLabel) {
+        stampCartFulfillment({ branchId: r.availability.branchId, deliveryType: context.fulfillmentType, date: chosen.date, slotLabel: chosen.slotLabel });
+        setKept({ date: chosen.date, slotLabel: chosen.slotLabel });
+      } else if (r.availability.earliestAvailableSlot) {
         stampCartFulfillment({
           branchId: r.availability.branchId,
           deliveryType: context.fulfillmentType,
@@ -59,7 +71,7 @@ export function CartFulfillmentBanner() {
               {" "}
               En erken ortak teslimat:{" "}
               <span className="font-semibold text-burgundy">
-                {result.availability.earliestAvailableSlot.label}
+                {dayWord(result.availability.earliestAvailableSlot.date)} {compactSlot(result.availability.earliestAvailableSlot.label)}
               </span>
               .
             </>
@@ -84,11 +96,19 @@ export function CartFulfillmentBanner() {
         </div>
       )}
 
-      {result?.status === "valid" && result.availability.earliestAvailableSlot && (
+      {result?.status === "valid" && kept && (
+        <p className="font-sans text-[12.5px] text-warm-brown">
+          Teslimat seçiminiz uygun:{" "}
+          <span className="font-semibold text-burgundy">{dateSlotText(kept.date, kept.slotLabel)}</span>
+          {result.availability.branchName && <> · {result.availability.branchName}</>}
+        </p>
+      )}
+
+      {result?.status === "valid" && !kept && result.availability.earliestAvailableSlot && (
         <p className="font-sans text-[12.5px] text-warm-brown">
           {result.availability.branchName} şubesinden en erken{" "}
           <span className="font-semibold text-burgundy">
-            {result.availability.earliestAvailableSlot.label}
+            {dayWord(result.availability.earliestAvailableSlot.date)} {compactSlot(result.availability.earliestAvailableSlot.label)}
           </span>{" "}
           teslim edilebilir.
         </p>

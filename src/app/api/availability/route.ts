@@ -1,3 +1,4 @@
+import "@/lib/inventory/server-init";
 import { NextResponse } from "next/server";
 import {
   getProductAvailability,

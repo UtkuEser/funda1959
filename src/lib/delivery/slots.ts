@@ -8,6 +8,7 @@
  */
 
 import type { Weekday } from "../branch";
+import { daysBetweenISO, istanbulDateISO, weekdayOfISO } from "../time/istanbul";
 
 export type SlotWindow = { startTime: string; endTime: string };
 
@@ -34,7 +35,10 @@ export type DailySlotState = SlotWindow & {
 /* Seed                                                                        */
 /* -------------------------------------------------------------------------- */
 
-/** The public-facing windows Funda offers. */
+/**
+ * Each branch's delivery hours, as configured (unchanged). Customers book
+ * them in one-hour windows — see `toHourlyWindows`.
+ */
 export const STANDARD_WINDOWS: SlotWindow[] = [
   { startTime: "10:00", endTime: "12:00" },
   { startTime: "12:00", endTime: "14:00" },
@@ -43,13 +47,34 @@ export const STANDARD_WINDOWS: SlotWindow[] = [
   { startTime: "18:00", endTime: "20:00" },
 ];
 
-/** "10:00 – 12:00" — matches the legacy DELIVERY_TIME_SLOTS label format. */
+/** "10:00 – 11:00" — the label stored on cart lines and orders. */
 export const slotLabel = (w: SlotWindow): string => `${w.startTime} – ${w.endTime}`;
+
+const toMin = (t: string) => {
+  const [h, m] = t.split(":").map(Number);
+  return h * 60 + m;
+};
+const toTime = (min: number) => `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
+
+/** Splits configured windows into one-hour booking windows, keeping the hours. */
+export function toHourlyWindows(windows: SlotWindow[]): SlotWindow[] {
+  return windows.flatMap((w) => {
+    const out: SlotWindow[] = [];
+    for (let t = toMin(w.startTime); t + 60 <= toMin(w.endTime); t += 60) {
+      out.push({ startTime: toTime(t), endTime: toTime(t + 60) });
+    }
+    return out;
+  });
+}
+
+/** Every one-hour label any branch offers — the order API validates against it. */
+export const HOURLY_SLOT_LABELS: string[] = toHourlyWindows(STANDARD_WINDOWS).map(slotLabel);
 
 type BranchSlotConfig = {
   branchId: string;
   /** windows offered; omit to use STANDARD_WINDOWS */
   windows?: SlotWindow[];
+  /** deliveries per configured (two-hour) window; split evenly per hour */
   capacity: number;
   /** weekdays the branch runs delivery slots; default all 7 */
   days?: Weekday[];
@@ -67,15 +92,19 @@ const SLOT_DEFS: DeliverySlotDefinition[] = BRANCH_SLOT_CONFIG.flatMap((cfg) => 
   const windows = cfg.windows ?? STANDARD_WINDOWS;
   const days = cfg.days ?? ALL_DAYS;
   return days.flatMap((day) =>
-    windows.map((w) => ({
-      id: `${cfg.branchId}-${day}-${w.startTime.replace(":", "")}`,
-      branchId: cfg.branchId,
-      dayOfWeek: day,
-      startTime: w.startTime,
-      endTime: w.endTime,
-      capacity: cfg.capacity,
-      active: true,
-    })),
+    windows.flatMap((w) => {
+      const hours = toHourlyWindows([w]);
+      const perHour = Math.max(1, Math.ceil(cfg.capacity / hours.length));
+      return hours.map((hw) => ({
+        id: `${cfg.branchId}-${day}-${hw.startTime.replace(":", "")}`,
+        branchId: cfg.branchId,
+        dayOfWeek: day,
+        startTime: hw.startTime,
+        endTime: hw.endTime,
+        capacity: perHour,
+        active: true,
+      }));
+    }),
   );
 });
 
@@ -131,17 +160,15 @@ type SlotOverride = {
  * Scripted overrides so the demo behaves predictably. Today at İncek the two
  * early afternoon windows are full; everything else follows the hash.
  */
-const SLOT_OVERRIDES: SlotOverride[] = [
-  { branchId: "incek", dayOffset: 0, startTime: "10:00", full: true },
-  { branchId: "incek", dayOffset: 0, startTime: "12:00", full: true },
-  { branchId: "incek", dayOffset: 0, startTime: "14:00", full: true },
-];
+const SLOT_OVERRIDES: SlotOverride[] = ["10:00", "11:00", "12:00", "13:00", "14:00", "15:00"].map((startTime) => ({
+  branchId: "incek",
+  dayOffset: 0,
+  startTime,
+  full: true,
+}));
 
 function dayOffset(iso: string, today: Date): number {
-  const [y, m, d] = iso.split("-").map(Number);
-  const target = Date.UTC(y, m - 1, d);
-  const base = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
-  return Math.round((target - base) / 86_400_000);
+  return daysBetweenISO(istanbulDateISO(today), iso);
 }
 
 /** Full per-slot capacity picture for a branch on a date (for the ops panel). */
@@ -151,7 +178,7 @@ export function dailySlotStates(
   reservedFor: (branchId: string, iso: string, slotStart: string) => number,
   now: Date = new Date(),
 ): DailySlotState[] {
-  const weekday = new Date(`${isoDate}T12:00:00`).getDay() as Weekday;
+  const weekday = weekdayOfISO(isoDate) as Weekday;
   return repo.forBranchDay(branchId, weekday).map((def) => {
     const confirmed = slotConfirmedCount(def, isoDate, now);
     const reserved = reservedFor(branchId, isoDate, def.startTime);

@@ -13,6 +13,11 @@ export type Campaign = {
   title: string;
   description: string;
   image: string;
+  /**
+   * The visual already carries the campaign's wording (a poster). The homepage
+   * card then shows only the image + link, never the title a second time.
+   */
+  imageHasText?: boolean;
   /** ISO instant, e.g. "2026-09-12T00:00:00+03:00" */
   startAt: string;
   /** ISO instant */

@@ -1,3 +1,4 @@
+import "@/lib/inventory/server-init";
 import "@/lib/campaigns/server-init";
 import { redirect } from "next/navigation";
 import Link from "next/link";
@@ -9,7 +10,7 @@ import { getOrderRepository } from "@/lib/orders";
 import { catalogProducts } from "@/lib/data";
 import { orderStatusLabel } from "@/lib/order-status";
 import { formatTL } from "@/lib/cart-utils";
-import { getBranchStockRows } from "@/lib/inventory/stock-view";
+import { getBranchStockView } from "@/lib/inventory/stock-view";
 import { BranchStockManager } from "@/components/admin/BranchStockManager";
 import { getCampaignRepository } from "@/lib/campaigns";
 import { AdminCampaigns } from "@/components/admin/AdminCampaigns";
@@ -83,7 +84,7 @@ export default async function AdminPage({ searchParams }: Props) {
       )}
       {section === "orders" && <OrdersSection scope={scope} />}
       {section === "stock" && (
-        <StockSection scope={scope} branchId={scopedBranchId} date={date} />
+        <StockSection scope={scope} branchId={scopedBranchId} />
       )}
       {section === "campaigns" && <CampaignsSection scope={scope} />}
       {section === "instagram" && <InstagramContentSection />}
@@ -254,30 +255,28 @@ function OrdersSection({ scope }: { scope: AdminScope }) {
 function StockSection({
   scope,
   branchId,
-  date,
 }: {
   scope: AdminScope;
   branchId: string;
-  date: string;
 }) {
-  const rows = getBranchStockRows(branchId, date);
+  const view = getBranchStockView(branchId);
   const branch = getBranch(branchId);
   const locked = scope.user.role !== "SUPER_ADMIN";
 
   return (
     <>
       <PageIntro>
-        Günlük stok ve üretim kapasitesi. Değişiklik anında uygunluk motoruna yansır. Şube seçimi
-        üst bardan yapılır.
+        Ürünlerin bu şubedeki uygunluğu. Aktif ürünler bugünden, pasif ürünler en erken yarından teslim
+        edilir; müşteri pasif ürünü görmeye ve sipariş vermeye devam eder. Değişiklikler otomatik kaydedilir
+        ve yalnızca bu şubeyi etkiler.
       </PageIntro>
       <BranchStockManager
         key={branchId}
-        role={scope.user.role}
         branchId={branchId}
         branchName={branch?.name ?? branchId}
         locked={locked}
-        initialRows={rows}
-        date={date}
+        initialRows={view.rows}
+        notCarried={view.notCarried}
       />
     </>
   );

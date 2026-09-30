@@ -3,6 +3,7 @@ import { Fraunces, Inter } from "next/font/google";
 import "./globals.css";
 import { SiteChrome } from "@/components/layout/SiteChrome";
 import { DeliveryProvider } from "@/lib/delivery/context";
+import { AddressSelectorDialog } from "@/components/delivery/AddressSelectorDialog";
 import { generateLocalBusinessSchema } from "@/lib/schema";
 
 const fraunces = Fraunces({
@@ -80,6 +81,7 @@ export default function RootLayout({
       >
         <DeliveryProvider>
           <SiteChrome>{children}</SiteChrome>
+          <AddressSelectorDialog />
         </DeliveryProvider>
       </body>
     </html>

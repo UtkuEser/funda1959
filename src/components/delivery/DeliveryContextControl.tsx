@@ -1,51 +1,32 @@
 "use client";
 
 /**
- * Compact, reusable "where + how" control backed by the session DeliveryContext.
- * Used on /hizli-siparis, /sepet and /checkout. Writes straight to the context;
- * consumers read `useDelivery()` for the resolved branch.
+ * Compact "where + how" control backed by the session DeliveryContext. Used
+ * on /hizli-siparis, /sepet and /checkout. Delivery: the address comes from
+ * the shared picker and the branch follows from it. Pickup: choose the store.
  */
 
-import { useState } from "react";
 import { useDelivery } from "@/lib/delivery/context";
-import { deliverableDistricts, deliverableNeighborhoods } from "@/lib/delivery/zones";
-import { pickupBranches } from "@/lib/branch";
-import { reasonMessage } from "@/lib/availability";
+import { SampleDataNote } from "./SampleDataNote";
+import { NotServedNotice } from "./AddressPicker";
+import { PickupStorePicker } from "./PickupStorePicker";
 
 export function DeliveryContextControl({ className = "" }: { className?: string }) {
-  const { context, isResolved, branchName, setFulfillmentType, setDeliveryLocation, setPickupBranch } =
-    useDelivery();
-
-  const [editing, setEditing] = useState(false);
-  const [district, setDistrict] = useState(context.district ?? "");
-  const [neighborhood, setNeighborhood] = useState(context.neighborhood ?? "");
-
-  const districts = deliverableDistricts();
-  const neighborhoods = district ? deliverableNeighborhoods(district) : [];
-  const branches = pickupBranches();
-
-  const showForm = editing || !isResolved;
+  const { context, addressStatus, isResolved, branch, setFulfillmentType, openSelector } = useDelivery();
+  const isDelivery = context.fulfillmentType === "delivery";
 
   return (
-    <div
-      className={`rounded-lg border border-sand-light bg-cream-light px-4 py-3 ${className}`}
-    >
+    <div className={`rounded-lg border border-sand-light bg-cream-light px-4 py-3 ${className}`}>
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
         <div className="flex items-center gap-1.5">
           {(["delivery", "pickup"] as const).map((t) => (
             <button
               key={t}
               type="button"
-              onClick={() => {
-                setFulfillmentType(t);
-                setDistrict("");
-                setNeighborhood("");
-                setEditing(true);
-              }}
+              aria-pressed={context.fulfillmentType === t}
+              onClick={() => t !== context.fulfillmentType && setFulfillmentType(t)}
               className={`rounded-md px-2.5 py-1 font-sans text-[12.5px] font-medium transition-colors ${
-                context.fulfillmentType === t
-                  ? "bg-burgundy/[0.08] text-burgundy"
-                  : "text-taupe hover:text-burgundy"
+                context.fulfillmentType === t ? "bg-burgundy/[0.08] text-burgundy" : "text-taupe hover:text-burgundy"
               }`}
             >
               {t === "delivery" ? "Adrese Teslim" : "Mağazadan Teslim"}
@@ -53,10 +34,10 @@ export function DeliveryContextControl({ className = "" }: { className?: string 
           ))}
         </div>
 
-        {isResolved && !editing && (
+        {isDelivery && addressStatus !== "none" && (
           <button
             type="button"
-            onClick={() => setEditing(true)}
+            onClick={() => openSelector()}
             className="font-sans text-[12.5px] font-semibold text-burgundy underline decoration-burgundy/30 underline-offset-2 hover:decoration-burgundy"
           >
             Değiştir
@@ -64,89 +45,37 @@ export function DeliveryContextControl({ className = "" }: { className?: string 
         )}
       </div>
 
-      {isResolved && !editing ? (
-        <p className="mt-1.5 font-sans text-[13px] text-warm-brown">
-          {context.fulfillmentType === "delivery" ? (
-            <>
+      {isDelivery ? (
+        addressStatus === "none" ? (
+          <button
+            type="button"
+            onClick={() => openSelector()}
+            className="mt-2 inline-flex items-center gap-2 font-sans text-[13px] font-semibold text-burgundy hover:text-chocolate-light"
+          >
+            Adresinizi girin <span aria-hidden>→</span>
+          </button>
+        ) : (
+          <>
+            <p className="mt-1.5 font-sans text-[13px] text-warm-brown">
               <span className="font-medium text-espresso">
-                {context.neighborhood}, {context.district}
-              </span>{" "}
-              · {branchName} şubesi
-            </>
-          ) : (
-            <>
-              <span className="font-medium text-espresso">{branchName}</span> · mağazadan teslim
-            </>
-          )}
-        </p>
-      ) : showForm && context.fulfillmentType === "delivery" ? (
-        <div className="mt-2">
-          <div className="grid gap-2 sm:grid-cols-2">
-            <select
-              value={district}
-              onChange={(e) => {
-                setDistrict(e.target.value);
-                setNeighborhood("");
-              }}
-              aria-label="İlçe"
-              className="h-9 rounded-md border border-sand bg-cream-light px-2 font-sans text-[13px] text-espresso focus:border-burgundy focus:outline-none"
-            >
-              <option value="">İlçe seçin</option>
-              {districts.map((d) => (
-                <option key={d} value={d}>
-                  {d}
-                </option>
-              ))}
-            </select>
-            <select
-              value={neighborhood}
-              disabled={!district}
-              onChange={(e) => {
-                const n = e.target.value;
-                setNeighborhood(n);
-                if (district && n) {
-                  setDeliveryLocation(district, n);
-                  setEditing(false);
-                }
-              }}
-              aria-label="Mahalle"
-              className="h-9 rounded-md border border-sand bg-cream-light px-2 font-sans text-[13px] text-espresso focus:border-burgundy focus:outline-none disabled:opacity-50"
-            >
-              <option value="">Mahalle seçin</option>
-              {neighborhoods.map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
-          </div>
-          {district && neighborhood && !isResolved && (
-            <p className="mt-1.5 font-sans text-[12px] text-chocolate-light">
-              {reasonMessage("DELIVERY_ZONE_NOT_FOUND")}
+                {context.district}, {context.neighborhood}
+              </span>
+              {branch && <> · {branch.shortName} şubesinden hazırlanır</>}
+            </p>
+            {addressStatus === "unserved" ? <NotServedNotice className="mt-1" /> : <SampleDataNote className="mt-1" />}
+          </>
+        )
+      ) : (
+        <>
+          <PickupStorePicker className="mt-2" />
+          {isResolved && branch && (
+            <p className="mt-1.5 font-sans text-[13px] text-warm-brown">
+              <span className="font-medium text-espresso">{branch.shortName}</span> · mağazadan teslim
             </p>
           )}
-        </div>
-      ) : showForm ? (
-        <div className="mt-2 flex flex-wrap gap-2">
-          {branches.map((b) => (
-            <button
-              key={b.id}
-              type="button"
-              onClick={() => {
-                setPickupBranch(b.id);
-                setEditing(false);
-              }}
-              className={`rounded-md border px-2.5 py-1.5 font-sans text-[12.5px] font-medium transition-colors ${
-                context.branchId === b.id
-                  ? "border-burgundy bg-burgundy/[0.05] text-burgundy"
-                  : "border-sand text-warm-brown hover:border-burgundy/40"
-              }`}
-            >
-              {b.name.replace("Funda 1959 ", "")}
-            </button>
-          ))}
-        </div>
-      ) : null}
+          {isResolved && <SampleDataNote className="mt-1" />}
+        </>
+      )}
     </div>
   );
 }

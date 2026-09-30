@@ -2,6 +2,9 @@ import Link from "next/link";
 import Image from "next/image";
 import type { CartItem as CartItemType } from "@/lib/cart";
 import { deliverySummary, formatTL, itemTotal } from "@/lib/cart-utils";
+import { deliveryLabel, deliverySummary as deliveryLine } from "@/lib/delivery/labels";
+import type { CatalogAvailabilityVerdict } from "@/lib/availability";
+import { DeliveryPill } from "@/components/delivery/DeliveryPill";
 
 /** New cart items carry a real /products/... path; older ones a gradient class. */
 const isPhoto = (image: string) => image.startsWith("/");
@@ -65,15 +68,20 @@ function Actions({ slug, onRemove }: { slug: string; onRemove: () => void }) {
 
 export function CartItemRow({
   item,
+  verdict,
   onQuantity,
   onRemove,
 }: {
   item: CartItemType;
+  /** engine verdict at the current branch — same source as the product page label */
+  verdict?: CatalogAvailabilityVerdict | null;
   onQuantity: (next: number) => void;
   onRemove: () => void;
 }) {
   const total = itemTotal(item);
-  const delivery = deliverySummary(item);
+  // delivery type (+ store for pickup); the date/slot line is rendered below in the product-page format
+  const delivery = deliverySummary({ ...item, deliveryDate: null, deliveryTime: null });
+  const earliest = deliveryLabel(verdict);
   const { message, note, extras } = item.customization;
 
   return (
@@ -134,12 +142,14 @@ export function CartItemRow({
           </div>
         )}
 
-        {/* Delivery */}
-        {delivery.length > 0 && (
+        {/* Delivery — earliest-date label from the engine, then the chosen date/slot */}
+        {earliest && <DeliveryPill label={earliest} className="mt-2" />}
+        {(delivery.length > 0 || item.deliveryDate) && (
           <div className="mt-2 font-sans text-[12.5px] leading-relaxed text-taupe">
             {delivery.map((line, i) => (
               <p key={i}>{line}</p>
             ))}
+            {item.deliveryDate && <p className="font-medium text-espresso">{deliveryLine(item.deliveryDate, item.deliveryTime)}</p>}
           </div>
         )}
 
