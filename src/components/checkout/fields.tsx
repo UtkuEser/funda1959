@@ -97,6 +97,7 @@ export function SelectField({
   error,
   placeholder,
   options,
+  disabled,
 }: {
   id: string;
   value: string;
@@ -104,15 +105,17 @@ export function SelectField({
   error?: string;
   placeholder: string;
   options: string[];
+  disabled?: boolean;
 }) {
   return (
     <select
       id={id}
       value={value}
       onChange={(e) => onChange(e.target.value)}
+      disabled={disabled}
       aria-invalid={error ? true : undefined}
       aria-describedby={error ? `${id}-error` : undefined}
-      className={`${inputBase} h-12 ${borderClass(error)} ${value ? "" : "text-taupe/70"}`}
+      className={`${inputBase} h-12 ${borderClass(error)} ${value ? "" : "text-taupe/70"} disabled:cursor-not-allowed disabled:opacity-60`}
     >
       <option value="">{placeholder}</option>
       {options.map((o) => (

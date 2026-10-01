@@ -1,8 +1,10 @@
+import { useMemo } from "react";
 import { branches } from "@/lib/data";
-import { ANKARA_DISTRICTS, DELIVERY_TIME_SLOTS } from "@/lib/checkout-utils";
+import { DELIVERY_TIME_SLOTS } from "@/lib/checkout-utils";
 import { formatCartDate } from "@/lib/cart-utils";
+import { deliverableDistricts, deliverableNeighborhoods } from "@/lib/delivery/zones";
 import { Field, RadioCard, SelectField, TextAreaField, TextField } from "./fields";
-import type { CheckoutState, DeliveryErrors } from "./CheckoutPage";
+import type { AddressFields, CheckoutState, DeliveryErrors, DeliveryPatch } from "./CheckoutPage";
 
 export function DeliveryStep({
   value,
@@ -10,14 +12,26 @@ export function DeliveryStep({
   minDate,
   onChange,
   onAddressChange,
+  onDistrictChange,
+  onNeighborhoodChange,
+  regionNotice,
 }: {
   value: CheckoutState;
   errors: DeliveryErrors;
   minDate: string;
-  onChange: (patch: Partial<CheckoutState>) => void;
-  onAddressChange: (patch: Partial<CheckoutState["address"]>) => void;
+  onChange: (patch: DeliveryPatch) => void;
+  onAddressChange: (patch: Partial<AddressFields>) => void;
+  /** district / neighbourhood live in the shared delivery context (header, home page) */
+  onDistrictChange: (district: string) => void;
+  onNeighborhoodChange: (neighborhood: string) => void;
+  /** what a region change did to the branch / the chosen date and time */
+  regionNotice: string | null;
 }) {
   const isPickup = value.deliveryType === "pickup";
+  const district = value.address.district;
+  // same lists as the site-wide address picker
+  const districts = useMemo(() => deliverableDistricts(), []);
+  const neighborhoods = useMemo(() => (district ? deliverableNeighborhoods(district) : []), [district]);
 
   return (
     <section>
@@ -60,21 +74,28 @@ export function DeliveryStep({
               <Field label="İlçe" htmlFor="district" error={errors.district}>
                 <SelectField
                   id="district"
-                  value={value.address.district}
-                  onChange={(v) => onAddressChange({ district: v })}
+                  value={district}
+                  onChange={onDistrictChange}
                   placeholder="İlçe seçin"
-                  options={ANKARA_DISTRICTS}
+                  options={districts}
                 />
               </Field>
               <Field label="Mahalle" htmlFor="neighborhood" error={errors.neighborhood}>
-                <TextField
+                <SelectField
                   id="neighborhood"
                   value={value.address.neighborhood}
-                  onChange={(v) => onAddressChange({ neighborhood: v })}
-                  placeholder="Mahalle"
+                  onChange={onNeighborhoodChange}
+                  placeholder={district ? "Mahalle seçin" : "Önce ilçe seçin"}
+                  options={neighborhoods}
+                  disabled={!district}
                 />
               </Field>
             </div>
+            {regionNotice && (
+              <p role="status" className="-mt-2 font-sans text-[12.5px] leading-relaxed text-warm-brown">
+                {regionNotice}
+              </p>
+            )}
 
             <Field label="Açık Adres" htmlFor="addressLine" error={errors.addressLine}>
               <TextAreaField

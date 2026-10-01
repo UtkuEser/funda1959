@@ -18,6 +18,8 @@ import {
 import type { CreateOrderRequest } from "@/lib/order";
 import { setCheckoutHandoff } from "@/lib/checkout-handoff";
 import { resolveZone } from "@/lib/delivery/zones";
+import { useDelivery } from "@/lib/delivery/context";
+import { reasonMessage, type CartAvailabilityResult } from "@/lib/availability";
 import { CheckoutSummary } from "./CheckoutSummary";
 import { ContactStep } from "./ContactStep";
 import { DeliveryStep } from "./DeliveryStep";
@@ -48,9 +50,16 @@ export type DeliveryErrors = Partial<
   Record<"district" | "neighborhood" | "addressLine" | "branch" | "date" | "timeSlot", string>
 >;
 
-const EMPTY_ADDRESS: CheckoutState["address"] = {
-  district: "",
-  neighborhood: "",
+/**
+ * The address fields the customer types here. District and neighbourhood are
+ * NOT form state: they are the shared delivery context (header "Adres", home
+ * page address bar, localStorage) — read from it and written back through it.
+ */
+export type AddressFields = Omit<CheckoutState["address"], "district" | "neighborhood">;
+type FormState = Omit<CheckoutState, "address"> & { address: AddressFields };
+export type DeliveryPatch = Partial<Pick<CheckoutState, "deliveryType" | "branch" | "date" | "timeSlot">>;
+
+const EMPTY_ADDRESS: AddressFields = {
   addressLine: "",
   building: "",
   floor: "",
@@ -71,7 +80,10 @@ const FIELD_ORDER = [
   "timeSlot",
 ];
 
-function initialState(items: CartItem[]): CheckoutState {
+/** "10:00 – 11:00" -> "10:00" */
+const slotStartOf = (label: string | null) => label?.match(/(\d{2}:\d{2})/)?.[1];
+
+function initialState(items: CartItem[]): FormState {
   const first = items[0];
   return {
     contact: { fullName: "", phone: "", email: "" },
@@ -104,7 +116,8 @@ export function CheckoutPage() {
   const router = useRouter();
   const items = useCart();
 
-  const [state, setState] = useState<CheckoutState>(() => initialState([]));
+  const { context, isHydrated, setDeliveryAddress, setDeliveryDistrict } = useDelivery();
+  const [state, setState] = useState<FormState>(() => initialState([]));
   const [seeded, setSeeded] = useState(false);
   const [contactErrors, setContactErrors] = useState<ContactErrors>({});
   const [deliveryErrors, setDeliveryErrors] = useState<DeliveryErrors>({});
@@ -114,6 +127,14 @@ export function CheckoutPage() {
   const [showNote, setShowNote] = useState(false);
 
   const requestIdRef = useRef("");
+
+  // district + neighbourhood come from the shared context only — nothing here
+  // writes them until the customer changes them, so the stored choice can't be
+  // overwritten by an empty form before localStorage has been read
+  const district = context.district ?? "";
+  const neighborhood = context.neighborhood ?? "";
+  const view: CheckoutState = { ...state, address: { ...state.address, district, neighborhood } };
+  const [regionNotice, setRegionNotice] = useState<string | null>(null);
 
   // Seed the form from the cart once real items are available (render-phase adjust).
   if (!seeded && items.length > 0) {
@@ -128,7 +149,7 @@ export function CheckoutPage() {
     setMinDate(earliestDeliveryDate(items));
   }, [items]);
 
-  const patch = (p: Partial<CheckoutState>) => {
+  const patch = (p: DeliveryPatch) => {
     setState((s) => ({ ...s, ...p }));
     setDeliveryErrors((e) => {
       const next = { ...e };
@@ -153,7 +174,115 @@ export function CheckoutPage() {
     });
   };
 
-  const patchAddress = (p: Partial<CheckoutState["address"]>) => {
+  const clearRegionErrors = () =>
+    setDeliveryErrors((e) => {
+      const next = { ...e };
+      delete next.district;
+      delete next.neighborhood;
+      return next;
+    });
+
+  // a new district clears the neighbourhood (shared-context rule)
+  const changeDistrict = (d: string) => {
+    setDeliveryDistrict(d || null);
+    clearRegionErrors();
+  };
+  const changeNeighborhood = (n: string) => {
+    if (n) setDeliveryAddress(district, n);
+    else setDeliveryDistrict(district || null);
+    clearRegionErrors();
+  };
+
+  /*
+   * Region change (here, in the header or anywhere else) -> re-check the cart
+   * for the new address: serving branch, products offered there, and whether
+   * the chosen date / time still work. Whatever no longer works is cleared and
+   * the customer is told why. The first read of the stored address is not a
+   * change.
+   */
+  const latest = useRef({ state, items });
+  useEffect(() => {
+    latest.current = { state, items };
+  });
+  const regionKey = isHydrated ? `${district}|${neighborhood}` : null;
+  const lastRegion = useRef<string | null>(null);
+  const lastBranch = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (regionKey === null) return;
+    const prev = lastRegion.current;
+    lastRegion.current = regionKey;
+    const { state: s, items: cart } = latest.current;
+    if (prev === null) {
+      lastBranch.current = resolveZone(district, neighborhood)?.branchId ?? cart[0]?.branch ?? null;
+      return;
+    }
+    if (prev === regionKey) return;
+    // district changed and the neighbourhood is still empty, or the address isn't used (pickup)
+    if (!district || !neighborhood || s.deliveryType !== "delivery" || cart.length === 0) {
+      setRegionNotice(null);
+      return;
+    }
+
+    const ctrl = new AbortController();
+    const slotStart = slotStartOf(s.timeSlot);
+    fetch("/api/availability", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        kind: "cart",
+        context: { fulfillmentType: "delivery", district, neighborhood, deliveryZoneId: null, branchId: null },
+        items: cart.map((i) => ({ productId: i.productId, productSlug: i.slug, variantId: i.selectedVariant, quantity: i.quantity })),
+        date: s.date || undefined,
+        slotStart: s.date ? slotStart : undefined,
+      }),
+      signal: ctrl.signal,
+    })
+      .then((r) => r.json() as Promise<CartAvailabilityResult>)
+      .then((res) => {
+        const now = latest.current.state;
+        // not served at all
+        const noBranch = res.itemIssues.find((i) => i.productId === "*");
+        if (noBranch || !res.branchId) {
+          lastBranch.current = null;
+          setRegionNotice(reasonMessage(noBranch?.reason ?? "DELIVERY_ZONE_NOT_FOUND"));
+          return;
+        }
+
+        const parts: string[] = [];
+        const before = lastBranch.current ?? latest.current.items[0]?.branch ?? null;
+        if (res.branchId !== before && res.branchName) {
+          parts.push(`Teslimat bölgeniz güncellendi; siparişiniz ${res.branchName} şubesinden hazırlanacak.`);
+        }
+        lastBranch.current = res.branchId;
+
+        const notOffered = res.itemIssues.filter((i) => i.reason === "PRODUCT_DISABLED_AT_BRANCH").map((i) => i.productName);
+        if (notOffered.length > 0) parts.push(`${notOffered.join(", ")} bu bölgede sunulmuyor.`);
+
+        // only judge the choice the check was made for (the customer may have moved on meanwhile)
+        if (now.date === s.date && now.timeSlot === s.timeSlot) {
+          const dateOk =
+            Boolean(s.date) && s.date === res.requestedDate && res.itemIssues.length === 0 && res.slots.some((x) => x.available);
+          const slotOk = dateOk && (!s.timeSlot || Boolean(res.slots.find((x) => x.startTime === slotStart)?.available));
+          if (s.date && !dateOk) {
+            setState((st) => ({ ...st, date: "", timeSlot: null }));
+            setDeliveryErrors((e) => ({ ...e, date: "Bu bölge için yeni bir teslimat tarihi seçin." }));
+            parts.push("Seçtiğiniz teslimat tarihi bu bölgede uygun olmadığı için tarih ve saat temizlendi; lütfen yeniden seçin.");
+          } else if (s.timeSlot && !slotOk) {
+            setState((st) => ({ ...st, timeSlot: null }));
+            setDeliveryErrors((e) => ({ ...e, timeSlot: "Bu bölge için yeni bir saat aralığı seçin." }));
+            parts.push("Seçtiğiniz saat aralığı bu bölgede uygun olmadığı için temizlendi; lütfen yeni bir saat seçin.");
+          }
+        }
+        setRegionNotice(parts.length > 0 ? parts.join(" ") : null);
+      })
+      .catch(() => {});
+    return () => ctrl.abort();
+    // runs on region changes only; form values are read through `latest`
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [regionKey]);
+
+  const patchAddress = (p: Partial<AddressFields>) => {
     setState((s) => ({ ...s, address: { ...s.address, ...p } }));
     setDeliveryErrors((e) => {
       const next = { ...e };
@@ -171,8 +300,9 @@ export function CheckoutPage() {
 
     const d: DeliveryErrors = {};
     if (state.deliveryType === "delivery") {
-      if (!state.address.district) d.district = "İlçe seçin.";
-      if (!state.address.neighborhood.trim()) d.neighborhood = "Mahalle girin.";
+      if (!district) d.district = "İlçe seçin.";
+      if (!neighborhood) d.neighborhood = "Mahalle seçin.";
+      else if (!resolveZone(district, neighborhood)) d.neighborhood = reasonMessage("DELIVERY_ZONE_NOT_FOUND");
       if (state.address.addressLine.trim().length < 10) d.addressLine = "Açık adres girin.";
     } else if (!state.branch) {
       d.branch = "Bir mağaza seçin.";
@@ -223,12 +353,8 @@ export function CheckoutPage() {
     const deliveryTimeSlot = state.timeSlot ?? DELIVERY_TIME_SLOTS[0];
 
     // branch routing: pickup uses the chosen branch; delivery uses the zone of
-    // the branch the cart was built for (falls back to the first serving zone)
-    const zone =
-      state.deliveryType === "delivery"
-        ? resolveZone(state.address.district, state.address.neighborhood, items[0]?.branch) ??
-          resolveZone(state.address.district, state.address.neighborhood)
-        : null;
+    // the address shown here — the same resolution as the shared context
+    const zone = state.deliveryType === "delivery" ? resolveZone(district, neighborhood) : null;
     const branchId = state.deliveryType === "pickup" ? state.branch : zone?.branchId ?? null;
     const slotStart = deliveryTimeSlot.match(/(\d{2}:\d{2})/)?.[1] ?? "10:00";
 
@@ -243,8 +369,8 @@ export function CheckoutPage() {
         address:
           state.deliveryType === "delivery"
             ? {
-                district: state.address.district,
-                neighborhood: state.address.neighborhood,
+                district,
+                neighborhood,
                 addressLine: state.address.addressLine,
                 building: state.address.building || undefined,
                 floor: state.address.floor || undefined,
@@ -268,10 +394,9 @@ export function CheckoutPage() {
       orderNote: state.orderNote.trim() || undefined,
     };
 
-    const addr = state.address;
     const addressText =
       state.deliveryType === "delivery"
-        ? [addr.neighborhood, addr.addressLine, addr.district].filter(Boolean).join(", ")
+        ? [neighborhood, state.address.addressLine, district].filter(Boolean).join(", ")
         : state.branch
           ? branchName(state.branch)
           : null;
@@ -340,11 +465,14 @@ export function CheckoutPage() {
 
           <div className="mt-8 border-t border-sand-light pt-8">
             <DeliveryStep
-              value={state}
+              value={view}
               errors={deliveryErrors}
               minDate={minDate}
               onChange={patch}
               onAddressChange={patchAddress}
+              onDistrictChange={changeDistrict}
+              onNeighborhoodChange={changeNeighborhood}
+              regionNotice={state.deliveryType === "delivery" ? regionNotice : null}
             />
           </div>
 

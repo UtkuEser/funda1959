@@ -318,7 +318,8 @@ export function CelebrationQuiz({
                     })()}
                   </div>
 
-                  {/* back / forward — a pick advances on its own; "İleri" re-advances after going back */}
+                  {/* back / forward — a pick advances on its own (re-picking the chosen option too);
+                      "İleri" re-advances after going back — /ozel-gun only, the homepage shows just "Geri" */}
                   <div className="mt-5 flex items-center gap-3">
                     <button
                       type="button"
@@ -328,14 +329,16 @@ export function CelebrationQuiz({
                     >
                       ← Geri
                     </button>
-                    <button
-                      type="button"
-                      onClick={f.goForward}
-                      disabled={!f.currentValue || f.isTransitioning}
-                      className="inline-flex h-10 items-center rounded-md border border-burgundy/30 px-4 font-sans text-[13.5px] font-semibold text-burgundy transition-colors hover:border-burgundy hover:bg-burgundy/[0.04] disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                      {f.step === RESULTS_STEP - 1 ? "Önerileri Gör →" : "İleri →"}
-                    </button>
+                    {isPage && (
+                      <button
+                        type="button"
+                        onClick={f.goForward}
+                        disabled={!f.currentValue || f.isTransitioning}
+                        className="inline-flex h-10 items-center rounded-md border border-burgundy/30 px-4 font-sans text-[13.5px] font-semibold text-burgundy transition-colors hover:border-burgundy hover:bg-burgundy/[0.04] disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        {f.step === RESULTS_STEP - 1 ? "Önerileri Gör →" : "İleri →"}
+                      </button>
+                    )}
                   </div>
 
                   <p className="mt-5 font-sans text-[13px] text-warm-brown">
