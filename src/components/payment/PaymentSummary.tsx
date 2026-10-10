@@ -60,7 +60,15 @@ export function PaymentSummary({ items, quote }: { items: CartItem[]; quote: Quo
         <Row label="Ürün Toplamı" value={q ? formatTL(q.subtotal) : pending} />
         <Row
           label="Teslimat Ücreti"
-          value={q ? (q.deliveryType === "pickup" ? "₺0 · Mağazadan teslim" : formatTL(q.deliveryFee)) : pending}
+          value={
+            q
+              ? q.deliveryType === "pickup"
+                ? "₺0 · Mağazadan teslim"
+                : q.deliveryFeeState === "free"
+                  ? "Ücretsiz"
+                  : formatTL(q.deliveryFee)
+              : pending
+          }
         />
         <Row label="İndirim" value={q ? formatTL(q.discount) : pending} />
       </dl>

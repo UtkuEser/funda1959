@@ -204,6 +204,11 @@ export class MockOrderRepository implements OrderRepository {
     return this.rows.get(orderNumber) ?? null;
   }
 
+  /** the order a submit with this idempotency key already created, if any */
+  findByClientRequestId(clientRequestId: string): StoredOrder | null {
+    return this.rows.get(this.requests.get(clientRequestId) ?? "") ?? null;
+  }
+
   async list(q: OrderListQuery): Promise<OrderPage> {
     const matching = [...this.rows.values()]
       .filter((o) => !q.branchIds || (o.branchId !== null && q.branchIds.includes(o.branchId)))

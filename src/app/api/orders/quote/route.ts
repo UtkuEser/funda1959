@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { refreshInventory } from "@/lib/inventory/server-init";
+import { refreshDeliveryFees } from "@/lib/delivery/fees-server";
 import { buildOrderPayload, quoteFromPayload } from "@/lib/order-server";
 
 export const dynamic = "force-dynamic";
@@ -31,9 +32,12 @@ export async function POST(request: Request) {
     );
   }
 
+  // fresh delivery fees, like an order (D15); unreadable -> delivery answers 503
+  await refreshDeliveryFees();
+
   const built = buildOrderPayload(body);
   if (!built.ok) {
     return NextResponse.json({ ok: false, error: built.error, reason: built.reason ?? null }, { status: built.status });
   }
-  return NextResponse.json({ ok: true, quote: quoteFromPayload(built.payload) });
+  return NextResponse.json({ ok: true, quote: quoteFromPayload(built.payload, built.deliveryFeeState) });
 }

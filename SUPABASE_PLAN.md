@@ -1,6 +1,6 @@
 # Funda 1959 — Supabase'e Geçiş Planı
 
-> **Durum:** Planlama dokümanı + Aşama 0 uygulaması. Ortam/yönetim kararları (D1–D4) ve iş kararları (D5–D11) işlendi. Aşama 0 kodu ve `0006` hazır (2026-10-10). `funda1959-test` kuruldu (`0001`–`0006` + `test` işareti); `supabase-test` dalı (`e897090`) Vercel Preview'da. **Aşama 1 Preview'da doğrulandı (2026-10-10).** **Aşama 2: `0007` `funda1959-test`'e uygulandı; yerel + gerçek test Supabase doğrulaması tamamlandı (2026-10-10); Preview doğrulaması bekliyor.** Production projesi kurulmadı; `main` (`60355bf`) ve Production değişmedi.
+> **Durum:** Planlama dokümanı + Aşama 0 uygulaması. Ortam/yönetim kararları (D1–D4) ve iş kararları (D5–D11) işlendi. Aşama 0 kodu ve `0006` hazır (2026-10-10). `funda1959-test` kuruldu (`0001`–`0006` + `test` işareti); `supabase-test` dalı (`e897090`) Vercel Preview'da. **Aşama 1 Preview'da doğrulandı (2026-10-10).** **Aşama 2 tamamlandı (2026-10-10): `0007` `funda1959-test`'e uygulandı; local + gerçek test Supabase ve Preview doğrulaması geçti (`2c75944`).** Production projesi kurulmadı; `main` (`60355bf`) ve Production değişmedi.
 > **Çalışma klasörü:** `funda1959-main` (tek kaynak). Plan ilk olarak `funda1959-git` — son commit `60355bf` + commit edilmemiş değişiklikler — üzerinde hazırlandı (bkz. §8).
 > **Kapsam:** Site ve admin paneli aynı Next.js projesinde kalır; ayrıştırma kapsam dışıdır.
 > **Son güncelleme:** 2026-10-10
@@ -40,6 +40,8 @@
 | **D11** | **Teslimat kapasitesi:** şimdilik **saatlik sipariş sınırı yok**. Sahte "dolu" değerleri kaldırılır. Bir saatlik teslimat aralıkları, çalışma saatleri, hazırlık süreleri ve aktif/pasif stok kuralları korunur. Aktif/pasif stok ile teslimat kapasitesi **ayrı** kavramlardır. 10 dakikalık rezervasyonun gerekliliği değerlendirilecek; gereksiz karmaşıklık oluşturulmayacak. | Kapasite hesabı ve demo "dolu" sayıları kaldırılır. Rezervasyon **değerlendirmesi** aşağıda. Rezervasyon tablosu, kapasite RPC'si ve slot kapasite tabloları **yapılmaz**. |
 | **D12** (A12, 2026-10-10) | **Sipariş işlemleri:** şube hesabı **yalnızca kendi şubesinin** siparişlerini ilerletebilir ve iptal edebilir; Merkez **tüm şubelerde** aynı yetkilere sahiptir. İptalde **gerekçe zorunlu**; işlemi yapan hesap, tarih ve gerekçe kaydedilir. **Teslim edilmiş siparişin iptali ve ödeme iadesi bu aşamada yok.** Yetkiler sunucuda kontrol edilir. | `PATCH /api/admin/orders` + RPC `update_order_status` (`0007`): durum yalnızca bir adım ilerler (teslimatta "Yolda" atlanmaz); kapsam imzalı oturumdan gelir ve veritabanında yeniden kontrol edilir; her değişiklik `order_status_events` tablosuna, iptal ayrıca `orders.cancel_*` alanlarına yazılır. |
 | **D13** (A10, 2026-10-10) | **Demo siparişler Funda Puan kazandırmaz** — bellek dahil hiçbir depoda. Gerçek puan kazanımı bu aşamada etkinleştirilmez. | `lib/funda-points/service.ts` → `awardPointsForOrder` demo siparişi `DEMO_ORDER` ile reddeder; `lib/orders/engine.ts` puan çağırmaz. Kazanım Aşama 6'da veritabanı defteriyle bağlanır. |
+| **D14** (A3, 2026-10-10) | **Minimum sipariş:** adrese teslimde **500 TL**; hesap **ürün toplamı − indirim**, **teslimat ücreti dahil değil**. **Gel-al siparişlerinde minimum yok.** Bölgelere ait 250/300 TL örnek minimumlar kaldırılır; 500 TL şimdilik **kodda sabit**. Sepet ve hızlı sipariş akışında eksik tutar gösterilir; adrese teslimde minimum sağlanmadan checkout'a geçilmez, gel-ale geçilebilir. Ödeme hesabı ve sipariş oluşturma aynı kuralı sunucuda yeniden doğrular. **Puan kullanımının minimuma etkisi açık karar (A13); puan işlemleri açılmaz.** | `lib/order-rules.ts` (`MIN_DELIVERY_ORDER_TL = 500`, `deliveryMinimumShortfall`); `lib/order-server.ts` → 409 `BELOW_MINIMUM`; `create_order` (`0008`) aynı kontrolü yapar (500 TL SQL'de de sabit; ikisi birlikte değişir); sepet / hızlı sipariş / checkout uyarı ve engel. |
+| **D15** (A4'ün ücret kısmı, 2026-10-10) | **Teslimat ücretleri:** Supabase'de **bölge kimliğine bağlı**; **yalnızca Merkez düzenler**, şubeler kendi bölgelerini **salt okunur** görür. Üç durum ayrı: **belirlenmedi**, **ücretli**, **açıkça ücretsiz**; boş değer veya eksik kayıt **0 TL sayılmaz**. Örnek ücretler veritabanına aktarılmaz. Ücret belirlenmeyen bölgede adrese teslim engellenir; gel-al çalışır. **Kuruş desteklenir**; fiyat ve toplam gösteriminde yuvarlama farkı olmaz. Ücret okunamazsa **"Teslimat bilgisi şu an alınamıyor"**; eski değerle hesap veya sipariş yapılmaz. Son değiştiren hesap ve tarih kaydedilir; **geçmiş tablosu yok**. Mevcut siparişlerin kayıtlı ücret ve toplamları değişmez. **Bölge/mahalle eşlemeleri kesinleşmedi:** mevcut listeler test amaçlı korunur, onaylanmış hizmet kapsamı sayılmaz. | `0008_delivery_zone_fees.sql` (`delivery_zone_fees`: `state` unset/paid/free + `fee`; `create_order` ücreti tablodan doğrular); `lib/delivery/fees.ts` + `fees-server.ts`; motor, ödeme hesabı ve sipariş aynı kaynaktan; `PATCH /api/admin/delivery-fees` (yalnızca Merkez); admin "Bölgeler"; `formatTL` kuruş gösterir. |
 
 **Henüz kararlaştırılmayanlar:** kampanya tarihleri ve koşulları, ve §9'daki diğer konular **onaylanmış sayılmaz**.
 
@@ -74,16 +76,15 @@
   - production'da sipariş alımı sunucuda kapalı (§6.1),
   - sahte "dolu" değerler ve saatlik sınır kalkıyor (D11),
   - 10 dk rezervasyon kaldırılıyor (D11 değerlendirmesi).
-- **Tamamlanan:** `funda1959-test` + Preview kurulumu (§7.6, adım 12–13), Aşama 1 doğrulaması (§8), Aşama 2'nin yerel + gerçek test Supabase doğrulaması (§7.6 "Aşama 2 kurulum kontrolü", adım 1–3 ve 5–6'nın local karşılığı).
+- **Tamamlanan:** `funda1959-test` + Preview kurulumu (§7.6, adım 12–13), Aşama 1 doğrulaması (§8), Aşama 2'nin local + gerçek test Supabase doğrulaması ve Preview doğrulaması (§7.6 "Aşama 2 kurulum kontrolü"), Aşama 3'ün local + gerçek test Supabase doğrulaması (§7.6 "Aşama 3 kurulum kontrolü", 2026-10-10).
 - **Sıradaki:**
-  - Aşama 2 **Preview doğrulaması** (§7.6, adım 4–6 Preview'da),
-  - Aşama 3 (teslimat ücreti + minimum sipariş),
+  - Aşama 3 (teslimat ücreti + minimum sipariş): `0008` test projesinde, local + gerçek test Supabase kontrolleri geçti; **commit (ayrı onay) ve Preview kontrolü** (§7.6 "Aşama 3 kurulum kontrolü", adım 3–5) kaldı,
   - Production kurulumu (§7.6, adım 14) ayrı onayla; sipariş alımı kapalı kalır (§6.1).
 - **Kalan bilinen sorunlar [K]:**
-  - Teslimat ücreti, adresin bölgesinin koddaki ücretinden (`lib/delivery/zones.ts`) sunucuda hesaplanıyor; ürün sayfasının gösterdiği tutarla aynı. D10'a göre bu demo değerler Aşama 3'te veritabanındaki ücretle (`delivery_zone_fees`) değişecek; "belirlenmedi" durumu henüz yok.
-  - Minimum sipariş uygulanmıyor (Aşama 3).
-  - Ödeme ekranı toplamı sunucunun hesabıdır (2026-10-10): `POST /api/orders/quote` siparişle aynı kodu (`buildOrderPayload`) çalıştırır, hiçbir şey yazmaz; ekranda ürün toplamı ve teslimat ücreti ayrı, toplam ücret dahil ve siparişin toplamıyla aynı. Sepet ve checkout özeti ücreti hâlâ "Teslimat bölgesine göre hesaplanır" diye gösterir (adres o adımda kesinleşmemiş olabilir).
-  - Aşama 2 düzeltmeleri (İstanbul tarihi, sipariş anında doğrulama, eşzamanlı aynı istek, admin listesi, D12 yetkileri) local + gerçek `funda1959-test` üzerinde doğrulandı; Preview'da henüz doğrulanmadı.
+  - Teslimat ücreti ve minimum (Aşama 3): ücret `delivery_zone_fees`'ten (D15), minimum 500 TL adrese teslimde (D14); `0008` test projesinde (2026-10-10), production'da yok. Bölge/mahalle listeleri ve test projesindeki ücretler test amaçlı, onaylı fiyat değil (A4).
+  - Puanın minimuma etkisi açık (A13).
+  - Ödeme ekranı toplamı sunucunun hesabıdır (2026-10-10): `POST /api/orders/quote` siparişle aynı kodu (`buildOrderPayload`) çalıştırır, hiçbir şey yazmaz; ekranda ürün toplamı ve teslimat ücreti ayrı, toplam ücret dahil ve siparişin toplamıyla aynı. Sepet, hızlı sipariş ve checkout özeti seçili adresin güncel ücretini sunucudan alır (`POST /api/delivery-fee`) ve aynı satırları gösterir; demo sipariş butonu yalnızca geçerli tutar hesabıyla açılır (Aşama 3 arayüzü, 2026-10-10).
+  - Aşama 2 düzeltmeleri (İstanbul tarihi, sipariş anında doğrulama, eşzamanlı aynı istek, admin listesi, D12 yetkileri) local + gerçek `funda1959-test` üzerinde ve Preview'da doğrulandı (2026-10-10, §7.6).
 
 ---
 
@@ -123,7 +124,7 @@ Bunlar tarayıcıda kalabilir; sunucu hiçbirine güvenmez. Fiyat (`lib/order-se
 
 ### 1.3 Kodda doğrulanan diğer tespitler **[K]**
 
-Aşağıdaki dört madde Aşama 2'de giderildi (2026-10-10, `0007` + kod; local + gerçek test Supabase'inde doğrulandı, §7.6; Preview bekliyor):
+Aşağıdaki dört madde Aşama 2'de giderildi (2026-10-10, `0007` + kod; local + gerçek test Supabase'inde ve Preview'da doğrulandı, §7.6):
 
 - **`create_order` eşzamanlı aynı istekte hata veriyordu.** Aynı `client_request_id` ile gelen ikinci istek benzersizlik ihlaline düşüp 10 denemeden sonra `order_number_generation_failed` alıyordu. → `0007`: istek kimliği başına `pg_advisory_xact_lock`; ikinci istek ilkinin bitmesini bekler ve aynı siparişi döndürür.
 - **Supabase sipariş yolunda kaybolanlar:** `deliveryZoneId` ve `salesChannel` RPC'ye gitmiyordu; teslimat siparişine şube yazılmıyordu (`branch_id` yalnızca gel-alda doluyordu); admin listesi bu siparişleri görmüyordu. → `0007`: `delivery_zone_id`, `sales_channel`, teslimatta adresten çıkan şube; admin listesi `list_orders` ile veritabanından. (Puan Aşama 6.)
@@ -187,7 +188,7 @@ Aşağıdaki dört madde Aşama 2'de giderildi (2026-10-10, `0007` + kod; local 
 
 | Tablo | Alanlar | Kurallar |
 |---|---|---|
-| `delivery_zone_fees` | `zone_id text PK` (koddaki bölge kimliği), `fee numeric(10,2) null check (fee >= 0)`, `updated_by`, `updated_at` | **Satır yok veya `fee` null = "ücret belirlenmedi"** → o bölgeye adrese teslim siparişi alınmaz (gel-al etkilenmez). `0` yalnızca açıkça girilirse ücretsizdir. Koddaki demo ücretler seed edilmez. Yalnızca Merkez yazar. |
+| `delivery_zone_fees` (**`0008`, hazır**) | `zone_id text PK` (koddaki bölge kimliği), `state text` (`unset` / `paid` / `free`), `fee numeric(10,2) null`, `updated_by text`, `updated_at timestamptz` | Check: `unset` ↔ `fee null`, `paid` ↔ `fee > 0` (kuruş), `free` ↔ `fee = 0` (yalnızca açık seçimle). **Satır yok = belirlenmedi**, ücretsiz değil → o bölgeye adrese teslim alınmaz (gel-al etkilenmez). Seed yok. Yalnızca Merkez yazar; son değiştiren + tarih, geçmiş tablosu yok (D15). |
 
 **Minimum sipariş (D10):** tek değer (500 TL). Tablo yerine kodda tek bir sabit (`lib/order-rules.ts`) **[V]**. Değişmesi web ekibi işi, admin ekranı gerekmiyor. Uygulama tabanı §9'da onay bekliyor.
 
@@ -370,8 +371,8 @@ Sunucu fonksiyonları (RPC; `security definer`, yalnızca `service_role`):
 | **Tekrarlanan istekler çift kayıt üretmez** | `orders.client_request_id` unique; puan `businessKey` | Sipariş: **Aşama 2 (`0007`)** istek kimliği kilidiyle eşzamanlı istekte de aynı sipariş döner (gerçek test projesinde doğrulandı, 2026-10-10, §7.6). Puan: `business_key unique` + RPC. İletişim: `client_request_id unique`. |
 | **Demo siparişler gerçeklerden açıkça ayrılır (D8)** | Bellek yolu `paid` yazıyordu; ayrım yalnızca ödeme durumuna kalıyordu | **Aşama 0 (uygulandı):**<br>• `orders.is_demo` (`0006`, varsayılan `true`) + "demo asla `paid` olamaz" kısıtı; `create_order` yalnızca demo sipariş yazar.<br>• Sunucu her siparişte `is_demo: true` gönderir (`lib/orders/engine.ts`; tarayıcı belirleyemez); bellek yolunda `isDemo`.<br>• Admin sipariş listelerinde "Demo" etiketi.<br>• Production'da sipariş alımı sunucuda kapalı (§6.1).<br>`payment_status = pending` tek başına ayrım değildir. `paid` yalnızca ödeme sağlayıcısı doğrulamasıyla. |
 | **Test/canlı veri ayrımı, okuma + yazma (D3)** | `lib/supabase-server.ts` → `supabaseRest()` | **Aşama 0 (uygulandı):** her okuma, yazma ve RPC öncesinde ortam işareti kontrolü. İşaret yoksa veya yanlışsa hiçbir uygulama tablosuna istek gitmez (§7.4). |
-| **Minimum sipariş 500 TL (D10)** | Uygulanmıyor | Aşama 3: checkout + sunucu doğrulaması. Taban önerisi: teslimat öncesi ürün toplamı (§9). |
-| **Teslimat ücreti yapılandırılabilir; belirlenmemiş ≠ ücretsiz (D10)** | Sipariş toplamında 0; PDP koddaki demo ücreti gösteriyor | Aşama 3: `delivery_zone_fees`. Belirlenmemiş bölgede adrese teslim alınmaz. PDP/checkout yalnızca belirlenmiş ücreti gösterir. |
+| **Minimum sipariş 500 TL (D10, D14)** | `lib/order-rules.ts` | **Aşama 3 (kod):** adrese teslimde ürün toplamı − indirim ≥ 500 TL, teslimat ücreti hariç, gel-al muaf. Sepet / hızlı sipariş eksik tutarı gösterir ve checkout'a geçişi engeller (gel-ale geçiş açık); checkout ödeme adımını engeller; ödeme hesabı + sipariş 409 `BELOW_MINIMUM`; `create_order` (`0008`) `below_minimum`. Puan etkisi açık (A13). |
+| **Teslimat ücreti yapılandırılabilir; belirlenmemiş ≠ ücretsiz (D10, D15)** | `lib/delivery/fees.ts`, `fees-server.ts`, `delivery_zone_fees` | **Aşama 3 (kod):** motor, ödeme hesabı ve sipariş aynı kaynaktan; belirlenmedi → `DELIVERY_FEE_NOT_SET` (409), okunamıyor → `DELIVERY_INFO_UNAVAILABLE` (503, eski değer kullanılmaz); `create_order` ücreti tablodan doğrular. PDP ücreti yalnızca belirlenmişse gösterir; kuruş gösterimi (`formatTL`). Mevcut siparişlerin ücreti değişmez. |
 | **Funda Puan (D9)** | Bellek; son kullanma yok. **Demo sipariş hiçbir depoda puan kazandırmaz (D13):** `awardPointsForOrder` demo siparişi `DEMO_ORDER` ile reddeder; sipariş motoru puan çağırmaz | Aşama 6: partiler (1 yıl), kazanım sipariş anında, teslimat ücreti hariç, puanlı siparişte kazanım yok, iptal/iadede geri alma + iade, yalnızca online, 1 puan = 1 TL. |
 | **Tarayıcıda kalabilecekler** | §1.2 | Sepet, adres tercihi, quiz ve aktarım tarayıcıda; sunucu hiçbirine güvenmez. |
 
@@ -407,7 +408,7 @@ Hepsi yalnızca **ekleme** yapar; uygulanmış dosyalar değişmez. İki proje a
 | — | `0005_campaign_posters.sql` | Hazır | `image_has_text`, `seed_key`, 5 poster, eski 4'ün pasifleşmesi |
 | — | `0006_orders_demo_flag.sql` | Hazır (Aşama 0) | `orders.is_demo` (varsayılan `true`) + `orders_demo_never_paid` kısıtı + indeks; `create_order` yalnızca demo sipariş yazar; `get_order_public` `is_demo` döndürür. Tekrar çalıştırılabilir. |
 | 1 | `0007_orders_hardening.sql` | **Aşama 2 — `funda1959-test`'e uygulandı (2026-10-10)**; production'a uygulanmadı | `orders`: `sales_channel`, `delivery_zone_id`, iptal kaydı (§2.2); `order_status_events` (§2.3); `create_order` v3, `list_orders`, `update_order_status` (§2.5). Tekrar çalıştırılabilir. |
-| 2 | `0008_delivery_zone_fees.sql` | Plan (Aşama 3) | `delivery_zone_fees` |
+| 2 | `0008_delivery_zone_fees.sql` | **Aşama 3 — `funda1959-test`'e uygulandı (2026-10-10)**; production'a uygulanmadı | `delivery_zone_fees` (3 durum, seed yok) + `create_order` v4 (ücret ve minimum kontrolü). Tekrar çalıştırılabilir. |
 | 3 | `0009_product_prices.sql` | Plan (Aşama 4) | `product_prices` |
 | 4 | `0010_customer_accounts.sql` | Plan (Aşama 5) | `customer_profiles`, `customer_addresses`, `customers.auth_user_id`, `orders.customer_user_id` |
 | 5 | `0011_funda_points.sql` | Plan (Aşama 6) | `funda_point_*`, puan RPC'leri |
@@ -548,13 +549,13 @@ Gizli değerler yalnızca Supabase ve Vercel panellerinde ve geliştiricinin ken
   - `supabase-test` dalı (`e897090`) Preview'da; Preview'da Aşama 1 doğrulaması geçti (§8).
   - Test projesinde şema `0001`–`0006` ve `test` işareti doğrulandı (local `/api/health`, Merkez oturumu). Adım 4'teki satır sayıları ve RLS kontrolü bu kayıtta doğrulanmadı.
   - `0007` test projesine uygulandı; local `/api/health` (Merkez) `0001`–`0007` bütün kontroller `ok` (2026-10-10).
-- **Bekliyor:** Aşama 2 Preview doğrulaması (aşağıda, adım 4–6). `funda1959-production` (adım 1–5'in production kısmı), Production ortam değişkenleri (adım 7), adım 14. `main` dalı değişmedi.
+- **Bekliyor:** `funda1959-production` (adım 1–5'in production kısmı), Production ortam değişkenleri (adım 7), adım 14. `main` dalı değişmedi.
 - **Not:** Preview, Vercel Authentication ile korunuyor; otomatik kontrol (curl) için Vercel oturumu gerekir.
 - **Not:** Test projesi zaman zaman geçici 5xx döndürdü (bir okumada 522; health şema yoklamasında bir kez `error`, tekrarında `ok`). Müşteri tarafındaki stok okuması böyle bir anda son bilinen değerle devam eder; admin okuması 503 verir; sipariş alımı 503 verir (Aşama 2).
 
 **Aşama 2 kurulum kontrolü (yalnızca `funda1959-test` + Preview)**
 
-Durum (2026-10-10): adım 1–3 **tamam**; adım 4–6 local uygulama + gerçek `funda1959-test` ile **tamam**, **Preview'da bekliyor**; adım 7 Production kurulunca.
+Durum (2026-10-10): adım 1–6 **tamam** (local + gerçek `funda1959-test`, ardından Preview); adım 7 Production kurulunca.
 
 1. SQL Editor'da `0007_orders_hardening.sql` çalıştır (test projesi). Production'a uygulanmaz.
 2. Merkez oturumuyla `/api/health` → `0001`–`0007` bütün kontroller `ok` (`0007 orders(...)` ve `0007 order_status_events(id)` dahil).
@@ -586,12 +587,111 @@ Durum (2026-10-10): adım 1–3 **tamam**; adım 4–6 local uygulama + gerçek 
 | | Sipariş | Tür / şube | Tutar | Durum | Olaylar |
 |---|---|---|---|---|---|
 | A | `FND-20261010-A660` | gel-al / GOP | ₺90 | iptal | new→cancelled (`sube:gop`, gerekçeli) |
-| B | `FND-20261010-5453` | teslimat / İncek | ₺160 (ücret ₺70) | hazırlanıyor | new→confirmed (`sube:incek`), confirmed→preparing (`merkez`) |
+| B | `FND-20261010-5453` | teslimat / İncek | ₺160 (ücret ₺70) | **iptal** (Preview, İncek, gerekçeli) | new→confirmed (`sube:incek`), confirmed→preparing (`merkez`), preparing→ready (`sube:incek`, Preview), ready→cancelled (`sube:incek`, Preview, gerekçeli) |
 | C | `FND-20261010-E596` | gel-al / GOP | ₺90 | yeni | — (uygulama üzerinden eşzamanlılık) |
 | D | `FND-20261010-5A39` | gel-al / GOP | ₺90 | teslim edildi | 4 adım (`sube:gop`) |
 | E | `FND-20261010-1EC1` | gel-al / GOP | ₺90 | yeni | — (doğrudan RPC eşzamanlılık) |
 
-Toplam: 5 sipariş, 5 müşteri, 1 adres, 5 kalem, 7 durum olayı.
+| F | `FND-20261010-7AA6` | teslimat / İncek | ₺165 (ürün ₺95 + ücret ₺70) | teslim edildi | Preview'da oluşturuldu; new→confirmed→preparing→ready→out_for_delivery→delivered (hepsi `sube:incek`) |
+
+Local testten sonra: 5 sipariş, 5 müşteri, 1 adres, 5 kalem, 7 durum olayı. Preview'dan sonra test projesinde toplam **6 sipariş** (2 yeni, 2 iptal, 2 teslim edildi).
+
+**Sonuç — Preview (`supabase-test` @ `2c75944` + `funda1959-test`, web ekibi, 2026-10-10):** adım 4–6 geçti. Kayıtlar test veritabanında salt-okunur sorguyla teyit edildi.
+
+- Demo sipariş `FND-20261010-7AA6` (teslimat, İncek; ürün ₺95 + ücret ₺70): ödeme ekranı, onay sayfası ve admin toplamı aynı, **₺165**; `is_demo = true`, `payment_status = pending`.
+- Admin: Merkez siparişi görüyor; İncek hesabı yalnızca kendi şubesinin siparişlerini görüyor.
+- D12: İncek 7AA6'yı adım adım "Teslim Edildi"ye ilerletti (5 olay, `sube:incek`); her değişiklik müşteri sipariş takibine yansıdı.
+- D12: `FND-20261010-5453` İncek tarafından gerekçeyle iptal edildi (`cancelled_by = İncek`, gerekçe ve zaman kayıtlı); admin ve müşteri takibinde "İptal Edildi" görünüyor.
+- Not: 5453'ün `preparing → ready` adımı (`sube:incek`, 20:27:48) 7AA6'nın ilk adımıyla aynı saniyede kaydedildi; iki ayrı işlem olduğu varsayılıyor (bildirimde ayrıca geçmiyor).
+- Preview'da ayrıca denenmeyenler (local + gerçek test Supabase'inde geçti): 409 durumları, GOP → İncek 403, teslim edilmiş siparişin iptal edilememesi, eşzamanlı aynı istek, D13 puan.
+
+
+**Aşama 3 kurulum kontrolü (yalnızca `funda1959-test` + Preview; adım 1–2, 6–7 ve 4–5'in local karşılığı tamam — commit ve Preview ayrı onayla)**
+
+1. ✅ SQL Editor'da `0008_delivery_zone_fees.sql` çalıştır (test projesi). Production'a uygulanmaz. Ücret satırı eklenmez.
+2. ✅ Merkez oturumuyla local `/api/health` → `0001`–`0008` bütün kontroller `ok`. `0008` uygulanmadan Aşama 3 kodu çalışırsa adrese teslim "Teslimat bilgisi şu an alınamıyor" der (güvenli taraf); bu yüzden migration deploy'dan **önce**.
+3. ⏳ Aşama 3 commit'i `supabase-test`'e (ayrı onay) → Preview build.
+4. ⏳ Preview admin "Bölgeler": Merkez test bölgelerine **test amaçlı** ücret girer (onaylı fiyat değildir) — en az bir `paid` (kuruşlu, ör. 59,90), bir `free`, en az bir bölge `unset` kalır. GOP hesabı yalnızca kendi bölgesini salt okunur görür, düzenleyemez.
+5. ⏳ Preview müşteri akışı: `unset` bölgede adrese teslim engellenir, gel-al çalışır; `free` bölgede ücret "Ücretsiz", toplam = ürün; kuruşlu ücret ödeme ve onayda yuvarlanmadan aynı; sepette ve hızlı siparişte 500 TL altı adrese teslimde eksik tutar + checkout engeli, "Mağazadan teslim al" ile gel-ale geçiş; gel-alda minimum yok; 500 TL'de geçer.
+6. ✅ Gerçek test Supabase'inde doğrudan RPC (ayrı onay; sentetik kayıt): 499,99 ürün toplamlı teslimat → `below_minimum`; 520 − 30 indirim → `below_minimum`; ücreti `unset` bölge → `delivery_fee_not_set`; tablodakinden farklı ücret → `delivery_fee_mismatch`; gel-alda ücret ≠ 0 → `amount_mismatch`; aynı istek kimliğiyle tekrar → aynı sipariş (ücret sonradan değişse de).
+7. ✅ Ücret değiştikten sonra mevcut siparişlerin (A–F, 7AA6) ücret ve toplamı aynı kalır.
+
+**Sonuç — local uygulama + gerçek `funda1959-test` (2026-10-10):** sunucu ve RPC kontrolleri 57/57, müşteri ekranları (local, başsız Chrome) 24/24, Merkez ücret düzenleyicisi 33/33 geçti. Kayıtlar sentetik, `funda1959-test` dışında hiçbir projeye istek gitmedi; ücret değişiklikleri yalnızca test için geçiciydi ve geri yüklendi.
+
+- Ön kontrol: işaret `test`; Merkez oturumuyla `/api/health` → `0001`–`0008` 10/10 `ok`.
+- **Minimum (D14):**
+  - Adrese teslim 495 TL: ödeme hesabı ve sipariş 409 `BELOW_MINIMUM` ("₺5 daha ekleyin veya mağazadan teslim alın"), kayıt yazılmadı.
+  - Tam 500 TL: 201, veritabanında 500 + 230 = 730.
+  - Gel-al 45 TL: 201, ücret 0 (minimum yok). Ücretsiz bölge minimumu kaldırmıyor (495 → 409).
+  - Doğrudan RPC: 499,99 → `below_minimum`; 545 − 46 indirim = 499 → `below_minimum`; 545 − 45 = 500 → kabul. Plandaki 520 − 30 yerine katalog fiyatlarıyla kurulabilen tutarlar kullanıldı.
+  - Ekranlar: 495 TL'de sepet ve hızlı sipariş "Sepetinize ₺5 daha ekleyin" der, checkout bağlantısı yok. Checkout uyarı gösterir, "Ödeme Adımına Geç" ilerlemez. "Mağazadan teslim al" gel-ale geçirir, uyarı kalkar. 500 TL'de ve gel-alda uyarı yok.
+- **Ücret durumları (D15):**
+  - Kuruşlu 23,45: uygunluk, ödeme hesabı, sipariş, veritabanı, sipariş takibi ve admin listesi aynı (₺23,45 / ₺523,45, yuvarlama yok); ürün sayfası "Teslimat ücreti: ₺23,45".
+  - Ücretsiz: ücret 0, durum `free`, sipariş toplamı 500; ürün sayfası "Teslimat ücretsiz".
+  - Belirlenmemiş: uygunluk `DELIVERY_FEE_NOT_SET`, ödeme hesabı ve sipariş 409, kayıt yok; gel-al çalışıyor. Ürün sayfası, sepet ve hızlı sipariş "Bu bölge için teslimat ücreti henüz belirlenmedi …" der.
+  - Doğrudan RPC: `unset` bölge ve satırı olmayan bölge (ücret 0 ile) → `delivery_fee_not_set`; tablodakinden farklı ücret → `delivery_fee_mismatch`; gel-alda ücret 5 → `amount_mismatch`. Reddedilen çağrılar sipariş veya müşteri yazmadı.
+- **Şube yetkisi:**
+  - Oturumsuz 401.
+  - GOP kendi bölgesine (ücretli ve ücretsiz) ve İncek bölgesine 403; İncek kendi bölgesine 403; tablo değişmedi.
+  - GOP "Bölgeler" ekranında yalnızca kendi bölgesi, düzenleme yok; Merkez'de 4 düzenleyici.
+- **Eski siparişler:**
+  - İncek & Gölbaşı ücreti 230 → 23,45 olduktan sonra `D2CE` ücret 230 / toplam 730 ve `updated_at` aynı.
+  - Aynı istek uygulamadan ve doğrudan RPC'den (eski ücretle) tekrar gönderilince aynı sipariş döndü, ikinci kayıt yok.
+  - Önceki 6 sipariş (A–E, 7AA6) tutar, durum ve `updated_at` aynı; `branch_product_status` değişmedi.
+- **Ücretlerin geri yüklenmesi:**
+  - Testte yalnızca İncek & Gölbaşı ve İncek Güney Hattı geçici değiştirildi; sonunda başlangıç değerlerine döndü. GOP ve Panora'ya dokunulmadı (düzenleyen ve zaman aynı).
+  - Test başlangıcındaki değerler: GOP 590, İncek Güney Hattı 4.400, İncek & Gölbaşı 230, Panora 240. Bunlar Merkez oturumundan 23:09–23:11'de girildi (öncesi 59 / 44 / 23 / 24; İncek & Gölbaşı önce 2.300 girilip 230'a düzeltildi). Onaylı fiyat değil (A4); 4.400 TL kasıtlı değilse düzeltilmeli.
+- **Bu kontrolde bulunup düzeltilenler:**
+  - Merkez ücret düzenleyicisi başarısız kaydı başarılı gibi gösteriyordu: test projesine geçici olarak ulaşılamadığında yazma 503 ile reddedildi, girilen 59 kutuda kaldı, yenileyince 12 geldi.
+    - Artık: tek istek ve "Kaydediliyor…" durumu. Hata varsa "Kaydedilmedi … Kayıtlı ücret değişmedi" yazar.
+    - "Kaydedildi" yalnızca veritabanının döndürdüğü satır istenen değerle eşleşince görünür. Log satırları nedeni içeriyor.
+    - Dosyalar: `DeliveryFeeEditor.tsx`, `api/admin/delivery-fees`, `persistence.ts`, `fees-server.ts`.
+  - Belirlenmemiş veya okunamayan ücret:
+    - Ürün sayfası "Önümüzdeki günlerde … teslimat saati bulunmuyor" diyordu, sepet hiçbir şey söylemiyordu. İkisi de artık gerekçeyi gösteriyor.
+    - Sepet "Uygun olmayan ürünleri çıkar" önermiyor, çünkü sorun bölgede.
+    - Dosyalar: `isDeliveryFeeReason`, `ProductFulfillment.tsx`, `cart-fulfillment.ts`.
+- **İlk kontrolde açık kalan iki bulgu** (checkout'ta kayıtlı adresle ilk açılışta uyarı yoktu; demo butonu tutar hatasında pasifleşmiyordu) arayüz turunda giderildi (aşağıda).
+- **Denenmeyenler:**
+  - Adım 3–5: commit, Preview build ve Preview ekranları; commit onayı bekliyor.
+  - `DELIVERY_INFO_UNAVAILABLE` gerçek bir kesintide denenmedi; yalnızca mock ile (181/181, `POST /api/delivery-fee` 503 dahil).
+  - Uygulama üzerinden indirimli sipariş denenmedi; uygulamada indirim mantığı yok, yalnızca doğrudan RPC ile denendi.
+  - Puanın minimuma etkisi açık karar (A13).
+
+**Test kayıtları (`funda1959-test`'te korunuyor; hepsi demo + `pending`, sentetik, teslim 2026-10-13, e-posta `asama3-202610102013-…@example.com`):**
+
+| Sipariş | Kaynak | Tür / bölge | Ürün − indirim + ücret = toplam |
+|---|---|---|---|
+| `FND-20261010-D2CE` | uygulama | teslimat / İncek & Gölbaşı | 500 − 0 + 230 = **730** (eski ücretle korunan sipariş) |
+| `FND-20261010-7FD5` | uygulama | gel-al / İncek | 45 − 0 + 0 = **45** |
+| `FND-20261010-4B9F` | uygulama | teslimat / İncek & Gölbaşı | 500 − 0 + 23,45 = **523,45** |
+| `FND-20261010-843D` | uygulama | teslimat / İncek Güney Hattı (ücretsiz) | 500 − 0 + 0 = **500** |
+| `FND-20261010-2AAA` | doğrudan RPC | teslimat / İncek & Gölbaşı | 545 − 45 + 23,45 = **523,45** |
+
+Test projesinde bu kontrolden sonra 11 sipariş vardı (önceki 6 + bu 5).
+
+**Aşama 3 arayüzü — local uygulama + gerçek `funda1959-test`, tarayıcıda (2026-10-10):** 33/33 geçti (+ önceki ekran kontrolleri 24/24, mock 181/181). Ücretler testte geçici değişti ve başlangıç değerlerine döndü (GOP 590, İncek Güney Hattı 4.400, İncek & Gölbaşı 230, Panora 240; GOP ve Panora'ya dokunulmadı).
+
+- **Değişenler:**
+  - `POST /api/delivery-fee` (yeni): adresin bölgesinin ücretini taze okur, teklif ve siparişle aynı çözücüyle (`resolveContextBranch`). Belirlenmemiş ücret ya da hizmet dışı adres için `ok: false` ve gerekçe döner, okunamayan ücret için 503; tutar uydurmaz. Hiçbir şey yazmaz.
+  - `useDeliveryFee` + `OrderTotals`: sepet, hızlı sipariş ve checkout özetinde "Ürün Toplamı", "Teslimat Ücreti" (tutar / "Ücretsiz" / "₺0 · Mağazadan teslim" / "Belirlenmedi"), "İndirim" ve "Toplam" ayrı satırlarda; ödeme ekranıyla aynı satırlar. Ücret bilinmiyorsa toplam "—" ve gerekçe görünür.
+  - Checkout: kayıtlı adresin bölge, ücret, ürün ve tarih kontrolü sayfa açılınca da çalışıyor; ayrıca adres veya teslimat türü değişince. Ücret yüklenirken, belirlenmemişse ya da okunamıyorsa "Ödeme Adımına Geç" ilerlemiyor.
+  - Ödeme ekranı: demo sipariş butonu tutar hesabı yüklenirken ("Tutar hesaplanıyor…") ve hata verdiğinde ("Geçerli bir tutar hesaplanmadan demo sipariş oluşturulamaz.") pasif; yalnızca geçerli hesapla açılıyor.
+  - 500 TL minimumu, gel-al muafiyeti ve hazırlık/teslimat kuralları değişmedi.
+- **Sonuçlar** (sepet / checkout / ödeme / sipariş toplamları karşılaştırıldı):
+
+| Senaryo | Sepet | Checkout | Ödeme (sunucu) | Sipariş (veritabanı) |
+|---|---|---|---|---|
+| Değiştirilmemiş ücret (İncek & Gölbaşı 230) | ₺500 + ₺230 = ₺730 | — | — | — |
+| Kuruşlu (İncek & Gölbaşı 23,45) | ₺500 + ₺23,45 = ₺523,45 | aynı | aynı | `FND-20261010-84CF` 500 + 23,45 = 523,45; onay sayfası ₺523,45 |
+| Ücretsiz (İncek Güney Hattı) | ₺500 + Ücretsiz = ₺500 | aynı | aynı | `FND-20261010-61D5` 500 + 0 = 500; onay sayfası ₺500 |
+| Belirlenmemiş (İncek Güney Hattı) | ₺500, "Belirlenmedi", toplam "—", gerekçe | ilk açılışta bölge uyarısı + özet aynı; ödeme adımına geçilmiyor | — | yazılmadı |
+| Checkout açıkken ücret "belirlenmemiş" yapıldı | — | ücretsiz göründü | 409 gerekçesi, demo butonu pasif ve açıklamalı | yazılmadı (sipariş sayısı değişmedi) |
+| Gel-al 45 TL | ₺45 + ₺0 · Mağazadan teslim = ₺45, minimum yok | aynı, minimum uyarısı yok | — | — |
+| Adrese teslim 495 TL (23,45) | ₺495 + ₺23,45 = ₺518,45, "₺5 daha ekleyin", checkout bağlantısı yok | — | — | — |
+
+  - Ödeme ekranında teklif 3 sn bekletildiğinde demo butonu pasif ve "Tutar hesaplanıyor…" görünüyor; geçerli teklif gelince açılıyor (kuruşlu ve ücretsiz senaryoda).
+- **Test kayıtları** (demo + `pending`, sentetik, teslim 2026-10-13, e-posta `asama3-ekran-202610102032-…@example.com`): `FND-20261010-84CF` (kuruşlu, 523,45) ve `FND-20261010-61D5` (ücretsiz, 500). Test projesinde artık **13 sipariş** var.
+- **Denenmeyenler:** Preview (commit onayı bekliyor); gerçek kesintide `DELIVERY_INFO_UNAVAILABLE` (mock'ta denendi).
 
 ---
 
@@ -603,8 +703,8 @@ Aşamalar bağımlılık sırasındadır ve **tek tek** uygulanır; her biri ayr
 |---|---|---|---|---|
 | **0. Altyapı ve sahte davranışların kaldırılması** | **Yapıldı:** `lib/persistence.ts`, `app/api/health/route.ts`, `lib/supabase-server.ts` (`SupabaseRestError`), yazma yollarında 503 koruması, kampanya okuma güvenliği, `0004`, `0005`, `supabase/README.md`, `.env.example`.<br>**Bu turda eklendi:**<br>(a) demo sipariş `pending` (`lib/orders/engine.ts`, `lib/orders/repository.ts`);<br>(b) kapasite ve sahte "dolu" kaldırıldı (`lib/delivery/slots.ts`, `lib/availability/engine.ts`, admin "Teslimat Slotları");<br>(c) rezervasyon kaldırıldı (`lib/reservations`, `app/api/reservations`, `PaymentPage`, `lib/checkout-handoff.ts`, `CheckoutPage`, `api/orders`, admin "Rezervasyonlar" ve genel bakış); eski admin bağlantıları genel bakışa yönlenir (`lib/admin/section-access.ts`); `scripts/verify-*.ts` güncellendi.<br>**Kurulum öncesi tamamlananlar (2026-10-10):**<br>(d) ortam işareti kontrolü ortak katmanda: her okuma, yazma ve RPC (`lib/supabase-server.ts`; `lib/persistence.ts` aynı kontrolü kullanır);<br>(e) `0006_orders_demo_flag.sql`; sunucu her siparişte `is_demo: true` (`lib/orders/engine.ts`, `lib/orders/repository.ts`, `lib/order.ts`); admin "Demo" etiketi (`app/admin/page.tsx`);<br>(f) production'da `POST /api/orders` 503 (`app/api/orders/route.ts`, `lib/orders/engine.ts`);<br>(g) `/api/health`: `0006` kontrolü, şema yoklaması yalnızca işaret eşleşince ve `limit=0`;<br>(h) doğrulama betikleri yalnızca bellekte veya `test` işaretli projede yazar (`scripts/test-environment-guard.ts`). | D1, D3 | Kod tamam (`e897090`); test + Preview kurulumu tamam; **production kurulumu bekliyor** (§7.6) | Vercel'de DB yok / ulaşılamıyor / yanlış proje → her yazma 503; sahte başarı yok. İşaret yok veya yanlış → hiçbir uygulama tablosuna istek gitmez (okuma dahil). Demo sipariş `pending` + `is_demo = true`; tarayıcı değiştiremez. Production'da sipariş alımı 503. Hiçbir slot "dolu" görünmüyor. Kapanma yalnızca saat, hazırlık ve pasif kuralından. Ödeme ekranında bekletme/sayaç yok. |
 | **1. Şube stokları** | Stok düzeltmesi (`lib/inventory/*`, `api/admin/inventory`, `BranchStockManager`, `0003`); `supabase-test` dalında `e897090` | 0 | **Tamamlandı (2026-10-10)**<br>• Preview + `funda1959-test`: web ekibi doğruladı.<br>• Local + `funda1959-test`: kayıt ve şube bağımsızlığı elle doğrulandı; HTTP yetki testi 23/23 (oturumsuz 401; GOP kendi şubesi 200; GOP → Panora/İncek okuma ve yazma 403; Merkez üç şube 200; 403 denemelerinden sonra `branch_product_status` değişmedi).<br>• Not: aktife alınan ürün bugün seçilemiyorsa önce zaman kuralına bakılır. Örnek: İncek'te `p5`, 4 sa hazırlık, son aralık 19:00–20:00 → bugün için son sipariş 16:00. `/api/availability` yanıtında `PREPARATION_TIME` = zaman kuralı, `NEXT_DAY_ONLY` = stok pasif okunuyor. | Aktif/pasif yenileme ve yeni oturumda korunur. GOP değişikliği diğer şubeleri etkilemez. Şube 403 / Merkez 200. Müşteride "En erken yarına teslim". |
-| **2. Siparişler** | `0007_orders_hardening.sql`; `lib/order-server.ts` (motorla yeniden uygunluk, İstanbul tarihi, adresten şube/bölge, sunucuda fiyat/indirim/ücret); `app/api/orders` (stok okunamazsa 503, 400/409); `lib/orders/repository.ts` (asenkron depo, kapsam/filtre/sayfa, D12 kuralları), `lib/orders/supabase-repository.ts`, `lib/orders/server-init.ts`; `PATCH /api/admin/orders`; `app/admin/page.tsx` (DB'den genel bakış + liste, tarih filtresi, sayfalama, İstanbul saati, iptal kaydı), `components/admin/OrderStatusActions.tsx`; demo butonu local + Preview (`app/hizli-siparis-odeme/page.tsx`, `PaymentPage`); ödeme ekranı tutarları sunucudan (`POST /api/orders/quote`, `PaymentSummary`: ürün toplamı + teslimat ücreti ayrı, toplam = sipariş toplamı); demo siparişe puan yok (D13: `funda-points/service.ts`, `orders/engine.ts`); `lib/checkout-utils.ts`; `lib/order-status.ts`; `/api/health` `0007`; `scripts/verify-orders.ts` | 0, 1, D12 | **Local + gerçek `funda1959-test` doğrulaması tamam (2026-10-10)**: `0007` test projesine uygulandı, 45/45 + doğrudan RPC eşzamanlılık testi (§7.6 "Sonuç"). **Preview doğrulaması bekliyor.** | Sipariş yenileme ve yeni oturumda korunur. Aynı istek 2 kez (sıralı ve eşzamanlı) → tek sipariş, aynı numara. Demo sipariş `pending` + etiketli. Geçersiz tarih/saat/pasif ürün/bölge → 409; stok okunamazsa 503. Teslimat şubesi adresten. Şube yalnızca kendi siparişlerini görür ve değiştirir; Merkez hepsini. İptal gerekçeli ve kayıtlı; teslim edilmiş sipariş iptal edilmez. |
-| **3. Teslimat ücreti + minimum sipariş** | `0008`; Merkez bölge ücreti ekranı + `api/admin/delivery-fees`; `lib/delivery/fees.ts`, `lib/order-rules.ts` (500 TL); checkout, ödeme özeti, PDP ücret gösterimi; `order-server` toplamları | 2; taban kararı (§9) | Bekliyor | Ücreti belirlenmemiş bölgeye adrese teslim alınmaz, ücretsiz kabul edilmez; gel-al çalışır. Girilen ücret toplamda görünür. 500 TL altı sipariş (onaylanan tabanla) checkout ve sunucuda reddedilir. |
+| **2. Siparişler** | `0007_orders_hardening.sql`; `lib/order-server.ts` (motorla yeniden uygunluk, İstanbul tarihi, adresten şube/bölge, sunucuda fiyat/indirim/ücret); `app/api/orders` (stok okunamazsa 503, 400/409); `lib/orders/repository.ts` (asenkron depo, kapsam/filtre/sayfa, D12 kuralları), `lib/orders/supabase-repository.ts`, `lib/orders/server-init.ts`; `PATCH /api/admin/orders`; `app/admin/page.tsx` (DB'den genel bakış + liste, tarih filtresi, sayfalama, İstanbul saati, iptal kaydı), `components/admin/OrderStatusActions.tsx`; demo butonu local + Preview (`app/hizli-siparis-odeme/page.tsx`, `PaymentPage`); ödeme ekranı tutarları sunucudan (`POST /api/orders/quote`, `PaymentSummary`: ürün toplamı + teslimat ücreti ayrı, toplam = sipariş toplamı); demo siparişe puan yok (D13: `funda-points/service.ts`, `orders/engine.ts`); `lib/checkout-utils.ts`; `lib/order-status.ts`; `/api/health` `0007`; `scripts/verify-orders.ts` | 0, 1, D12 | **Tamamlandı (2026-10-10)**: `0007` test projesine uygulandı; local + gerçek `funda1959-test` (45/45 + doğrudan RPC eşzamanlılık) ve Preview (`2c75944`; 7AA6 ₺165 tutarlı, şube kapsamı, adım adım teslim, gerekçeli iptal) doğrulandı (§7.6 "Sonuç"). | Sipariş yenileme ve yeni oturumda korunur. Aynı istek 2 kez (sıralı ve eşzamanlı) → tek sipariş, aynı numara. Demo sipariş `pending` + etiketli. Geçersiz tarih/saat/pasif ürün/bölge → 409; stok okunamazsa 503. Teslimat şubesi adresten. Şube yalnızca kendi siparişlerini görür ve değiştirir; Merkez hepsini. İptal gerekçeli ve kayıtlı; teslim edilmiş sipariş iptal edilmez. |
+| **3. Teslimat ücreti + minimum sipariş** | `0008_delivery_zone_fees.sql`; `lib/order-rules.ts` (500 TL); `lib/delivery/fees.ts` + `fees-server.ts` (Supabase / local dosya / sunucusuz ortamda kullanılamaz); motor (`DELIVERY_FEE_NOT_SET`, `DELIVERY_INFO_UNAVAILABLE`); `lib/order-server.ts` (ücret + `BELOW_MINIMUM`, 503); `api/orders` (önceki siparişi istek kimliğiyle önce bulur), `api/orders/quote`, `api/availability`; `PATCH /api/admin/delivery-fees` (yalnızca Merkez); admin "Bölgeler" + `DeliveryFeeEditor`; `formatTL` kuruş; sepet / hızlı sipariş / checkout minimum (`DeliveryMinimumNotice`) ve sunucudan ücret (`POST /api/delivery-fee`, `useDeliveryFee`, `OrderTotals`); checkout'ta kayıtlı adresin ilk açılışta kontrolü; ödeme ekranında demo butonu yalnızca geçerli tutar hesabıyla; PDP ve ödeme özeti ücret durumu; `zones.ts`'ten örnek ücret ve minimumlar kaldırıldı; `/api/health` `0008`; `scripts/test-fee-store.ts`, `verify-orders`, `verify-fulfillment` | 2; D14, D15 | **`0008` test projesinde; local + gerçek `funda1959-test` doğrulandı (2026-10-10: 57/57 sunucu + RPC, 24/24 ekran, 33/33 ücret düzenleyici, 33/33 sepet → checkout → ödeme → sipariş)**; commit + Preview bekliyor (§7.6 "Aşama 3 kurulum kontrolü") | Ücreti belirlenmemiş bölgeye adrese teslim alınmaz, ücretsiz kabul edilmez; gel-al çalışır. Açıkça ücretsiz bölge 0 TL. Kuruşlu ücret yuvarlanmadan. Ücret okunamazsa "Teslimat bilgisi şu an alınamıyor". 499,99 reddedilir, 500 kabul edilir; indirimle altına düşen reddedilir; gel-al muaf. Şube ücret yazamaz (403). Tekrarlanan istek ikinci sipariş oluşturmaz; ücret sonradan değişse de eski sipariş korunur. |
 | **4. Fiyat yönetimi** | `0009`; Merkez fiyat ekranı + `api/admin/prices`; `lib/pricing.ts`; katalog/PDP/arama/sepet sunucu fiyatı; `order-server` aynı çözücü; `revalidateTag('prices','max')` | 0; varyant fiyat kararı (§9) | Bekliyor | Merkez fiyatı değiştirir; şube hesabı 403. Yeni fiyat katalogda, PDP'de ve siparişte görünür. Eski siparişlerin kalemleri değişmez. Bilinmeyen ürün/varyant reddedilir. |
 | **5. Müşteri üyeliği** | `0010`; Supabase Auth (`@supabase/ssr` [V]); `lib/auth.ts`, `lib/account-service.ts`, `/giris`, `/uye-ol`, `/sifremi-unuttum`, `/hesabim/*`; checkout'ta üye bilgisi; `NEXT_PUBLIC_SUPABASE_*` | 2; giriş yöntemi kararı (§9) | Bekliyor | Üye olur, girer, profil/adres yönetir, kendi siparişlerini görür, başkasınınkini göremez (RLS + sunucu). Misafir sipariş çalışmaya devam eder. |
 | **6. Funda Puan** | `0011`; puan RPC'leri; `lib/funda-points/*` (DB, partiler); Hesabım puan ekranı; admin ekranı DB'den; checkout'ta puan kullanımı | 5; §9 puan soruları | Bekliyor | 5.000 TL → 500 puan, sipariş sonrası hemen görünür. Teslimat ücreti puana girmez. Puanlı siparişte kazanım yok (onaylanan kapsamla). Her parti 1 yıl, yeni alışveriş uzatmaz. İptal/iadede geri alma + iade. Tekrarlanan istekte tek hareket. Yalnızca online kullanım. |
@@ -626,7 +726,7 @@ Aşamalar bağımlılık sırasındadır ve **tek tek** uygulanır; her biri ayr
 | Yanlış proje bağlantısı | Preview → production projesi (veya işaretsiz proje): işaret kontrolü dışında projeye hiçbir okuma/yazma/RPC isteği gitmez; yazmalar 503, `/api/health` → `env_mismatch` / `marker_missing` | 0 |
 | Production sipariş kapısı | Production'da `POST /api/orders` → 503, gövdedeki alanlardan bağımsız; `create_order` çağrılmaz | 0 |
 | Admin değişikliğinin müşteriye yansıması | Stok → ≤ 2 sn uygunluk etiketi; fiyat → yeniden doğrulama sonrası katalog ve sipariş; ücret → checkout | 1, 3, 4 |
-| Minimum ve ücret | 499 TL ürün toplamı reddedilir (taban onayıyla); ücreti belirlenmemiş bölge reddedilir; 0 TL açıkça girilmişse kabul | 3 |
+| Minimum ve ücret | Adrese teslimde 499,99 reddedilir, 500 kabul edilir (ürün − indirim, ücret hariç); gel-al muaf; ücreti belirlenmemiş bölge reddedilir; açıkça 0 TL kabul; kuruşlu ücret yuvarlanmaz; ücret okunamazsa 503 | 3 |
 | Puan süresi ve iade | 1 yıl dolan parti bakiyeden düşer; yeni kazanım eski partiyi uzatmaz; iptalde kazanılan geri alınır, harcanan iade edilir | 6 |
 | Saat dilimi | Sunucu UTC iken Istanbul 00:30'da "bugün" Istanbul tarihidir | 2 |
 | RLS | anon anahtarla yazma reddedilir; üye başkasının verisini okuyamaz | her migration, 5 |
@@ -643,14 +743,15 @@ D1–D13 netleşti. Aşağıdakiler **hâlâ açık** ve onaylanmış sayılmaz.
 |---|---|---|
 | **A1** | **Varyant fiyatları:** Merkez her varyantın (ör. 4–6 / 8–10 kişilik, 500 g / 1 kg) fiyatını ayrı mı girecek, yoksa taban fiyatı girip mevcut çarpanlar mı uygulanacak? Bugün p1 hariç varyantlar çarpanla hesaplanıyor **[K]**. | Fiyat ekranının ve `product_prices` satırlarının yapısı (Aşama 4). |
 | **A2** | **Fiyat değiştiğinde sepet:** sepette eklenme anındaki fiyat duruyor, sipariş sunucuda yeni fiyatla hesaplanıyor **[K]**. Müşteriye checkout'ta fark bildirilsin mi? | Aşama 4 kullanıcı deneyimi. |
-| **A3** | **Minimum sipariş tabanı:** öneri, teslimat ücretinden önceki ürün toplamı. İndirim ve puan düşülmeden önce mi sonra mı? Gel-al siparişlerine de uygulanacak mı? | Aşama 3 doğrulaması. |
-| **A4** | **Teslimat ücretleri ve bölgeler:** bölge başına ücretler; bölge mahalle listeleri kesinleşecek mi? | Aşama 3; ücret girilene kadar adrese teslim kapalı. |
+| ~~A3~~ | **Kararlaştırıldı → D14 (2026-10-10).** Adrese teslim 500 TL, ürün toplamı − indirim, teslimat ücreti hariç; gel-al muaf. | — |
+| **A4** | **Bölgeler ve ücret tutarları:** ücret mekanizması kararlaştırıldı (D15); **bölge/mahalle listeleri ve bölge başına ücret tutarları henüz onaylanmadı.** Mevcut listeler test amaçlı. | Merkez ücret girene kadar o bölgeye adrese teslim kapalı (D15). |
 | **A5** | **Misafir siparişleri:** sonradan üyeliğe bağlanacak mı? Misafir puan kazanacak mı (telefonla mı)? (D7'de açık) | Aşama 5–6. Karar gelene kadar misafire puan verilmez. |
 | **A6** | **Puan kullanılan sipariş:** hiç puan kazanmaz mı (kararın lafzı), yoksa yalnızca puanla ödenen kısım mı? Bugünkü kod puanla ödenen tutarı kazanımdan düşüyor (kısmi) **[K]**. | Kazanım formülü. |
 | **A7** | **İade edilen harcanmış puanın süresi:** orijinal kazanım tarihi mi korunur, yoksa iade tarihinden itibaren 1 yıl mı? Süresi zaten dolmuşsa? | Parti iadesi. |
 | **A8** | **İptal anında kazanılan puan zaten harcanmışsa:** bakiye eksiye düşebilir mi; düşülemeyen kısım ne olur? Kısmi iadede puan oransal mı geri alınır? | `reverse_order_points` kuralı. |
 | **A9** | **Puanla ödenebilecek kalemler:** teslimat ücreti puanla ödenebilir mi? Bir siparişte kullanılabilecek üst sınır var mı? Puan tutarın tamamını karşılarsa ödeme sağlayıcısı olmadan sipariş tamamlanabilir mi? | Aşama 6 ve 9. |
 | ~~A10~~ | **Kararlaştırıldı → D13 (2026-10-10).** Demo siparişler bellek dahil hiçbir depoda puan kazandırmaz; gerçek puan kazanımı Aşama 6'ya kadar etkin değil. | — |
+| **A13** | **Puan kullanımının minimuma etkisi:** adrese teslimde 500 TL minimum (D14) puan düşülmeden önce mi sonra mı hesaplanır? | Aşama 6 (puan kullanımı). Puan işlemleri o zamana kadar kapalı. |
 | **A11** | **Üyelik giriş yöntemleri:** e-posta + şifre, telefon, Google/Apple/Facebook hangileri? (stub'larda hepsi var **[K]**) | Aşama 5 kapsamı ve Supabase Auth ayarları. |
 | ~~A12~~ | **Kararlaştırıldı → D12 (2026-10-10).** Şube kendi şubesinde ilerletir ve iptal eder; Merkez tüm şubelerde; iptalde gerekçe zorunlu ve kayıtlı; teslim edilmiş sipariş iptali ve iade bu aşamada yok. | — |
 | **A13** | **Kampanya tarihleri ve koşulları:** "3 Al 2 Öde", "İlk online siparişe %15" gibi kurallar sepette uygulanacak mı, yoksa kampanyalar bilgilendirme mi kalacak? Bugün indirim mantığı yok **[K]**. Admin'den poster yükleme gerekli mi? | İndirim alanı, puan tabanı (indirim düşülür), Storage. |

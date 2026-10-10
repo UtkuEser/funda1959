@@ -91,6 +91,26 @@ database, admin status changes; SUPABASE_PLAN.md D12):
   columns are left to their own phases
 - re-running changes nothing
 
+`migrations/0008_delivery_zone_fees.sql` — Aşama 3 (SUPABASE_PLAN.md D14, D15):
+
+- `delivery_zone_fees` — one row per zone id; three states kept apart by a
+  check: `unset` (fee null) / `paid` (fee > 0, kuruş) / `free` (fee 0, only by
+  an explicit choice). A zone without a row is `unset` — never free. Last
+  editor + time stored (`updated_at` via `set_updated_at`); no history table.
+  **Nothing is seeded** — the old sample fees are not approved prices. RLS on,
+  no policies; written only by the server for a Merkez session
+  (`PATCH /api/admin/delivery-fees`).
+- `create_order` v4 — a delivery order must carry the zone's current, set fee
+  (`delivery_fee_not_set` / `delivery_fee_mismatch`) and reach 500 TL on
+  products − discount (`below_minimum`); pickup has no fee and no minimum. A
+  retried request still returns the order it created first; stored orders
+  keep their fee and total.
+- re-running changes nothing
+
+The zone / neighbourhood list (`src/lib/delivery/zones.ts`) is test data, not an
+approved service area. Until Merkez sets a zone's fee, delivery to that zone is
+refused and pickup keeps working.
+
 ## Applying it
 
 With the Supabase CLI (project linked):
@@ -100,7 +120,7 @@ supabase db push
 ```
 
 Or paste a migration file into **SQL Editor** and run it, in order
-(`0001` → `0002` → `0003` → `0004` → `0005` → `0006` → `0007`), **in both
+(`0001` → `0002` → `0003` → `0004` → `0005` → `0006` → `0007` → `0008`), **in both
 projects** (`funda1959-test`, `funda1959-production`) — a new migration goes
 to the test project first (SUPABASE_PLAN.md §7.6, "Aşama 2 kurulum kontrolü").
 
@@ -117,7 +137,7 @@ Until the marker row exists, the app sends no request to any application
 table — reads and writes alike.
 
 Check with `GET /api/health` on the deployment (`"database": "ready"`); a
-Merkez Yönetim session also sees which migrations are applied (`0001`–`0007`).
+Merkez Yönetim session also sees which migrations are applied (`0001`–`0008`).
 These checks run only once the marker matches and use `limit=0`, so no
 customer or order row is ever read.
 
@@ -156,6 +176,13 @@ screen shows `POST /api/orders/quote` — the same validation and pricing, nothi
 written — so its total (products + delivery fee) is the order's total. On Vercel
 Production `POST /api/orders` answers 503 ("Online sipariş alımı henüz
 açılmadı.") before reading the request, and the demo button is not shown.
+
+**Delivery fees + minimum:** availability, the payment-screen quote and the
+order all read the fee from `delivery_zone_fees` (`src/lib/delivery/fees.ts`,
+`fees-server.ts`); an unreadable table means "Teslimat bilgisi şu an
+alınamıyor" — no older value is used. The 500 TL delivery minimum
+(`src/lib/order-rules.ts`) is checked in the cart, quick order and checkout,
+again by the quote and the order, and once more inside `create_order`.
 
 **Admin orders:** `/admin?section=orders` (`from`, `to`, `page`) and the
 overview `→ SupabaseOrderRepository → rpc list_orders` with the branch scope of

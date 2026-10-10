@@ -147,7 +147,7 @@ export function PaymentPage({ demoOrdersEnabled }: { demoOrdersEnabled: boolean 
 
   // Local + Preview only: run the funnel end to end — no payment is taken, the order stays "pending" (D8).
   const demoComplete = async () => {
-    if (!handoff || submitting) return;
+    if (!handoff || submitting || quote.status !== "ready") return;
     setSubmitting(true);
     try {
       const res = await fetch("/api/orders", {
@@ -233,11 +233,19 @@ export function PaymentPage({ demoOrdersEnabled }: { demoOrdersEnabled: boolean 
                     <button
                       type="button"
                       onClick={demoComplete}
-                      disabled={!handoff || submitting}
+                      // only for a valid server quote: not while it loads, not after an error
+                      disabled={!handoff || submitting || quote.status !== "ready"}
                       className="font-sans text-[12.5px] font-semibold text-taupe underline decoration-taupe/40 underline-offset-4 transition-colors hover:text-burgundy disabled:opacity-50"
                     >
                       {submitting ? "Demo akışı çalışıyor…" : "Demo Akışı Tamamla (test siparişi, ödeme alınmaz)"}
                     </button>
+                    {handoff && quote.status !== "ready" && (
+                      <p className="mt-1 font-sans text-[11.5px] text-taupe">
+                        {quote.status === "loading"
+                          ? "Tutar hesaplanıyor…"
+                          : "Geçerli bir tutar hesaplanmadan demo sipariş oluşturulamaz."}
+                      </p>
+                    )}
                   </div>
                 )}
               </div>

@@ -2,8 +2,12 @@ import { branches } from "./data";
 import type { CartItem } from "./cart";
 
 /** All amounts are whole Lira, so integer math is exact. */
-export const formatTL = (n: number): string =>
-  `₺${Math.round(n).toLocaleString("tr-TR")}`;
+/** "₺1.050" / "₺59,90" — kuruş shown whenever there is any, so no display rounds away a difference. */
+export const formatTL = (n: number): string => {
+  const v = Math.round(n * 100) / 100;
+  const digits = Number.isInteger(v) ? 0 : 2;
+  return `₺${v.toLocaleString("tr-TR", { minimumFractionDigits: digits, maximumFractionDigits: 2 })}`;
+};
 
 export const itemTotal = (item: CartItem): number => item.unitPrice * item.quantity;
 

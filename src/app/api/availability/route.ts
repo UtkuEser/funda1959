@@ -1,4 +1,5 @@
 import { refreshInventory } from "@/lib/inventory/server-init";
+import { refreshDeliveryFees } from "@/lib/delivery/fees-server";
 import { NextResponse } from "next/server";
 import {
   getProductAvailability,
@@ -41,6 +42,9 @@ function normalizeContext(c: Partial<DeliveryContext> | undefined): DeliveryCont
 export async function POST(request: Request) {
   // branch stock statuses as saved by the ops panel (a 2 s reuse keeps catalog bursts cheap)
   await refreshInventory({ maxAgeMs: 2000 });
+  // delivery fees (D15): a failed read marks them unavailable — delivery then answers
+  // DELIVERY_INFO_UNAVAILABLE instead of using older values; pickup is unaffected
+  await refreshDeliveryFees({ maxAgeMs: 2000 });
   let body: Body;
   try {
     body = (await request.json()) as Body;

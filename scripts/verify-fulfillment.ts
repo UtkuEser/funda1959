@@ -9,6 +9,7 @@ import { resolveZone } from "@/lib/delivery/zones";
 import { placeOrder, getPublicOrder } from "@/lib/orders";
 import { istanbulDateISO, istanbulInstant } from "@/lib/time/istanbul";
 import { requireTestEnvironmentForWrites } from "./test-environment-guard";
+import { installMemoryFeeStore } from "./test-fee-store";
 
 // deterministic "morning" clock: 11:00 in Istanbul today, whatever the machine's zone
 const NOW = istanbulInstant(istanbulDateISO(), "11:00");
@@ -22,6 +23,11 @@ function check(label: string, cond: boolean) {
 async function main() {
   // places an order — only in memory or on the test project
   await requireTestEnvironmentForWrites("verify-fulfillment");
+  // test fixtures, not approved prices (D15); İncek-Çankaya güney stays unset
+  const fees = installMemoryFeeStore();
+  await fees.set("zone-incek-golbasi", "paid", 70);
+  await fees.set("zone-gop-cankaya", "paid", 60);
+  await fees.set("zone-panora-kizilay", "paid", 55);
 
   console.log("\n── zone resolution ──");
   const zone = resolveZone("Gölbaşı", "İncek");
@@ -98,8 +104,27 @@ async function main() {
   const spoofZone = at({ ...ctx, branchId: "gop", deliveryZoneId: "zone-gop-cankaya" });
   check(
     "İncek address + GOP zone id -> still İncek, İncek's fee",
-    spoofZone.branchId === "incek" && spoofZone.deliveryZoneId === zone?.id && spoofZone.deliveryFee === zone?.deliveryFee,
+    spoofZone.branchId === "incek" && spoofZone.deliveryZoneId === zone?.id && spoofZone.deliveryFee === 70 && spoofZone.deliveryFeeState === "paid",
   );
+
+  console.log("\n── delivery fees come from the fee store (D15) ──");
+  const unsetZone = at({ ...ctx, district: "Çankaya", neighborhood: "Çayyolu" });
+  check("zone without a fee (no row) -> DELIVERY_FEE_NOT_SET, not free", unsetZone.reason === "DELIVERY_FEE_NOT_SET" && !unsetZone.available && unsetZone.deliveryFeeState === null);
+  await fees.set("zone-incek-cankaya-south", "free", 0);
+  const freeZone = at({ ...ctx, district: "Çankaya", neighborhood: "Çayyolu" });
+  check("explicitly free zone -> fee 0, state free", freeZone.branchId === "incek" && freeZone.deliveryFee === 0 && freeZone.deliveryFeeState === "free");
+  await fees.set("zone-incek-cankaya-south", "unset", null);
+  check("set back to unset -> DELIVERY_FEE_NOT_SET again", at({ ...ctx, district: "Çankaya", neighborhood: "Çayyolu" }).reason === "DELIVERY_FEE_NOT_SET");
+  await fees.set("zone-incek-golbasi", "paid", 59.9);
+  check("kuruş fee 59.90 kept exactly", at(ctx).deliveryFee === 59.9);
+  await fees.fail(true);
+  const down = at(ctx);
+  check("fees unreadable -> DELIVERY_INFO_UNAVAILABLE (no older value used)", down.reason === "DELIVERY_INFO_UNAVAILABLE" && down.deliveryFee === 0 && down.deliveryFeeState === null);
+  const pickupWhileDown = at({ fulfillmentType: "pickup", district: null, neighborhood: null, deliveryZoneId: null, branchId: "incek" });
+  check("…pickup is not affected", pickupWhileDown.reason !== "DELIVERY_INFO_UNAVAILABLE" && pickupWhileDown.branchId === "incek");
+  await fees.fail(false);
+  await fees.set("zone-incek-golbasi", "paid", 70);
+  check("readable again -> fee back", at(ctx).deliveryFee === 70);
 
   const outside = at({ ...ctx, district: "Çankaya", neighborhood: "Nowhere", branchId: "gop" });
   check("address outside every zone (+ branchId) -> DELIVERY_ZONE_NOT_FOUND", outside.reason === "DELIVERY_ZONE_NOT_FOUND" && noVerdict(outside));

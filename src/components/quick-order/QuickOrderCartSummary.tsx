@@ -3,12 +3,19 @@
 import Link from "next/link";
 import { useCart } from "@/lib/use-cart";
 import { formatTL, itemTotal, quantityTotal, subtotal } from "@/lib/cart-utils";
+import { useDelivery } from "@/lib/delivery/context";
+import { useDeliveryFee } from "@/lib/delivery/use-delivery-fee";
+import { DeliveryMinimumNotice, useDeliveryMinimum } from "@/components/cart/DeliveryMinimumNotice";
+import { OrderTotals } from "@/components/cart/OrderTotals";
 
 export function QuickOrderCartSummary() {
   const items = useCart();
   const sub = subtotal(items);
   const count = quantityTotal(items);
   const empty = items.length === 0;
+  const minimum = useDeliveryMinimum(sub);
+  const { context, isHydrated } = useDelivery();
+  const fee = useDeliveryFee(context.fulfillmentType, context.district, context.neighborhood, isHydrated && !empty);
 
   return (
     <div className="rounded-lg border border-sand-light bg-cream-light p-5">
@@ -40,19 +47,13 @@ export function QuickOrderCartSummary() {
 
           <div className="my-4 border-t border-sand-light" />
 
-          <div className="flex items-baseline justify-between font-sans">
-            <span className="text-[13px] text-warm-brown">Ara Toplam</span>
-            <span className="text-[13px] text-espresso">{formatTL(sub)}</span>
-          </div>
-          <div className="mt-2 flex items-baseline justify-between font-sans">
-            <span className="text-[14px] font-semibold text-espresso">Toplam</span>
-            <span className="text-[17px] font-semibold text-burgundy">{formatTL(sub)}</span>
-          </div>
+          <OrderTotals subtotal={sub} fee={fee} compact />
+          <DeliveryMinimumNotice shortfall={minimum.shortfall} onPickup={minimum.switchToPickup} />
         </>
       )}
 
       <div className="mt-5 space-y-2.5">
-        {empty ? (
+        {empty || minimum.blocked ? (
           <span
             aria-disabled
             className="flex h-11 w-full items-center justify-center rounded-md bg-burgundy/40 font-sans text-[14px] font-semibold text-cream-light"

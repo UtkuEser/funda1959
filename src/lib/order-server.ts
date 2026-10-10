@@ -8,13 +8,19 @@
  *   - date and slot are checked again at order time against the availability
  *     engine — opening hours, preparation time, passive stock, the branch's
  *     own slots — in Europe/Istanbul time.
+ *   - delivery fee from the fee store (D15) — never the zone list; an unset
+ *     fee refuses delivery, an unreadable one answers 503 (no older values);
+ *   - delivery minimum 500 TL on products − discount, fee excluded, pickup
+ *     exempt (D14, `lib/order-rules.ts`).
  * Errors: 400 = malformed request, 409 = valid request the order can't be
- * fulfilled as asked (the message says why).
+ * fulfilled as asked (the message says why), 503 = delivery fees can't be read.
  */
 
 import { catalogProducts, getProductDetail } from "./data";
 import { getBranch, listBranches } from "./branch";
 import type { OrderQuote } from "./order";
+import { deliveryMinimumShortfall, MIN_DELIVERY_ORDER_TL, roundMoney } from "./order-rules";
+import { formatTL } from "./cart-utils";
 import {
   HORIZON_DAYS,
   getCartAvailability,
@@ -36,14 +42,14 @@ const BRANCH_SLUGS = listBranches().map((b) => b.slug);
 const MAX_QTY = 20;
 
 export type BuildResult =
-  | { ok: true; payload: Record<string, unknown> }
-  | { ok: false; status: 400 | 409; error: string; reason?: ReasonCode | null };
+  | { ok: true; payload: Record<string, unknown>; deliveryFeeState: "paid" | "free" | null }
+  | { ok: false; status: 400 | 409 | 503; error: string; reason?: ReasonCode | null };
 
 const fail = (error: string): BuildResult => ({ ok: false, status: 400, error });
 const unavailable = (error: string, reason: ReasonCode | null = null): BuildResult => ({ ok: false, status: 409, error, reason });
 const str = (v: unknown): string => (typeof v === "string" ? v : "");
 /** money in kuruş precision, so the database's sum checks match exactly */
-const money = (v: number): number => Math.round(v * 100) / 100;
+const money = roundMoney;
 
 export function buildOrderPayload(body: unknown, { now = new Date() }: { now?: Date } = {}): BuildResult {
   if (!body || typeof body !== "object") return fail("Geçersiz istek.");
@@ -170,7 +176,13 @@ export function buildOrderPayload(body: unknown, { now = new Date() }: { now?: D
   if (date > addDaysISO(today, HORIZON_DAYS - 1)) return unavailable("Seçilen teslimat tarihi için henüz sipariş alınmıyor.", "DATE_UNAVAILABLE");
 
   const resolved = resolveContextBranch(context);
-  if (!resolved.ok) return unavailable(reasonMessage(resolved.reason), resolved.reason);
+  if (!resolved.ok) {
+    // fees unreadable: a service problem, not "this can't be delivered"
+    if (resolved.reason === "DELIVERY_INFO_UNAVAILABLE") {
+      return { ok: false, status: 503, error: reasonMessage(resolved.reason), reason: resolved.reason };
+    }
+    return unavailable(reasonMessage(resolved.reason), resolved.reason);
+  }
 
   const cart = getCartAvailability({ context, items: cartLines, date, slotStart, now });
   if (!cart.available) {
@@ -184,8 +196,18 @@ export function buildOrderPayload(body: unknown, { now = new Date() }: { now?: D
 
   /* ---- totals (server-owned) ---- */
   const discount = 0; // no discount logic yet (campaigns are content only)
-  // the fee of the zone serving the address — the same figure the product page
-  // shows; Aşama 3 moves it to the database (`delivery_zone_fees`)
+
+  // D14: delivery minimum on products − discount; the fee doesn't count; pickup exempt
+  const shortfall = deliveryMinimumShortfall(type, subtotal, discount);
+  if (shortfall > 0) {
+    return unavailable(
+      `Adrese teslim için minimum sipariş tutarı ${formatTL(MIN_DELIVERY_ORDER_TL)} (indirim sonrası ürün toplamı, teslimat ücreti hariç). ` +
+        `${formatTL(shortfall)} daha ekleyin veya mağazadan teslim alın.`,
+      "BELOW_MINIMUM",
+    );
+  }
+
+  // D15: the zone's fee from the fee store (0 only when explicitly free)
   const deliveryFee = type === "delivery" ? money(resolved.deliveryFee) : 0;
   const total = money(subtotal - discount + deliveryFee);
 
@@ -212,11 +234,12 @@ export function buildOrderPayload(body: unknown, { now = new Date() }: { now?: D
       total,
       order_note: str(b.orderNote).trim() || null,
     },
+    deliveryFeeState: resolved.deliveryFeeState,
   };
 }
 
 /** The figures of a built payload, for the payment screen (POST /api/orders/quote). */
-export function quoteFromPayload(payload: Record<string, unknown>): OrderQuote {
+export function quoteFromPayload(payload: Record<string, unknown>, deliveryFeeState: "paid" | "free" | null): OrderQuote {
   const d = payload.delivery as { type: "delivery" | "pickup"; branch_slug: string };
   const items = payload.items as {
     product_name: string;
@@ -227,6 +250,7 @@ export function quoteFromPayload(payload: Record<string, unknown>): OrderQuote {
   }[];
   return {
     deliveryType: d.type,
+    deliveryFeeState,
     branchName: getBranch(d.branch_slug)?.name ?? null,
     lines: items.map((i) => ({
       productName: i.product_name,

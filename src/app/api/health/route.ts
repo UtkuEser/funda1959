@@ -33,6 +33,7 @@ const TABLE_PROBES: { table: string; select: string; migration: string }[] = [
   { table: "orders", select: "is_demo", migration: "0006" },
   { table: "orders", select: "sales_channel,delivery_zone_id,cancel_reason", migration: "0007" },
   { table: "order_status_events", select: "id", migration: "0007" },
+  { table: "delivery_zone_fees", select: "zone_id,state,fee,updated_by,updated_at", migration: "0008" },
 ];
 
 export async function GET() {

@@ -7,6 +7,10 @@ import { listBranches, getBranch, isBranchOpenAt, type Weekday } from "@/lib/bra
 import { ISTANBUL_TZ, istanbulDateISO, weekdayOfISO } from "@/lib/time/istanbul";
 import { slotLabel, slotsForBranchDate } from "@/lib/delivery/slots";
 import { getDeliveryZoneRepository } from "@/lib/delivery/zones";
+import { describeFeeState, readDeliveryFeeRecords, type ZoneFeeRecord } from "@/lib/delivery/fees";
+import { refreshDeliveryFees } from "@/lib/delivery/fees-server";
+import { MIN_DELIVERY_ORDER_TL } from "@/lib/order-rules";
+import { DeliveryFeeEditor } from "@/components/admin/DeliveryFeeEditor";
 import { getOrderRepository, type OrderPage, type StoredOrder } from "@/lib/orders";
 import { orderStatusLabel } from "@/lib/order-status";
 import { OrderStatusActions } from "@/components/admin/OrderStatusActions";
@@ -489,14 +493,35 @@ function FundaPointsSection({ scope }: { scope: AdminScope }) {
 
 /* -------------------------------------------------------------------------- */
 
-function ZonesSection({ scope }: { scope: AdminScope }) {
+async function ZonesSection({ scope }: { scope: AdminScope }) {
   const zones = getDeliveryZoneRepository()
     .list()
     .filter((z) => (scope.authorizedBranchIds ? scope.authorizedBranchIds.includes(z.branchId) : true));
 
+  // D15: fees from Supabase; unreadable -> say so, never show older values
+  let records: ZoneFeeRecord[] | null = null;
+  try {
+    await refreshDeliveryFees({ strict: true });
+    records = readDeliveryFeeRecords();
+  } catch {
+    records = null;
+  }
+  const feeOf = (zoneId: string) => records?.find((r) => r.zoneId === zoneId) ?? null;
+  const canEdit = scope.user.role === "SUPER_ADMIN" && records !== null;
+
   return (
     <>
-      <PageIntro>Adrese teslimde mahalle → bölge → şube eşleşmesi.</PageIntro>
+      <PageIntro>
+        Adrese teslimde mahalle → bölge → şube eşleşmesi. <strong>Bölge ve mahalle listeleri test amaçlıdır; onaylanmış hizmet
+        kapsamı değildir.</strong> Teslimat ücretlerini yalnızca Merkez Yönetim değiştirir; şubeler kendi bölgelerini salt okunur
+        görür. Ücreti belirlenmeyen bölgeye adrese teslim yapılmaz; gel-al çalışır. Adrese teslimde minimum sipariş{" "}
+        {formatTL(MIN_DELIVERY_ORDER_TL)} (ürün toplamı − indirim; teslimat ücreti hariç; gel-al hariç).
+      </PageIntro>
+      {records === null && (
+        <p role="alert" className="mb-4 rounded-md border border-neutral-300 bg-neutral-50 px-3 py-2 text-[12.5px] text-neutral-800">
+          Teslimat bilgisi şu an alınamıyor. Ücretler gösterilmiyor ve değiştirilemiyor; adrese teslim siparişleri bu sırada alınmaz.
+        </p>
+      )}
       <Panel>
         <TableWrap>
           <Table>
@@ -507,15 +532,18 @@ function ZonesSection({ scope }: { scope: AdminScope }) {
                 <Th>İlçe</Th>
                 <Th>Mahalleler</Th>
                 <Th align="right">Teslimat Ücreti</Th>
-                <Th align="right">Min. Sepet</Th>
+                <Th>Son Değişiklik</Th>
                 <Th>Durum</Th>
+                {canEdit && <Th>Düzenle</Th>}
               </tr>
             </thead>
             <tbody>
-              {zones.length === 0 && <EmptyRow cols={7}>Tanımlı bölge yok.</EmptyRow>}
+              {zones.length === 0 && <EmptyRow cols={canEdit ? 8 : 7}>Tanımlı bölge yok.</EmptyRow>}
               {zones.map((z) => {
                 const shown = z.neighborhoods.slice(0, 2).join(", ");
                 const extra = z.neighborhoods.length - 2;
+                const f = feeOf(z.id);
+                const state = f?.state ?? "unset";
                 return (
                   <Row key={z.id}>
                     <Td className="font-medium">{z.name}</Td>
@@ -527,9 +555,18 @@ function ZonesSection({ scope }: { scope: AdminScope }) {
                         {extra > 0 && <span className="text-neutral-400"> +{extra}</span>}
                       </span>
                     </Td>
-                    <Td align="right" className="tabular-nums">{formatTL(z.deliveryFee)}</Td>
-                    <Td align="right" className="tabular-nums">{formatTL(z.minimumOrder)}</Td>
+                    <Td align="right" className="tabular-nums">
+                      {records === null ? "—" : state === "paid" && f?.fee !== null && f?.fee !== undefined ? formatTL(f.fee) : <Badge strong={state === "free"}>{describeFeeState(state)}</Badge>}
+                    </Td>
+                    <Td className="text-[12px] text-neutral-500">
+                      {f?.updatedBy ? `${f.updatedBy} · ${f.updatedAt ? dayTime(f.updatedAt) : ""}` : "—"}
+                    </Td>
                     <Td><Badge strong={z.active}>{z.active ? "Aktif" : "Pasif"}</Badge></Td>
+                    {canEdit && (
+                      <Td>
+                        <DeliveryFeeEditor zoneId={z.id} state={state} fee={f?.fee ?? null} updatedAt={f?.updatedAt ?? null} />
+                      </Td>
+                    )}
                   </Row>
                 );
               })}

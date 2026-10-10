@@ -7,7 +7,7 @@ import { Container } from "@/components/shared/Container";
 import { EmptyCart } from "@/components/cart/EmptyCart";
 import type { CartItem } from "@/lib/cart";
 import { useCart } from "@/lib/use-cart";
-import { branchName } from "@/lib/cart-utils";
+import { branchName, formatTL, subtotal } from "@/lib/cart-utils";
 import {
   DELIVERY_TIME_SLOTS,
   earliestDeliveryDate,
@@ -19,8 +19,10 @@ import type { CreateOrderRequest } from "@/lib/order";
 import { setCheckoutHandoff } from "@/lib/checkout-handoff";
 import { resolveZone } from "@/lib/delivery/zones";
 import { useDelivery } from "@/lib/delivery/context";
+import { useDeliveryFee } from "@/lib/delivery/use-delivery-fee";
 import { reasonMessage, type CartAvailabilityResult } from "@/lib/availability";
 import { CheckoutSummary } from "./CheckoutSummary";
+import { MIN_DELIVERY_ORDER_TL, deliveryMinimumShortfall } from "@/lib/order-rules";
 import { ContactStep } from "./ContactStep";
 import { DeliveryStep } from "./DeliveryStep";
 import { TextAreaField } from "./fields";
@@ -194,17 +196,17 @@ export function CheckoutPage() {
   };
 
   /*
-   * Region change (here, in the header or anywhere else) -> re-check the cart
-   * for the new address: serving branch, products offered there, and whether
-   * the chosen date / time still work. Whatever no longer works is cleared and
-   * the customer is told why. The first read of the stored address is not a
-   * change.
+   * The stored address when the page opens, and every change of it (here, in
+   * the header or anywhere else) or of the delivery type -> check the cart for
+   * that address: serving branch, delivery fee (set / readable), products
+   * offered there, and whether the chosen date / time still work. Whatever no
+   * longer works is cleared and the customer is told why.
    */
   const latest = useRef({ state, items });
   useEffect(() => {
     latest.current = { state, items };
   });
-  const regionKey = isHydrated ? `${district}|${neighborhood}` : null;
+  const regionKey = isHydrated && seeded ? `${state.deliveryType}|${district}|${neighborhood}` : null;
   const lastRegion = useRef<string | null>(null);
   const lastBranch = useRef<string | null>(null);
 
@@ -214,10 +216,11 @@ export function CheckoutPage() {
     lastRegion.current = regionKey;
     const { state: s, items: cart } = latest.current;
     if (prev === null) {
+      // first look at the stored address: checked like a change, without a "branch changed" note
       lastBranch.current = resolveZone(district, neighborhood)?.branchId ?? cart[0]?.branch ?? null;
+    } else if (prev === regionKey) {
       return;
     }
-    if (prev === regionKey) return;
     // district changed and the neighbourhood is still empty, or the address isn't used (pickup)
     if (!district || !neighborhood || s.deliveryType !== "delivery" || cart.length === 0) {
       setRegionNotice(null);
@@ -278,7 +281,7 @@ export function CheckoutPage() {
       })
       .catch(() => {});
     return () => ctrl.abort();
-    // runs on region changes only; form values are read through `latest`
+    // runs on the first read and on region / delivery-type changes; form values are read through `latest`
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [regionKey]);
 
@@ -330,8 +333,23 @@ export function CheckoutPage() {
   // Checkout no longer creates the order directly — it validates, hands the
   // (non-sensitive) order request to the payment step and navigates to /hizli-siparis-odeme.
   // The /api/orders backend is untouched; order creation happens after payment.
+  // D14: delivery minimum (products − discount; no discount logic yet, the
+  // server re-checks with the real one); pickup is exempt
+  const deliveryShortfall = deliveryMinimumShortfall(state.deliveryType, subtotal(items), 0);
+  const minimumError =
+    deliveryShortfall > 0
+      ? `Adrese teslim için minimum sipariş tutarı ${formatTL(MIN_DELIVERY_ORDER_TL)} (teslimat ücreti hariç). ${formatTL(deliveryShortfall)} daha ekleyin veya "Mağazadan Teslim"i seçin.`
+      : null;
+
+  // D15: the zone's current fee from the server; no payment step without it
+  // (not set / outside every zone / unreadable -> the reason shows in the summary)
+  const fee = useDeliveryFee(state.deliveryType, district, neighborhood, isHydrated && seeded);
+  const addressGiven = state.deliveryType === "delivery" && Boolean(district && neighborhood);
+  const feeBlocked = addressGiven && (fee.status === "loading" || fee.status === "refused");
+  const submitError = minimumError ?? (addressGiven && fee.status === "loading" ? "Teslimat ücreti hesaplanıyor…" : null);
+
   const proceedToPayment = () => {
-    if (submitting) return;
+    if (submitting || minimumError || feeBlocked) return;
 
     const { ok, merged } = validateAll();
     if (!ok) {
@@ -508,8 +526,9 @@ export function CheckoutPage() {
           <div className="lg:sticky lg:top-24">
             <CheckoutSummary
               items={items}
+              fee={fee}
               submitting={submitting}
-              submitError={null}
+              submitError={submitError}
               onSubmit={proceedToPayment}
             />
           </div>

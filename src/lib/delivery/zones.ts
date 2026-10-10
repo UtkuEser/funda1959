@@ -17,14 +17,14 @@ export type DeliveryZone = {
   district: string;
   /** neighbourhoods this zone covers (normalised match) */
   neighborhoods: string[];
-  deliveryFee: number;
-  minimumOrder: number;
   active: boolean;
 };
 
 /* -------------------------------------------------------------------------- */
-/* Seed — SAMPLE DATA for the design phase. The real coverage map replaces it   */
-/* through setDeliveryZoneRepository(); nothing else reads this array.          */
+/* Seed — TEST DATA, not an approved service area (SUPABASE_PLAN.md D15, A4).  */
+/* Zones and neighbourhood lists are kept for testing until the business       */
+/* confirms them. Fees live in Supabase (`delivery_zone_fees`, see ./fees.ts)  */
+/* and the order minimum in `lib/order-rules.ts` — neither is defined here.    */
 /* -------------------------------------------------------------------------- */
 
 const ZONE_SEED: DeliveryZone[] = [
@@ -42,8 +42,6 @@ const ZONE_SEED: DeliveryZone[] = [
       "Kızılay",
       "Bahçelievler",
     ],
-    deliveryFee: 60,
-    minimumOrder: 250,
     active: true,
   },
   {
@@ -52,8 +50,6 @@ const ZONE_SEED: DeliveryZone[] = [
     branchId: "panora",
     district: "Çankaya",
     neighborhoods: ["Oran", "Balgat", "Öveçler", "Dikmen", "Yıldız", "Söğütözü"],
-    deliveryFee: 55,
-    minimumOrder: 250,
     active: true,
   },
   {
@@ -62,8 +58,6 @@ const ZONE_SEED: DeliveryZone[] = [
     branchId: "incek",
     district: "Gölbaşı",
     neighborhoods: ["İncek", "Taşpınar", "Karşıyaka", "Gölbaşı", "Bahçelievler"],
-    deliveryFee: 70,
-    minimumOrder: 300,
     active: true,
   },
   {
@@ -72,8 +66,6 @@ const ZONE_SEED: DeliveryZone[] = [
     branchId: "incek",
     district: "Çankaya",
     neighborhoods: ["Çayyolu", "Ümitköy", "Koru", "Alacaatlı"],
-    deliveryFee: 75,
-    minimumOrder: 300,
     active: true,
   },
 ];

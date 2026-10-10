@@ -27,7 +27,7 @@ if (typeof window !== "undefined") {
 
 export { expectedDataEnvironment, readDataEnvironmentMarker, type DataEnvironment, type MarkerState };
 
-export type PersistentDomain = "inventory" | "orders" | "campaigns" | "instagram" | "funda-points";
+export type PersistentDomain = "inventory" | "orders" | "campaigns" | "instagram" | "funda-points" | "delivery-fees";
 
 /** Domains whose data already has a Supabase table + store in this codebase. */
 const DATABASE_BACKED: Record<PersistentDomain, boolean> = {
@@ -36,6 +36,7 @@ const DATABASE_BACKED: Record<PersistentDomain, boolean> = {
   campaigns: true, // campaigns (0002, 0005)
   instagram: false, // planned (SUPABASE_PLAN.md, Aşama 7)
   "funda-points": false, // planned (Aşama 6)
+  "delivery-fees": true, // delivery_zone_fees (0008)
 };
 
 /** Plain wording per domain — the technical reason is logged, never shown. */
@@ -45,6 +46,7 @@ const USER_MESSAGE: Record<PersistentDomain, string> = {
   campaigns: "Kampanya kaydedilemedi: kayıt servisi şu an kullanılamıyor.",
   instagram: "İçerik kaydedilemedi: kayıt servisi şu an kullanılamıyor.",
   "funda-points": "Puan hareketi kaydedilemedi: kayıt servisi şu an kullanılamıyor.",
+  "delivery-fees": "Teslimat ücreti kaydedilemedi: kayıt servisi şu an kullanılamıyor.",
 };
 
 /** Vercel (Preview + Production) or another serverless host. */
@@ -109,9 +111,12 @@ export async function assertPersistentWrite(domain: PersistentDomain): Promise<W
   return "local";
 }
 
-/** Server-log line for a refused write (no secrets). */
+/**
+ * Server-log line for a refused write (no secrets). Domain and reason are in
+ * the text too: the dev log file keeps only the message string.
+ */
 export function logPersistenceRefusal(err: PersistenceUnavailableError, context: Record<string, unknown> = {}): void {
-  console.error("[persistence] write refused", {
+  console.error(`[persistence] write refused domain=${err.domain} reason=${err.reason}`, {
     domain: err.domain,
     reason: err.reason,
     runtime: runtimeLabel(),

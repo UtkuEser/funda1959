@@ -18,7 +18,13 @@
  */
 
 import type { OrderSummary } from "../order";
-import { createOrder as createOrderViaSupabase, expectedDataEnvironment, isSupabaseConfigured } from "../supabase-server";
+import {
+  createOrder as createOrderViaSupabase,
+  expectedDataEnvironment,
+  getOrderSummary,
+  isSupabaseConfigured,
+  supabaseRest,
+} from "../supabase-server";
 import { assertPersistentWrite } from "../persistence";
 import {
   memoryOrders,
@@ -162,6 +168,22 @@ export async function placeOrder(payload: unknown): Promise<OrderSummary> {
   // a demo order earns no Funda Puan (D13) — no award call here
   const stored = memoryOrders.create(input);
   return orderToSummary(stored);
+}
+
+/**
+ * The order an earlier submit with this idempotency key created, if any —
+ * checked before validating again, so a retried submit returns that order even
+ * when a fee, the minimum or the slot changed since. Nothing is written.
+ */
+export async function findOrderByRequestId(clientRequestId: string): Promise<OrderSummary | null> {
+  if (isSupabaseConfigured()) {
+    const rows = await supabaseRest<{ order_number: string }[]>(
+      `/orders?select=order_number&client_request_id=eq.${encodeURIComponent(clientRequestId)}&limit=1`,
+    );
+    return rows[0] ? getOrderSummary(rows[0].order_number) : null;
+  }
+  const row = memoryOrders.findByClientRequestId(clientRequestId);
+  return row ? orderToSummary(row) : null;
 }
 
 /** PII-free summary for /siparis-takip and /siparis-basarili. */

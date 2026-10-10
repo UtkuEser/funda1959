@@ -7,12 +7,15 @@
  * server (run it with TZ=UTC to check).
  */
 import { buildOrderPayload, quoteFromPayload } from "@/lib/order-server";
-import { memoryOrders, placeOrder, type NewOrderInput, type StatusChangeRequest } from "@/lib/orders";
+import { findOrderByRequestId, memoryOrders, placeOrder, type NewOrderInput, type StatusChangeRequest } from "@/lib/orders";
+import { deliveryMinimumShortfall } from "@/lib/order-rules";
+import { formatTL } from "@/lib/cart-utils";
 import { getFundaPointsRepository } from "@/lib/funda-points";
 import { getBranch } from "@/lib/branch";
 import { resolveZone } from "@/lib/delivery/zones";
 import { catalogProducts, getProductDetail } from "@/lib/data";
 import { requireTestEnvironmentForWrites } from "./test-environment-guard";
+import { installMemoryFeeStore } from "./test-fee-store";
 
 let failures = 0;
 function check(label: string, cond: boolean, detail = "") {
@@ -33,6 +36,10 @@ const reasonOf = (b: Built) => (b.ok ? "OK" : `${b.status} ${b.reason ?? ""} ${b
 
 async function main() {
   await requireTestEnvironmentForWrites("verify-orders");
+  // test fixtures, not approved prices (D15); İncek-Çankaya güney stays unset
+  const fees = installMemoryFeeStore();
+  await fees.set("zone-incek-golbasi", "paid", 70);
+  await fees.set("zone-gop-cankaya", "paid", 60);
 
   console.log("\n── order-time availability (Monday 11:00 Istanbul) ──");
   const pickupOk = buildOrderPayload(
@@ -71,7 +78,7 @@ async function main() {
   const spoof = buildOrderPayload(
     {
       customer,
-      items: [macaron()],
+      items: [macaron({ quantity: 12 })],
       delivery: { type: "delivery", branchSlug: "gop", zoneId: "zone-gop-cankaya", date: TODAY, timeSlot: "16:00 – 17:00", address: incekAddress },
       deliveryFee: 0,
       total: 1,
@@ -80,7 +87,7 @@ async function main() {
   );
   check("İncek address + branchSlug gop -> accepted", spoof.ok, reasonOf(spoof));
   check("…branch incek, zone from the address", delivery(spoof).branch_slug === "incek" && delivery(spoof).zone_id === zone?.id, JSON.stringify(delivery(spoof)));
-  check(`…delivery fee = the zone's (${zone?.deliveryFee}), total = 90 + fee`, spoof.ok && spoof.payload.delivery_fee === zone?.deliveryFee && spoof.payload.total === 90 + (zone?.deliveryFee ?? NaN));
+  check("…delivery fee = İncek's stored fee (70, not GOP's 60), total = 540 + 70", spoof.ok && spoof.payload.delivery_fee === 70 && spoof.payload.total === 610 && spoof.deliveryFeeState === "paid");
   const outside = buildOrderPayload(
     { customer, items: [macaron()], delivery: { type: "delivery", date: TODAY, timeSlot: "16:00 – 17:00", address: { district: "Keçiören", neighborhood: "Bilinmeyen", addressLine: "Test sokak no 1 daire 2" } } },
     { now: NOW },
@@ -117,11 +124,11 @@ async function main() {
 
   console.log("\n── payment-screen quote = the order's own figures ──");
   if (!spoof.ok || !pickupOk.ok) throw new Error("setup: payload rejected");
-  const dq = quoteFromPayload(spoof.payload);
-  check("delivery quote: products 90, fee 70, total 160", dq.subtotal === 90 && dq.deliveryFee === 70 && dq.discount === 0 && dq.total === 160, JSON.stringify(dq));
+  const dq = quoteFromPayload(spoof.payload, spoof.deliveryFeeState);
+  check("delivery quote: products 540, fee 70, total 610", dq.subtotal === 540 && dq.deliveryFee === 70 && dq.discount === 0 && dq.total === 610 && dq.deliveryFeeState === "paid", JSON.stringify(dq));
   check("…equals the payload the order is written from", dq.subtotal === spoof.payload.subtotal && dq.deliveryFee === spoof.payload.delivery_fee && dq.total === spoof.payload.total);
-  check("…lines priced by the server (2 × 45), branch İncek", dq.lines.length === 1 && dq.lines[0].quantity === 2 && dq.lines[0].unitPrice === 45 && dq.lines[0].lineTotal === 90 && dq.branchName === getBranch("incek")?.name);
-  const pq = quoteFromPayload(pickupOk.payload);
+  check("…lines priced by the server (12 × 45), branch İncek", dq.lines.length === 1 && dq.lines[0].quantity === 12 && dq.lines[0].unitPrice === 45 && dq.lines[0].lineTotal === 540 && dq.branchName === getBranch("incek")?.name);
+  const pq = quoteFromPayload(pickupOk.payload, pickupOk.deliveryFeeState);
   check("pickup quote: fee 0, total = products", pq.deliveryType === "pickup" && pq.deliveryFee === 0 && pq.total === pq.subtotal && pq.total === 90);
 
   console.log("\n── placing (memory store): demo, idempotent, zone kept ──");
@@ -136,6 +143,84 @@ async function main() {
     "demo order wrote no Funda Puan transaction (memory store)",
     stored !== null && getFundaPointsRepository().findTransactionByBusinessKey(`${stored.id}:PURCHASE_EARN`) === null,
   );
+
+  console.log("\n── delivery minimum (D14): products − discount, fee excluded, pickup exempt ──");
+  check("rule: 499.99 is short by 0.01", deliveryMinimumShortfall("delivery", 499.99) === 0.01);
+  check("rule: 500 meets it", deliveryMinimumShortfall("delivery", 500) === 0);
+  check("rule: 520 − 30 discount = 490 -> short by 10", deliveryMinimumShortfall("delivery", 520, 30) === 10);
+  check("rule: the fee does not count (products 490) -> short by 10", deliveryMinimumShortfall("delivery", 490) === 10);
+  check("rule: pickup is exempt", deliveryMinimumShortfall("pickup", 45) === 0);
+  check("rule: kuruş-safe sum (0.1 + 0.2 + 499.7 = 500)", deliveryMinimumShortfall("delivery", 0.1 + 0.2 + 499.7) === 0);
+  const deliver = (items: Record<string, unknown>[], address: Record<string, string> = incekAddress, date = TODAY, timeSlot = "16:00 – 17:00") =>
+    buildOrderPayload({ customer, items, delivery: { type: "delivery", date, timeSlot, address } }, { now: NOW });
+  const d495 = deliver([macaron({ quantity: 11 })]);
+  check("delivery 11 × 45 = 495 -> 409 BELOW_MINIMUM, says ₺5 is missing", !d495.ok && d495.status === 409 && d495.reason === "BELOW_MINIMUM" && d495.error.includes("₺5 daha"), reasonOf(d495));
+  const pick45 = buildOrderPayload({ customer, items: [macaron({ quantity: 1 })], delivery: { type: "pickup", branchSlug: "incek", date: TODAY, timeSlot: "16:00 – 17:00" } }, { now: NOW });
+  check("pickup 1 × 45 = 45 -> accepted (no minimum)", pick45.ok, reasonOf(pick45));
+  // exactly 500 from catalog prices, if the catalog allows it
+  const priced = catalogProducts.filter((p) => p.priceValue > 0);
+  let exact: Built | null = null;
+  let exactLabel = "";
+  outer: for (const a of priced) {
+    for (let x = 1; x <= 20; x += 1) {
+      const rest = 500 - a.priceValue * x;
+      if (rest < 0) break;
+      const candidates: Record<string, unknown>[][] = rest === 0 ? [[{ productSlug: a.slug, quantity: x }]] : [];
+      for (const b of priced) {
+        if (b.slug !== a.slug && rest > 0 && rest % b.priceValue === 0 && rest / b.priceValue <= 20) {
+          candidates.push([{ productSlug: a.slug, quantity: x }, { productSlug: b.slug, quantity: rest / b.priceValue }]);
+        }
+      }
+      for (const items of candidates) {
+        const r = deliver(items, incekAddress, "2026-10-20", "14:00 – 15:00");
+        if (r.ok) {
+          exact = r;
+          exactLabel = items.map((i) => `${i.quantity} × ${i.productSlug}`).join(" + ");
+          break outer;
+        }
+      }
+    }
+  }
+  check(`exactly 500 (${exactLabel || "no combination"}) -> accepted`, Boolean(exact?.ok && exact.payload.subtotal === 500), reasonOf(exact ?? d495));
+
+  console.log("\n── delivery fees (D15): unset / paid / free, kuruş, unreadable ──");
+  const cayyolu = { district: "Çankaya", neighborhood: "Çayyolu", addressLine: "Test sokak no 1 daire 2" };
+  const unsetFee = deliver([macaron({ quantity: 12 })], cayyolu);
+  check("zone without a fee -> 409 DELIVERY_FEE_NOT_SET (never 0 TL)", !unsetFee.ok && unsetFee.status === 409 && unsetFee.reason === "DELIVERY_FEE_NOT_SET", reasonOf(unsetFee));
+  const pickupSameBranch = buildOrderPayload({ customer, items: [macaron({ quantity: 12 })], delivery: { type: "pickup", branchSlug: "incek", date: TODAY, timeSlot: "16:00 – 17:00" } }, { now: NOW });
+  check("…pickup from that branch still works", pickupSameBranch.ok, reasonOf(pickupSameBranch));
+  await fees.set("zone-incek-cankaya-south", "free", 0);
+  const freeFee = deliver([macaron({ quantity: 12 })], cayyolu);
+  check("explicitly free -> fee 0, total 540, state free", freeFee.ok && freeFee.payload.delivery_fee === 0 && freeFee.payload.total === 540 && freeFee.deliveryFeeState === "free", reasonOf(freeFee));
+  check("…quote says free", freeFee.ok && quoteFromPayload(freeFee.payload, freeFee.deliveryFeeState).deliveryFeeState === "free");
+  await fees.set("zone-incek-cankaya-south", "unset", null);
+  check("back to unset -> refused again", deliver([macaron({ quantity: 12 })], cayyolu).ok === false);
+  await fees.set("zone-incek-golbasi", "paid", 59.9);
+  const kurus = deliver([macaron({ quantity: 12 })]);
+  check("kuruş fee 59.90 -> total 599.90 exactly", kurus.ok && kurus.payload.delivery_fee === 59.9 && kurus.payload.total === 599.9, reasonOf(kurus));
+  check("…shown without rounding: ₺59,90 / ₺599,90 / ₺1.050", formatTL(59.9) === "₺59,90" && formatTL(599.9) === "₺599,90" && formatTL(1050) === "₺1.050" && formatTL(0.1 + 0.2) === "₺0,30");
+  await fees.fail(true);
+  const down = deliver([macaron({ quantity: 12 })]);
+  check("fees unreadable -> 503 DELIVERY_INFO_UNAVAILABLE (no older value used)", !down.ok && down.status === 503 && down.reason === "DELIVERY_INFO_UNAVAILABLE", reasonOf(down));
+  const pickupDown = buildOrderPayload({ customer, items: [macaron({ quantity: 1 })], delivery: { type: "pickup", branchSlug: "gop", date: TODAY, timeSlot: "16:00 – 17:00" } }, { now: NOW });
+  check("…pickup keeps working", pickupDown.ok, reasonOf(pickupDown));
+  await fees.fail(false);
+  await fees.set("zone-incek-golbasi", "paid", 70);
+
+  console.log("\n── fee changes don't touch placed orders; a retry returns the first order ──");
+  const placed70 = deliver([macaron({ quantity: 12 })]);
+  if (!placed70.ok) throw new Error("setup: delivery payload rejected");
+  const firstFee = await placeOrder({ ...placed70.payload, client_request_id: "verify-orders-fee-change" });
+  await fees.set("zone-incek-golbasi", "paid", 80);
+  const placed80 = deliver([macaron({ quantity: 12 })]);
+  check("after the change a new quote uses 80 (total 620)", placed80.ok && placed80.payload.total === 620);
+  const retry = placed80.ok ? await placeOrder({ ...placed80.payload, client_request_id: "verify-orders-fee-change" }) : null;
+  const kept = await memoryOrders.get(firstFee.orderNumber);
+  check("retry with the same request id -> same order number", retry?.orderNumber === firstFee.orderNumber);
+  check("the stored order keeps fee 70 and total 610", kept?.deliveryFee === 70 && kept?.total === 610, JSON.stringify({ fee: kept?.deliveryFee, total: kept?.total }));
+  const found = await findOrderByRequestId("verify-orders-fee-change");
+  check("lookup by request id (used before re-validation) -> that order, total 610", found?.orderNumber === firstFee.orderNumber && found?.total === 610);
+  await fees.set("zone-incek-golbasi", "paid", 70);
 
   console.log("\n── list: branch scope, delivery-date filter, paging ──");
   const base = (branchId: string | null, deliveryDate: string, fulfillmentType: "pickup" | "delivery" = "pickup"): NewOrderInput => ({

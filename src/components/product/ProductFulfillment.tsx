@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useDelivery } from "@/lib/delivery/context";
-import { reasonMessage, type AvailabilityResult } from "@/lib/availability";
+import { isDeliveryFeeReason, reasonMessage, type AvailabilityResult } from "@/lib/availability";
 import { SampleDataNote } from "@/components/delivery/SampleDataNote";
 import { NotServedNotice } from "@/components/delivery/AddressPicker";
 import { PickupStorePicker } from "@/components/delivery/PickupStorePicker";
@@ -11,6 +11,7 @@ import { DeliveryPill } from "@/components/delivery/DeliveryPill";
 import { compactSlot, deliverySummary, earliestLabel } from "@/lib/delivery/labels";
 import { istanbulDateISO, addDaysISO, longDateTR, MONTHS_TR_SHORT, WEEKDAYS_TR_SHORT, weekdayOfISO } from "@/lib/time/istanbul";
 import { DeliveryCalendar } from "./DeliveryCalendar";
+import { formatTL } from "@/lib/cart-utils";
 
 export type FulfillmentSelection = {
   /** enough context is set + a valid slot is chosen */
@@ -243,7 +244,9 @@ export function ProductFulfillment({
         </div>
       ) : !availability.earliestAvailableDate ? (
         <p className="mt-3 font-sans text-[13px] text-warm-brown">
-          Önümüzdeki günlerde bu ürün için teslimat saati bulunmuyor. Lütfen şubemizle iletişime geçin.
+          {isDeliveryFeeReason(availability.reason)
+            ? reasonMessage(availability.reason)
+            : "Önümüzdeki günlerde bu ürün için teslimat saati bulunmuyor. Lütfen şubemizle iletişime geçin."}
         </p>
       ) : (
         <>
@@ -373,8 +376,11 @@ export function ProductFulfillment({
             </p>
           )}
 
-          {availability.deliveryFee > 0 && (
-            <p className="mt-3 font-sans text-[12px] text-taupe">Teslimat ücreti: ₺{availability.deliveryFee}</p>
+          {availability.deliveryFeeState === "paid" && (
+            <p className="mt-3 font-sans text-[12px] text-taupe">Teslimat ücreti: {formatTL(availability.deliveryFee)}</p>
+          )}
+          {availability.deliveryFeeState === "free" && (
+            <p className="mt-3 font-sans text-[12px] text-taupe">Teslimat ücretsiz</p>
           )}
           <SampleDataNote className="mt-2" />
         </>

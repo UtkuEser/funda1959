@@ -21,7 +21,13 @@ export type ReasonCode =
   | "DELIVERY_UNAVAILABLE"
   | "PICKUP_UNAVAILABLE"
   | "NO_SLOTS_DEFINED"
-  | "DATE_UNAVAILABLE";
+  | "DATE_UNAVAILABLE"
+  /** D15: Merkez has not set this zone's delivery fee — no delivery, pickup works */
+  | "DELIVERY_FEE_NOT_SET"
+  /** D15: the delivery fees could not be read — nothing is computed from older values */
+  | "DELIVERY_INFO_UNAVAILABLE"
+  /** D14: delivery order under the minimum (order level, not product level) */
+  | "BELOW_MINIMUM";
 
 const MESSAGES: Record<ReasonCode, string> = {
   OK: "Uygun.",
@@ -39,11 +45,19 @@ const MESSAGES: Record<ReasonCode, string> = {
   PICKUP_UNAVAILABLE: "Bu mağazadan teslim alma şu an mümkün değil.",
   NO_SLOTS_DEFINED: "Seçtiğiniz gün için teslimat saati tanımlı değil.",
   DATE_UNAVAILABLE: "Seçtiğiniz gün uygun değil.",
+  DELIVERY_FEE_NOT_SET: "Bu bölge için teslimat ücreti henüz belirlenmedi; adrese teslim şu an yapılamıyor. Mağazadan teslim alabilirsiniz.",
+  DELIVERY_INFO_UNAVAILABLE: "Teslimat bilgisi şu an alınamıyor. Lütfen biraz sonra tekrar deneyin veya mağazadan teslim alın.",
+  BELOW_MINIMUM: "Adrese teslim için minimum sipariş tutarına ulaşılmadı.",
 };
 
 export function reasonMessage(code: ReasonCode | null | undefined): string {
   if (!code) return "";
   return MESSAGES[code] ?? MESSAGES.DATE_UNAVAILABLE;
+}
+
+/** D15: the zone's fee is not set or cannot be read — the whole delivery is refused, not one product */
+export function isDeliveryFeeReason(code: ReasonCode | null | undefined): boolean {
+  return code === "DELIVERY_FEE_NOT_SET" || code === "DELIVERY_INFO_UNAVAILABLE";
 }
 
 /** codes the customer can fix by supplying more info (not a hard "no") */

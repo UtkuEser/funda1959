@@ -129,6 +129,8 @@ export type CreateOrderResult =
  */
 export type OrderQuote = {
   deliveryType: "delivery" | "pickup";
+  /** D15: "paid" / "free" for delivery, null for pickup */
+  deliveryFeeState: "paid" | "free" | null;
   branchName: string | null;
   lines: { productName: string; variantLabel: string | null; quantity: number; unitPrice: number; lineTotal: number }[];
   /** products only */

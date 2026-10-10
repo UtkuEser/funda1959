@@ -12,7 +12,7 @@
 
 import { getCart, patchAllItems, removeItems, type CartItem, type CartDeliveryType } from "./cart";
 import type { DeliveryContext } from "./availability/types";
-import { reasonMessage, type AvailabilityResult, type CartAvailabilityResult } from "./availability";
+import { isDeliveryFeeReason, reasonMessage, type AvailabilityResult, type CartAvailabilityResult } from "./availability";
 
 export type CartFulfillment = {
   branchId: string | null;
@@ -54,6 +54,14 @@ export function stampCartFulfillment(patch: {
     deliveryDate: patch.date,
     deliveryTime: patch.slotLabel,
   });
+}
+
+/**
+ * Switch every line to pickup (e.g. the delivery minimum isn't met, D14) — the
+ * checkout then opens on pickup; the store is confirmed there or in the selector.
+ */
+export function markCartForPickup(): void {
+  patchAllItems({ deliveryType: "pickup" });
 }
 
 /** Clear the branch/slot stamp (e.g. after a location change). */
@@ -172,8 +180,13 @@ export async function revalidateCart(
 
   let status: CartLineStatus = "valid";
   let message: string | null = null;
+  // D15: no fee set for the zone / fees unreadable — refuses the whole delivery, not single lines
+  const feeIssue = availability.itemIssues.find((i) => i.productId === "*" && isDeliveryFeeReason(i.reason));
 
-  if (unavailableItemIds.length > 0) {
+  if (feeIssue) {
+    status = "unavailable";
+    message = reasonMessage(feeIssue.reason);
+  } else if (unavailableItemIds.length > 0) {
     status = "unavailable";
     message = "Sepetinizdeki bazı ürünler seçtiğiniz teslimat koşullarında şu an uygun değil.";
   } else if (branchChanged) {
@@ -211,5 +224,6 @@ function emptyCartAvailability(): CartAvailabilityResult {
     earliestAvailableSlot: null,
     itemIssues: [],
     deliveryFee: 0,
+    deliveryFeeState: null,
   };
 }

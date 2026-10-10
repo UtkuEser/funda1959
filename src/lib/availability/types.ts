@@ -66,7 +66,10 @@ export type AvailabilityResult = {
   branchId: string | null;
   branchName: string | null;
   deliveryZoneId: string | null;
+  /** 0 for pickup, for an explicitly free zone, and on every refusal — read with `deliveryFeeState` */
   deliveryFee: number;
+  /** D15: "paid" / "free" once a delivery zone resolved with a set fee; null otherwise */
+  deliveryFeeState: "paid" | "free" | null;
 
   requestedDate: string;
   /** next ~14 days with an availability verdict each */
@@ -113,4 +116,5 @@ export type CartAvailabilityResult = {
   earliestAvailableSlot: { date: string; startTime: string; endTime: string; label: string } | null;
   itemIssues: CartAvailabilityItemIssue[];
   deliveryFee: number;
+  deliveryFeeState: "paid" | "free" | null;
 };

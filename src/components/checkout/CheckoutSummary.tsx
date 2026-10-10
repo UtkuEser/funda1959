@@ -1,22 +1,18 @@
 import type { CartItem } from "@/lib/cart";
 import { formatTL, subtotal } from "@/lib/cart-utils";
-
-function Row({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div className="flex items-baseline justify-between gap-4">
-      <dt className="font-sans text-[14px] text-warm-brown">{label}</dt>
-      <dd className="font-sans text-[14px] text-espresso">{value}</dd>
-    </div>
-  );
-}
+import type { DeliveryFeeView } from "@/lib/delivery/use-delivery-fee";
+import { OrderTotals } from "@/components/cart/OrderTotals";
 
 export function CheckoutSummary({
   items,
+  fee,
   submitting,
   submitError,
   onSubmit,
 }: {
   items: CartItem[];
+  /** the server's fee for the address / pickup chosen on this page */
+  fee: DeliveryFeeView;
   submitting: boolean;
   submitError: string | null;
   onSubmit: () => void;
@@ -50,21 +46,7 @@ export function CheckoutSummary({
 
       <div className="my-4 border-t border-sand-light" />
 
-      <dl className="space-y-3">
-        <Row label="Ara Toplam" value={formatTL(sub)} />
-        <Row
-          label="Teslimat"
-          value={<span className="text-[13px] text-taupe">Teslimat bölgesine göre hesaplanır</span>}
-        />
-        <Row label="İndirim" value="₺0" />
-      </dl>
-
-      <div className="my-4 border-t border-sand-light" />
-
-      <div className="flex items-baseline justify-between">
-        <span className="font-sans text-[15px] font-semibold text-espresso">Toplam</span>
-        <span className="font-sans text-[19px] font-semibold text-burgundy">{formatTL(sub)}</span>
-      </div>
+      <OrderTotals subtotal={sub} fee={fee} />
 
       <button
         type="button"

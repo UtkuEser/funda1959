@@ -18,6 +18,7 @@ import {
   type Weekday,
 } from "../branch";
 import { resolveZone } from "../delivery/zones";
+import { deliveryFeeFor } from "../delivery/fees";
 import { getSlotRepository, slotLabel, type DeliverySlotDefinition } from "../delivery/slots";
 import { getBranchProduct, branchUnitPrice, type BranchProduct } from "../inventory";
 import { addDaysISO, istanbulDateISO, istanbulInstant, weekdayOfISO } from "../time/istanbul";
@@ -59,7 +60,7 @@ function unitPriceFor(product: CatalogProduct, variantId: string | null | undefi
 /* -------------------------------------------------------------------------- */
 
 type BranchResolution =
-  | { ok: true; branch: Branch; zoneId: string | null; deliveryFee: number }
+  | { ok: true; branch: Branch; zoneId: string | null; deliveryFee: number; deliveryFeeState: "paid" | "free" | null }
   | { ok: false; reason: ReasonCode };
 
 export function resolveContextBranch(ctx: DeliveryContext): BranchResolution {
@@ -68,7 +69,7 @@ export function resolveContextBranch(ctx: DeliveryContext): BranchResolution {
     const branch = getBranch(ctx.branchId);
     if (!branch || !branch.active) return { ok: false, reason: "BRANCH_DISABLED" };
     if (!branch.pickupEnabled) return { ok: false, reason: "PICKUP_UNAVAILABLE" };
-    return { ok: true, branch, zoneId: null, deliveryFee: 0 };
+    return { ok: true, branch, zoneId: null, deliveryFee: 0, deliveryFeeState: null };
   }
 
   // delivery is address-first: the serving branch follows from the address's
@@ -82,7 +83,18 @@ export function resolveContextBranch(ctx: DeliveryContext): BranchResolution {
   const branch = getBranch(zone.branchId);
   if (!branch || !branch.active) return { ok: false, reason: "BRANCH_DISABLED" };
   if (!branch.deliveryEnabled) return { ok: false, reason: "DELIVERY_UNAVAILABLE" };
-  return { ok: true, branch, zoneId: zone.id, deliveryFee: zone.deliveryFee };
+  // D15: the fee comes from the fee store (Supabase) — never from the zone list.
+  // Not set -> no delivery here; not readable -> no answer built on older values.
+  const fee = deliveryFeeFor(zone.id);
+  if (fee.kind === "unavailable") return { ok: false, reason: "DELIVERY_INFO_UNAVAILABLE" };
+  if (fee.kind === "unset") return { ok: false, reason: "DELIVERY_FEE_NOT_SET" };
+  return {
+    ok: true,
+    branch,
+    zoneId: zone.id,
+    deliveryFee: fee.kind === "paid" ? fee.fee : 0,
+    deliveryFeeState: fee.kind,
+  };
 }
 
 /* -------------------------------------------------------------------------- */
@@ -152,6 +164,7 @@ function emptyResult(
     branchName: null,
     deliveryZoneId: null,
     deliveryFee: 0,
+    deliveryFeeState: null,
     requestedDate,
     dates: [],
     availableDates: [],
@@ -179,7 +192,7 @@ export function getProductAvailability(req: ProductAvailabilityRequest): Availab
       unitPrice: unitPriceFor(product, req.variantId),
     });
   }
-  const { branch, zoneId, deliveryFee } = resolved;
+  const { branch, zoneId, deliveryFee, deliveryFeeState } = resolved;
 
   const bp = getBranchProduct(branch.id, product.id);
   if (!bp || !bp.active) {
@@ -188,6 +201,7 @@ export function getProductAvailability(req: ProductAvailabilityRequest): Availab
       branchName: branch.name,
       deliveryZoneId: zoneId,
       deliveryFee,
+      deliveryFeeState,
       unitPrice: unitPriceFor(product, req.variantId),
     });
   }
@@ -278,6 +292,7 @@ export function getProductAvailability(req: ProductAvailabilityRequest): Availab
     branchName: branch.name,
     deliveryZoneId: zoneId,
     deliveryFee,
+    deliveryFeeState,
     requestedDate,
     dates,
     availableDates,
@@ -315,6 +330,7 @@ export function getCartAvailability(req: CartAvailabilityRequest): CartAvailabil
     earliestAvailableSlot: null,
     itemIssues: [],
     deliveryFee: 0,
+    deliveryFeeState: null,
   };
 
   if (req.items.length === 0) return base;
@@ -323,7 +339,7 @@ export function getCartAvailability(req: CartAvailabilityRequest): CartAvailabil
   if (!resolved.ok) {
     return { ...base, itemIssues: [{ productId: "*", productName: "", variantId: null, reason: resolved.reason, earliestDate: null }] };
   }
-  const { branch, deliveryFee } = resolved;
+  const { branch, deliveryFee, deliveryFeeState } = resolved;
 
   // Per-item availability across the horizon.
   const perItem = req.items.map((item) => {
@@ -416,5 +432,6 @@ export function getCartAvailability(req: CartAvailabilityRequest): CartAvailabil
     earliestAvailableSlot: earliest,
     itemIssues: issues,
     deliveryFee,
+    deliveryFeeState,
   };
 }
