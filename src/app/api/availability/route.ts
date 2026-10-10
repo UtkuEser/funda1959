@@ -1,4 +1,4 @@
-import "@/lib/inventory/server-init";
+import { refreshInventory } from "@/lib/inventory/server-init";
 import { NextResponse } from "next/server";
 import {
   getProductAvailability,
@@ -10,8 +10,8 @@ import { catalogProducts } from "@/lib/data";
 export const dynamic = "force-dynamic";
 
 /**
- * Server-side availability — reservation-aware (the in-memory reservation store
- * lives on the server). The catalog / product page can also run the same
+ * Server-side availability — reads the branch stock statuses saved in the ops
+ * panel before computing. The catalog / product page can also run the same
  * engine client-side for a fast optimistic view; this endpoint is the firm
  * check used before add-to-cart, on /sepet and at /checkout.
  */
@@ -21,7 +21,6 @@ type Body = {
   context?: Partial<DeliveryContext>;
   date?: string;
   slotStart?: string;
-  reservationScope?: string;
   productId?: string;
   productSlug?: string;
   variantId?: string | null;
@@ -40,6 +39,8 @@ function normalizeContext(c: Partial<DeliveryContext> | undefined): DeliveryCont
 }
 
 export async function POST(request: Request) {
+  // branch stock statuses as saved by the ops panel (a 2 s reuse keeps catalog bursts cheap)
+  await refreshInventory({ maxAgeMs: 2000 });
   let body: Body;
   try {
     body = (await request.json()) as Body;
@@ -79,7 +80,6 @@ export async function POST(request: Request) {
       items,
       date: body.date,
       slotStart: body.slotStart,
-      reservationScope: body.reservationScope,
     });
     return NextResponse.json(result);
   }

@@ -18,7 +18,6 @@ export type ReasonCode =
   | "NEXT_DAY_ONLY"
   | "PREPARATION_TIME"
   | "SAME_DAY_DISABLED"
-  | "DELIVERY_SLOT_FULL"
   | "DELIVERY_UNAVAILABLE"
   | "PICKUP_UNAVAILABLE"
   | "NO_SLOTS_DEFINED"
@@ -36,7 +35,6 @@ const MESSAGES: Record<ReasonCode, string> = {
   NEXT_DAY_ONLY: "En erken yarına teslim.",
   PREPARATION_TIME: "Bu ürünün hazırlanması için daha fazla süre gerekiyor.",
   SAME_DAY_DISABLED: "Bu ürün aynı gün teslimata uygun değil.",
-  DELIVERY_SLOT_FULL: "Bu saat aralığı doldu.",
   DELIVERY_UNAVAILABLE: "Bu bölgede adrese teslimat yapılmıyor.",
   PICKUP_UNAVAILABLE: "Bu mağazadan teslim alma şu an mümkün değil.",
   NO_SLOTS_DEFINED: "Seçtiğiniz gün için teslimat saati tanımlı değil.",

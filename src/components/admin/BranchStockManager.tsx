@@ -69,13 +69,15 @@ export function BranchStockManager({
   initialRows: BranchStockRow[];
   notCarried: number;
 }) {
+  /** server-confirmed statuses — the counts read only these */
   const [rows, setRows] = useState<BranchStockRow[]>(initialRows);
   const [group, setGroup] = useState<GroupKey>("all");
   const [category, setCategory] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [pending, setPending] = useState<Set<string>>(new Set());
+  /** saves in flight: productId -> requested status (shown on the locked switch until the server answers) */
+  const [pending, setPending] = useState<Map<string, BranchStockStatus>>(new Map());
   const [notice, setNotice] = useState<{ tone: "ok" | "err"; text: string } | null>(null);
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -84,6 +86,11 @@ export function BranchStockManager({
     if (noticeTimer.current) clearTimeout(noticeTimer.current);
     noticeTimer.current = setTimeout(() => setNotice(null), tone === "ok" ? 2500 : 6000);
   };
+
+  const shown = useMemo(
+    () => (pending.size === 0 ? rows : rows.map((r) => (pending.has(r.productId) ? { ...r, status: pending.get(r.productId)! } : r))),
+    [rows, pending],
+  );
 
   const activeGroup = group === "all" ? null : PRODUCT_GROUPS.find((g) => g.id === group)!;
   const inGroup = (r: BranchStockRow) => !activeGroup || inProductGroup(activeGroup, r.categorySlug, r.isGift);
@@ -112,7 +119,7 @@ export function BranchStockManager({
 
   const visible = useMemo(() => {
     const q = search.trim().toLocaleLowerCase("tr");
-    return rows.filter((r) => {
+    return shown.filter((r) => {
       if (!inGroup(r)) return false;
       if (category !== "all" && r.categorySlug !== category) return false;
       if (statusFilter !== "all" && r.status !== statusFilter) return false;
@@ -120,38 +127,46 @@ export function BranchStockManager({
       return true;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rows, group, category, statusFilter, search]);
+  }, [shown, group, category, statusFilter, search]);
 
   const activeCount = rows.filter((r) => r.status === "active").length;
   const visibleIds = visible.map((r) => r.productId);
   const selectedVisible = visibleIds.filter((id) => selected.has(id));
   const allVisibleSelected = visibleIds.length > 0 && selectedVisible.length === visibleIds.length;
 
-  /** Optimistic update -> PATCH -> on failure restore the exact previous statuses. */
+  /**
+   * Switch shows the requested state and locks -> PATCH { branchId, [{ productId, active }] }
+   * -> success: the server's rows become the confirmed state (counts update);
+   *    failure: the request is dropped, so the switch falls back to the confirmed state.
+   * Always this list's own branch — never an empty / "Tümü" id.
+   */
   const save = async (updates: { productId: string; status: BranchStockStatus }[], okText: string) => {
+    if (!branchId || branchId === "all" || branchId === "Tümü") {
+      say("err", "Şube belirlenemedi; değişiklik gönderilmedi.");
+      return;
+    }
     const ids = updates.map((u) => u.productId);
-    const previous = new Map(rows.filter((r) => ids.includes(r.productId)).map((r) => [r.productId, r.status]));
-    const next = new Map(updates.map((u) => [u.productId, u.status]));
-    setRows((cur) => cur.map((r) => (next.has(r.productId) ? { ...r, status: next.get(r.productId)! } : r)));
-    setPending((cur) => new Set([...cur, ...ids]));
+    setPending((cur) => new Map([...cur, ...updates.map((u) => [u.productId, u.status] as const)]));
     try {
       const res = await fetch("/api/admin/inventory", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ branchId, updates }),
+        body: JSON.stringify({
+          branchId,
+          updates: updates.map((u) => ({ productId: u.productId, active: u.status === "active" })),
+        }),
       });
-      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; rows?: BranchStockRow[]; error?: string };
-      if (!res.ok || !data.ok || !data.rows) throw new Error(data.error ?? "Değişiklik kaydedilemedi.");
+      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; branchId?: string; rows?: BranchStockRow[]; error?: string };
+      if (!res.ok || !data.ok || !data.rows || data.branchId !== branchId) throw new Error(data.error ?? "Değişiklik kaydedilemedi.");
       setRows(data.rows);
       say("ok", okText);
     } catch (err) {
-      setRows((cur) => cur.map((r) => (previous.has(r.productId) ? { ...r, status: previous.get(r.productId)! } : r)));
       say("err", `${err instanceof Error ? err.message : "Değişiklik kaydedilemedi."} Önceki durum geri yüklendi.`);
     } finally {
       setPending((cur) => {
-        const s = new Set(cur);
-        ids.forEach((id) => s.delete(id));
-        return s;
+        const m = new Map(cur);
+        ids.forEach((id) => m.delete(id));
+        return m;
       });
     }
   };
@@ -163,7 +178,7 @@ export function BranchStockManager({
 
   const bulk = (status: BranchStockStatus) => {
     const updates = selectedVisible
-      .filter((id) => rows.find((r) => r.productId === id)?.status !== status)
+      .filter((id) => !pending.has(id) && shown.find((r) => r.productId === id)?.status !== status)
       .map((productId) => ({ productId, status }));
     if (updates.length === 0) {
       say("ok", `Seçili ürünler zaten ${status === "active" ? "aktif" : "pasif"}.`);
@@ -296,10 +311,10 @@ export function BranchStockManager({
         {selectedVisible.length > 0 && (
           <>
             <span className="text-[12.5px] font-semibold text-neutral-900">{selectedVisible.length} ürün seçildi</span>
-            <button type="button" onClick={() => bulk("active")} className="min-h-[36px] rounded-md bg-neutral-900 px-3 text-[12.5px] font-semibold text-white hover:bg-neutral-700">
+            <button type="button" onClick={() => bulk("active")} disabled={pending.size > 0} className="disabled:cursor-not-allowed disabled:opacity-50 min-h-[36px] rounded-md bg-neutral-900 px-3 text-[12.5px] font-semibold text-white hover:bg-neutral-700">
               Seçilenleri aktif yap
             </button>
-            <button type="button" onClick={() => bulk("passive")} className="min-h-[36px] rounded-md border border-neutral-300 bg-white px-3 text-[12.5px] font-semibold text-neutral-900 hover:border-neutral-500">
+            <button type="button" onClick={() => bulk("passive")} disabled={pending.size > 0} className="disabled:cursor-not-allowed disabled:opacity-50 min-h-[36px] rounded-md border border-neutral-300 bg-white px-3 text-[12.5px] font-semibold text-neutral-900 hover:border-neutral-500">
               Seçilenleri pasif yap
             </button>
             <button type="button" onClick={() => setSelected(new Set())} className="text-[12.5px] text-neutral-500 underline underline-offset-2 hover:text-neutral-900">

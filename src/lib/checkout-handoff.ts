@@ -27,20 +27,11 @@ export type CheckoutHandoffSummary = {
   timeSlot: string | null;
 };
 
-/** Everything the payment step needs to place a capacity hold. */
-export type CheckoutReservationDraft = {
-  branchId: string;
-  deliveryZoneId: string | null;
-  date: string;
-  /** "HH:MM" — the slot window start */
-  slotStart: string;
-  items: { productId: string; variantId: string | null; quantity: number }[];
-};
-
 export type CheckoutHandoff = {
   request: CreateOrderRequest;
   summary: CheckoutHandoffSummary;
-  reservation?: CheckoutReservationDraft;
+  /** delivery zone the address resolved to (null for pickup) — sent with the order */
+  deliveryZoneId: string | null;
 };
 
 let handoff: CheckoutHandoff | null = null;

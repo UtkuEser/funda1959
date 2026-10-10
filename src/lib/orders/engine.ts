@@ -1,18 +1,21 @@
 /**
  * Order engine — the seam between "payment succeeded" and a real order.
  *
- * Flow:  payment success -> confirmReservation() -> createOrder(branchId, zone)
- *
  * `placeOrder()` takes the snake_case payload `buildOrderPayload()` already
- * produces (so the API route is a thin adapter), optionally confirms a
- * reservation, and writes through `OrderRepository`. When Supabase is
- * configured it defers to the RPC; otherwise it uses the in-memory mock so the
- * demo funnel completes end to end.
+ * produces (so the API route is a thin adapter) and writes through the
+ * matching Supabase project (RPC `create_order`) or — only on a developer
+ * machine without Supabase — the in-memory mock. There is no capacity hold:
+ * no hourly order limit exists (SUPABASE_PLAN.md, D11).
+ *
+ * No payment provider is connected (D8): every order is created with
+ * payment status "pending" — never "paid" without a provider confirmation —
+ * and is marked `is_demo = true` here, whatever the payload says. Production
+ * order intake is closed (§6.1), so demo orders only reach the test project.
  */
 
 import type { OrderSummary } from "../order";
-import { createOrder as createOrderViaSupabase } from "../supabase-server";
-import { confirmReservation, getReservation } from "../reservations";
+import { createOrder as createOrderViaSupabase, expectedDataEnvironment, isSupabaseConfigured } from "../supabase-server";
+import { assertPersistentWrite } from "../persistence";
 import { awardPointsForOrder } from "../funda-points";
 import {
   getOrderRepository,
@@ -20,10 +23,6 @@ import {
   type NewOrderInput,
   type StoredOrderItem,
 } from "./repository";
-
-function supabaseConfigured(): boolean {
-  return Boolean(process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL);
-}
 
 type PayloadItem = {
   product_id?: unknown;
@@ -57,11 +56,27 @@ type OrderPayload = {
   order_note?: unknown;
 };
 
+/**
+ * Online order intake is closed in production until a payment provider is
+ * connected and opening is approved separately (SUPABASE_PLAN.md, D2/D8,
+ * §6.1). Decided only by the deployment (`VERCEL_ENV`), never by a request
+ * field; opening it takes a code change, not an environment variable.
+ */
+export function isOrderIntakeOpen(): boolean {
+  return expectedDataEnvironment() !== "production";
+}
+
+export class OrderIntakeClosedError extends Error {
+  constructor() {
+    super("ORDER_INTAKE_CLOSED: production order intake is not open");
+    this.name = "OrderIntakeClosedError";
+  }
+}
+
 const s = (v: unknown): string => (typeof v === "string" ? v : "");
 const n = (v: unknown): number => (typeof v === "number" && Number.isFinite(v) ? v : Number(v) || 0);
 
 export type PlaceOrderOptions = {
-  reservationId?: string | null;
   deliveryZoneId?: string | null;
 };
 
@@ -69,26 +84,22 @@ export async function placeOrder(
   payload: unknown,
   options: PlaceOrderOptions = {},
 ): Promise<OrderSummary> {
-  // Confirm the hold (if any) before we commit the order.
-  if (options.reservationId) {
-    const reservation = getReservation(options.reservationId);
-    if (!reservation) {
-      throw new Error("RESERVATION_NOT_FOUND");
-    }
-    if (reservation.status === "expired") {
-      throw new Error("RESERVATION_EXPIRED");
-    }
-    if (reservation.status === "active") {
-      confirmReservation(options.reservationId);
-    }
+  if (!isOrderIntakeOpen()) throw new OrderIntakeClosedError();
+
+  // every order is a demo order (D8) — set here, never taken from the payload
+  const demoPayload = { ...((payload ?? {}) as Record<string, unknown>), is_demo: true };
+
+  // Where the order may be written: the matching Supabase project, or — only on
+  // a developer machine without Supabase — the in-memory mock. On Vercel this
+  // throws PersistenceUnavailableError instead of "saving" into instance memory.
+  const target = await assertPersistentWrite("orders");
+
+  if (target === "database") {
+    return createOrderViaSupabase(demoPayload);
   }
 
-  if (supabaseConfigured()) {
-    return createOrderViaSupabase(payload);
-  }
-
-  // ---- demo / mock path -------------------------------------------------
-  const p = (payload ?? {}) as OrderPayload;
+  // ---- local demo / mock path (developer machine without Supabase) -------
+  const p = demoPayload as OrderPayload;
   const d = p.delivery ?? {};
   const type = s(d.type) === "pickup" ? "pickup" : "delivery";
   const branchId = s(d.branch_slug) || null;
@@ -140,8 +151,9 @@ export async function placeOrder(
     deliveryFee: n(p.delivery_fee),
     discount: n(p.discount),
     total: n(p.total),
-    reservationId: options.reservationId ?? null,
-    paymentStatus: "paid",
+    // no payment was taken (D8) — a demo order is never recorded as paid
+    paymentStatus: "pending",
+    isDemo: true,
     orderStatus: "new",
   };
 
@@ -161,7 +173,7 @@ export async function placeOrder(
 
 /** PII-free summary for /siparis-takip and /siparis-basarili. */
 export async function getPublicOrder(orderNumber: string): Promise<OrderSummary | null> {
-  if (supabaseConfigured()) {
+  if (isSupabaseConfigured()) {
     const { getOrderSummary } = await import("../supabase-server");
     return getOrderSummary(orderNumber);
   }

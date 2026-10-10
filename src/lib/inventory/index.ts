@@ -19,12 +19,12 @@ import { getInventoryOverride, type BranchStockStatus, type InventoryOverride } 
 
 export {
   getInventoryOverride,
-  setInventoryOverride,
-  setInventoryOverrides,
-  clearInventoryOverride,
+  saveInventoryStatuses,
   allInventoryOverrides,
+  InventoryStoreError,
   type InventoryOverride,
   type BranchStockStatus,
+  type StockStatusWrite,
 } from "./overrides";
 
 export type StockMode = "quantity" | "daily_capacity" | "made_to_order";

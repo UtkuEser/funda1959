@@ -356,7 +356,6 @@ export function CheckoutPage() {
     // the address shown here — the same resolution as the shared context
     const zone = state.deliveryType === "delivery" ? resolveZone(district, neighborhood) : null;
     const branchId = state.deliveryType === "pickup" ? state.branch : zone?.branchId ?? null;
-    const slotStart = deliveryTimeSlot.match(/(\d{2}:\d{2})/)?.[1] ?? "10:00";
 
     const request: CreateOrderRequest = {
       clientRequestId: requestIdRef.current,
@@ -412,19 +411,7 @@ export function CheckoutPage() {
         date: deliveryDate,
         timeSlot: deliveryTimeSlot,
       },
-      reservation: branchId
-        ? {
-            branchId,
-            deliveryZoneId: zone?.id ?? null,
-            date: deliveryDate,
-            slotStart,
-            items: items.map((ci) => ({
-              productId: ci.productId,
-              variantId: ci.selectedVariant,
-              quantity: ci.quantity,
-            })),
-          }
-        : undefined,
+      deliveryZoneId: zone?.id ?? null,
     });
     router.push("/hizli-siparis-odeme");
   };

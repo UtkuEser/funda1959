@@ -43,8 +43,14 @@ export type StoredOrder = {
   discount: number;
   total: number;
   paymentStatus: PaymentStatus;
+  /**
+   * Demo / test order — set explicitly, never inferred from `paymentStatus`.
+   * Every order is a demo until a payment provider exists (SUPABASE_PLAN.md,
+   * D8); DB column `orders.is_demo` (migration 0006) defaults to true for the
+   * same reason, and a demo order can never be "paid".
+   */
+  isDemo: boolean;
   orderStatus: OrderStatus;
-  reservationId: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -58,6 +64,7 @@ export function orderToSummary(o: StoredOrder): OrderSummary {
     deliveryTimeSlot: o.deliverySlot,
     branchName: getBranch(o.branchId)?.name ?? null,
     total: o.total,
+    isDemo: o.isDemo,
   };
 }
 
@@ -72,9 +79,11 @@ export interface OrderRepository {
 
 export type NewOrderInput = Omit<
   StoredOrder,
-  "id" | "orderNumber" | "createdAt" | "updatedAt" | "paymentStatus" | "orderStatus"
+  "id" | "orderNumber" | "createdAt" | "updatedAt" | "paymentStatus" | "isDemo" | "orderStatus"
 > & {
   paymentStatus?: PaymentStatus;
+  /** defaults to true, like `orders.is_demo` (0006) */
+  isDemo?: boolean;
   orderStatus?: OrderStatus;
 };
 
@@ -92,12 +101,18 @@ class MockOrderRepository implements OrderRepository {
   private readonly rows = globalStore.__fundaOrders!;
 
   create(input: NewOrderInput): StoredOrder {
+    const isDemo = input.isDemo ?? true;
+    // "paid" only ever comes from a payment provider's confirmation (D8)
+    const paymentStatus = input.paymentStatus ?? "pending";
+    // same rule as the DB check `orders_demo_never_paid` (0006)
+    if (isDemo && paymentStatus === "paid") throw new Error("a demo order can never be paid");
     const orderNumber = generateOrderReference();
     const order: StoredOrder = {
       ...input,
       id: `ord_${orderNumber}`,
       orderNumber,
-      paymentStatus: input.paymentStatus ?? "paid",
+      paymentStatus,
+      isDemo,
       orderStatus: input.orderStatus ?? "new",
       createdAt: nowISO(),
       updatedAt: nowISO(),

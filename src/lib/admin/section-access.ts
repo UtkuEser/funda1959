@@ -14,7 +14,11 @@ import type { AdminRole } from "./access";
 
 export const SUPER_ADMIN_ONLY_SECTIONS = ["campaigns", "instagram", "funda-puan", "branches"] as const;
 
+/** Every section the panel has — anything else (e.g. an old bookmark) goes back to the overview. */
+export const ADMIN_SECTIONS = ["overview", "orders", "stock", "campaigns", "instagram", "funda-puan", "zones", "slots", "branches"] as const;
+
 export function isSectionAllowed(role: AdminRole, section: string): boolean {
+  if (!(ADMIN_SECTIONS as readonly string[]).includes(section)) return false;
   if (role === "SUPER_ADMIN") return true;
   return !(SUPER_ADMIN_ONLY_SECTIONS as readonly string[]).includes(section);
 }

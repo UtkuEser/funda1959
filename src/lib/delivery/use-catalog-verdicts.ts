@@ -7,7 +7,7 @@ import type { CatalogAvailabilityVerdict } from "@/lib/availability";
 type Verdicts = Record<string, CatalogAvailabilityVerdict>;
 
 /**
- * Server verdicts (reservations + ops-panel edits included) for a set of
+ * Server verdicts (ops-panel stock statuses included) for a set of
  * products at the customer's current branch. Empty until an address resolves
  * to a branch; refetched whenever the location changes.
  */

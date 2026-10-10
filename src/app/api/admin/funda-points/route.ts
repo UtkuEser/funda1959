@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { PersistenceUnavailableError, assertPersistentWrite, logPersistenceRefusal } from "@/lib/persistence";
 import { resolveAdminScope, type AdminRole } from "@/lib/admin/access";
 import {
   adjustPointsAsAdmin,
@@ -66,6 +67,15 @@ export async function POST(request: Request) {
 
   const role = await scopeRole();
   if (!role) return NextResponse.json(FORBIDDEN, { status: 403 });
+
+  // no Supabase ledger yet (SUPABASE_PLAN.md, Aşama 6): on Vercel this would be instance memory -> 503
+  try {
+    await assertPersistentWrite("funda-points");
+  } catch (err) {
+    if (!(err instanceof PersistenceUnavailableError)) throw err;
+    logPersistenceRefusal(err, { customerId });
+    return NextResponse.json({ error: err.userMessage }, { status: 503 });
+  }
 
   try {
     const result = adjustPointsAsAdmin(role, { customerId, direction, points, description });

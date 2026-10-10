@@ -1,2 +1,8 @@
 export * from "./repository";
-export { placeOrder, getPublicOrder, type PlaceOrderOptions } from "./engine";
+export {
+  placeOrder,
+  getPublicOrder,
+  isOrderIntakeOpen,
+  OrderIntakeClosedError,
+  type PlaceOrderOptions,
+} from "./engine";

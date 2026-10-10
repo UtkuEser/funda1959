@@ -82,6 +82,8 @@ export type OrderSummary = {
   deliveryTimeSlot: string;
   branchName: string | null;
   total: number;
+  /** demo / test order (no payment taken) — set by the server, never by the client */
+  isDemo: boolean;
 };
 
 /* -------------------------------------------------------------------------- */

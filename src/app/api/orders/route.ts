@@ -1,16 +1,25 @@
 import { NextResponse } from "next/server";
+import { refreshInventory } from "@/lib/inventory/server-init";
 import { buildOrderPayload } from "@/lib/order-server";
-import { placeOrder } from "@/lib/orders";
+import { OrderIntakeClosedError, isOrderIntakeOpen, placeOrder } from "@/lib/orders";
+import { PersistenceUnavailableError, logPersistenceRefusal } from "@/lib/persistence";
 
 export const dynamic = "force-dynamic";
 
 const GENERIC_ERROR =
   "Siparişiniz oluşturulurken bir sorun oluştu. Lütfen tekrar deneyin.";
 
-const RESERVATION_ERROR =
-  "Ayırdığınız teslimat kapasitesinin süresi doldu. Lütfen teslimat saatini yeniden seçin.";
+const INTAKE_CLOSED_ERROR = "Online sipariş alımı henüz açılmadı.";
+
+function intakeClosed() {
+  console.error("[api/orders] refused: production order intake is closed");
+  return NextResponse.json({ ok: false, error: INTAKE_CLOSED_ERROR }, { status: 503 });
+}
 
 export async function POST(request: Request) {
+  // production: closed before the body is even read — no request field can reopen it
+  if (!isOrderIntakeOpen()) return intakeClosed();
+
   let body: unknown;
   try {
     body = await request.json();
@@ -18,23 +27,24 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "Geçersiz istek." }, { status: 400 });
   }
 
+  await refreshInventory(); // order validation reads branch product data
   const built = buildOrderPayload(body);
   if (!built.ok) {
     return NextResponse.json({ ok: false, error: built.error }, { status: 400 });
   }
 
-  const b = (body ?? {}) as { reservationId?: unknown; deliveryZoneId?: unknown };
-  const reservationId = typeof b.reservationId === "string" ? b.reservationId : null;
+  const b = (body ?? {}) as { deliveryZoneId?: unknown };
   const deliveryZoneId = typeof b.deliveryZoneId === "string" ? b.deliveryZoneId : null;
 
   try {
-    // payment success -> confirm the hold -> create the branch-routed order
-    const order = await placeOrder(built.payload, { reservationId, deliveryZoneId });
+    // create the branch-routed order (no capacity hold exists — D11)
+    const order = await placeOrder(built.payload, { deliveryZoneId });
     return NextResponse.json({ ok: true, order }, { status: 201 });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "";
-    if (message === "RESERVATION_EXPIRED" || message === "RESERVATION_NOT_FOUND") {
-      return NextResponse.json({ ok: false, error: RESERVATION_ERROR }, { status: 409 });
+    if (err instanceof OrderIntakeClosedError) return intakeClosed();
+    if (err instanceof PersistenceUnavailableError) {
+      logPersistenceRefusal(err, { clientRequestId: (built.payload as { client_request_id?: unknown }).client_request_id ?? null });
+      return NextResponse.json({ ok: false, error: err.userMessage }, { status: 503 });
     }
     console.error("[api/orders] create failed:", err);
     return NextResponse.json({ ok: false, error: GENERIC_ERROR }, { status: 502 });

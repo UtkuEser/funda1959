@@ -7,6 +7,7 @@ import {
   validateCampaignInput,
   type NewCampaignInput,
 } from "@/lib/campaigns";
+import { PersistenceUnavailableError, assertPersistentWrite, logPersistenceRefusal } from "@/lib/persistence";
 
 export const dynamic = "force-dynamic";
 
@@ -42,6 +43,18 @@ function persistenceFailed(action: string, err: unknown) {
   );
 }
 
+/** Refuses the write (503) when it could only land in instance memory or the wrong project. */
+async function refuseUnlessPersistent(): Promise<NextResponse | null> {
+  try {
+    await assertPersistentWrite("campaigns");
+    return null;
+  } catch (err) {
+    if (!(err instanceof PersistenceUnavailableError)) throw err;
+    logPersistenceRefusal(err);
+    return NextResponse.json({ error: err.userMessage }, { status: 503 });
+  }
+}
+
 /** POST — create a campaign. */
 export async function POST(request: Request) {
   let body: Body;
@@ -59,6 +72,8 @@ export async function POST(request: Request) {
   const errors = validateCampaignInput(input, validBranchIds);
   if (errors.length > 0) return NextResponse.json({ error: errors[0], errors }, { status: 400 });
 
+  const refused = await refuseUnlessPersistent();
+  if (refused) return refused;
   try {
     await getCampaignRepository().create(input);
     const campaigns = await getCampaignRepository().list();
@@ -86,6 +101,8 @@ export async function PATCH(request: Request) {
   const errors = validateCampaignInput(input, validBranchIds);
   if (errors.length > 0) return NextResponse.json({ error: errors[0], errors }, { status: 400 });
 
+  const refused = await refuseUnlessPersistent();
+  if (refused) return refused;
   try {
     const updated = await getCampaignRepository().update(body.id, input);
     if (!updated) return NextResponse.json({ error: "Kampanya bulunamadı." }, { status: 404 });
@@ -105,6 +122,8 @@ export async function DELETE(request: Request) {
   }
   if (!id) return NextResponse.json({ error: "id gerekli." }, { status: 400 });
 
+  const refused = await refuseUnlessPersistent();
+  if (refused) return refused;
   try {
     await getCampaignRepository().remove(id);
     const campaigns = await getCampaignRepository().list();

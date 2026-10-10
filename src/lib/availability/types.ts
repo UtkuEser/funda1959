@@ -48,7 +48,6 @@ export type SlotAvailability = {
   /** "10:00 – 12:00" */
   label: string;
   available: boolean;
-  remaining: number;
   reason: ReasonCode | null;
 };
 

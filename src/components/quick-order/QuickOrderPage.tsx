@@ -62,7 +62,7 @@ export function QuickOrderPage() {
     return textFilter(list, query);
   }, [category, activeQuick, query]);
 
-  // server availability verdict per visible product (reservation + ops overrides aware)
+  // server availability verdict per visible product (ops-panel stock statuses included)
   const [verdicts, setVerdicts] = useState<Record<string, CatalogAvailabilityVerdict>>({});
   useEffect(() => {
     if (!isResolved) {

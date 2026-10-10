@@ -17,13 +17,15 @@ import { isEligibleForBranch } from "./repository";
 import { supabaseRest } from "../supabase-server";
 
 const SELECT =
-  "id,title,description,image,start_at,end_at,cta_label,cta_href,active,branch_ids,priority,created_at,updated_at";
+  "id,title,description,image,image_has_text,start_at,end_at,cta_label,cta_href,active,branch_ids,priority,created_at,updated_at";
 
 type CampaignRow = {
   id: string;
   title: string;
   description: string | null;
   image: string | null;
+  /** migration 0005 */
+  image_has_text: boolean | null;
   start_at: string;
   end_at: string;
   cta_label: string | null;
@@ -41,6 +43,7 @@ function rowToCampaign(row: CampaignRow): Campaign {
     title: row.title,
     description: row.description ?? "",
     image: row.image ?? "",
+    imageHasText: row.image_has_text ?? false,
     startAt: row.start_at,
     endAt: row.end_at,
     ctaLabel: row.cta_label ?? "",
@@ -59,6 +62,7 @@ function inputToRow(input: Partial<NewCampaignInput>): Record<string, unknown> {
   if (input.title !== undefined) row.title = input.title;
   if (input.description !== undefined) row.description = input.description;
   if (input.image !== undefined) row.image = input.image;
+  if (input.imageHasText !== undefined) row.image_has_text = input.imageHasText;
   if (input.startAt !== undefined) row.start_at = input.startAt;
   if (input.endAt !== undefined) row.end_at = input.endAt;
   if (input.ctaLabel !== undefined) row.cta_label = input.ctaLabel;

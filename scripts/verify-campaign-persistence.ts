@@ -6,7 +6,10 @@
  * Exercises the CampaignRepository CRUD contract end to end: create, read
  * back, update, read the update back again, active-window + branch
  * filtering, then delete. Self-cleaning — it always removes the row it
- * created, safe to run against a real project.
+ * created. It still writes, so it runs only in memory or against the
+ * funda1959-test project (`requireTestEnvironmentForWrites`): a project
+ * marked "production", an unmarked one, or VERCEL_ENV=production is refused
+ * before any request.
  *
  * IMPORTANT: this only proves real, durable persistence when
  * SUPABASE_URL (or NEXT_PUBLIC_SUPABASE_URL) and SUPABASE_SERVICE_ROLE_KEY
@@ -19,6 +22,7 @@
 import "@/lib/campaigns/server-init";
 import { isSupabaseConfigured } from "@/lib/supabase-server";
 import { getCampaignRepository } from "@/lib/campaigns";
+import { requireTestEnvironmentForWrites } from "./test-environment-guard";
 
 let failures = 0;
 function check(label: string, cond: boolean) {
@@ -27,6 +31,7 @@ function check(label: string, cond: boolean) {
 }
 
 async function main() {
+  await requireTestEnvironmentForWrites("verify-campaign-persistence");
   const usingSupabase = isSupabaseConfigured();
   console.log(`\nSupabase configured in this environment: ${usingSupabase}`);
   if (!usingSupabase) {

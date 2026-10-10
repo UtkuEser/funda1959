@@ -17,16 +17,10 @@ import {
   type Branch,
   type Weekday,
 } from "../branch";
-import { resolveZone, getZone } from "../delivery/zones";
-import {
-  getSlotRepository,
-  slotConfirmedCount,
-  slotLabel,
-  type DeliverySlotDefinition,
-} from "../delivery/slots";
+import { resolveZone } from "../delivery/zones";
+import { getSlotRepository, slotLabel, type DeliverySlotDefinition } from "../delivery/slots";
 import { getBranchProduct, branchUnitPrice, type BranchProduct } from "../inventory";
 import { addDaysISO, istanbulDateISO, istanbulInstant, weekdayOfISO } from "../time/istanbul";
-import { reservedSlotUnits } from "../reservations";
 import type { ReasonCode } from "./reasons";
 import type {
   AvailabilityResult,
@@ -77,23 +71,14 @@ export function resolveContextBranch(ctx: DeliveryContext): BranchResolution {
     return { ok: true, branch, zoneId: null, deliveryFee: 0 };
   }
 
-  // delivery — a pinned zone id (carried by the reservation/order flow) wins,
-  // then an address (district + neighbourhood) served by the chosen branch.
-  const pinnedZone = ctx.deliveryZoneId ? getZone(ctx.deliveryZoneId) : null;
-  let zone = pinnedZone;
-  if (!zone && ctx.district && ctx.neighborhood) {
-    zone = resolveZone(ctx.district, ctx.neighborhood, ctx.branchId);
-    if (!zone) return { ok: false, reason: "DELIVERY_ZONE_NOT_FOUND" };
-  }
-  if (!zone) {
-    // Branch chosen, address not known yet: evaluate the branch itself (stock,
-    // capacity, hours). The address and its fee are settled at checkout.
-    if (!ctx.branchId) return { ok: false, reason: "BRANCH_REQUIRED" };
-    const branch = getBranch(ctx.branchId);
-    if (!branch || !branch.active) return { ok: false, reason: "BRANCH_DISABLED" };
-    if (!branch.deliveryEnabled) return { ok: false, reason: "DELIVERY_UNAVAILABLE" };
-    return { ok: true, branch, zoneId: null, deliveryFee: 0 };
-  }
+  // delivery is address-first: the serving branch follows from the address's
+  // zone — the same lookup the client uses (lib/delivery/context.tsx). A
+  // client-sent branchId or deliveryZoneId neither replaces the address nor
+  // changes which branch serves it, so without district + neighbourhood there
+  // is no availability and no fee.
+  if (!ctx.district?.trim() || !ctx.neighborhood?.trim()) return { ok: false, reason: "LOCATION_REQUIRED" };
+  const zone = resolveZone(ctx.district, ctx.neighborhood);
+  if (!zone) return { ok: false, reason: "DELIVERY_ZONE_NOT_FOUND" };
   const branch = getBranch(zone.branchId);
   if (!branch || !branch.active) return { ok: false, reason: "BRANCH_DISABLED" };
   if (!branch.deliveryEnabled) return { ok: false, reason: "DELIVERY_UNAVAILABLE" };
@@ -117,15 +102,13 @@ function branchDayCheck(bp: BranchProduct, iso: string, todayISO: string): Stock
 
 type SlotEval = SlotAvailability & { prepFeasible: boolean };
 
-function evalSlot(
-  def: DeliverySlotDefinition,
-  iso: string,
-  branch: Branch,
-  bp: BranchProduct,
-  now: Date,
-  reservationScope?: string,
-): SlotEval {
-  const base: Omit<SlotEval, "available" | "remaining" | "reason" | "prepFeasible"> = {
+/**
+ * One window for one product. There is no hourly order limit (D11): a window
+ * closes only for opening hours, same-day rules or preparation time; the
+ * branch's passive flag is checked per day (`branchDayCheck`).
+ */
+function evalSlot(def: DeliverySlotDefinition, iso: string, branch: Branch, bp: BranchProduct, now: Date): SlotEval {
+  const base: Omit<SlotEval, "available" | "reason" | "prepFeasible"> = {
     slotId: def.id,
     startTime: def.startTime,
     endTime: def.endTime,
@@ -134,7 +117,7 @@ function evalSlot(
 
   const weekday = weekdayOfISO(iso) as Weekday;
   if (!isBranchOpenAt(branch, weekday, def.startTime)) {
-    return { ...base, available: false, remaining: 0, reason: "BRANCH_CLOSED", prepFeasible: false };
+    return { ...base, available: false, reason: "BRANCH_CLOSED", prepFeasible: false };
   }
 
   // preparation time: ready by the END of the window
@@ -144,20 +127,13 @@ function evalSlot(
   const prepFeasible = slotEnd.getTime() >= readyBy.getTime();
 
   if (isToday && !bp.sameDayEnabled) {
-    return { ...base, available: false, remaining: 0, reason: "SAME_DAY_DISABLED", prepFeasible: false };
+    return { ...base, available: false, reason: "SAME_DAY_DISABLED", prepFeasible: false };
   }
   if (!prepFeasible) {
-    return { ...base, available: false, remaining: 0, reason: "PREPARATION_TIME", prepFeasible: false };
+    return { ...base, available: false, reason: "PREPARATION_TIME", prepFeasible: false };
   }
 
-  const confirmed = slotConfirmedCount(def, iso, now);
-  const reserved = reservedSlotUnits(def.branchId, iso, def.startTime, reservationScope);
-  const remaining = def.capacity - confirmed - reserved;
-  if (remaining < 1) {
-    return { ...base, available: false, remaining: 0, reason: "DELIVERY_SLOT_FULL", prepFeasible };
-  }
-
-  return { ...base, available: true, remaining, reason: null, prepFeasible };
+  return { ...base, available: true, reason: null, prepFeasible };
 }
 
 /* -------------------------------------------------------------------------- */
@@ -252,7 +228,6 @@ export function getProductAvailability(req: ProductAvailabilityRequest): Availab
               endTime: e.endTime,
               label: e.label,
               available: e.available,
-              remaining: e.remaining,
               reason: e.reason,
             };
           });
@@ -260,7 +235,6 @@ export function getProductAvailability(req: ProductAvailabilityRequest): Availab
           if (openSlots.length === 0) {
             // surface the most informative reason
             dayReason =
-              daySlots.find((s) => s.reason === "DELIVERY_SLOT_FULL")?.reason ??
               daySlots.find((s) => s.reason === "PREPARATION_TIME")?.reason ??
               daySlots.find((s) => s.reason === "SAME_DAY_DISABLED")?.reason ??
               "DATE_UNAVAILABLE";
@@ -324,8 +298,6 @@ export type CartAvailabilityRequest = {
   date?: string;
   slotStart?: string;
   now?: Date;
-  /** ignore this reservation's own holds (re-checking after reserving) */
-  reservationScope?: string;
 };
 
 export function getCartAvailability(req: CartAvailabilityRequest): CartAvailabilityResult {
@@ -387,11 +359,11 @@ export function getCartAvailability(req: CartAvailabilityRequest): CartAvailabil
   const slots: SlotAvailability[] = defs.map((def) => {
     const perItemSlot = perItem.map(({ item }) => {
       const bp = getBranchProduct(branch.id, resolveProduct(item.productId, item.productSlug)?.id ?? "");
-      if (!bp) return { available: false, reason: "PRODUCT_DISABLED_AT_BRANCH" as ReasonCode, remaining: 0 };
-      const e = evalSlot(def, requestedDate, branch, bp, now, req.reservationScope);
+      if (!bp) return { available: false, reason: "PRODUCT_DISABLED_AT_BRANCH" as ReasonCode };
+      const e = evalSlot(def, requestedDate, branch, bp, now);
       const dateStock = branchDayCheck(bp, requestedDate, todayISO);
-      if (!dateStock.ok) return { available: false, reason: dateStock.reason as ReasonCode, remaining: 0 };
-      return { available: e.available, reason: e.reason, remaining: e.remaining };
+      if (!dateStock.ok) return { available: false, reason: dateStock.reason as ReasonCode };
+      return { available: e.available, reason: e.reason };
     });
     const worst = perItemSlot.find((s) => !s.available);
     return {
@@ -400,7 +372,6 @@ export function getCartAvailability(req: CartAvailabilityRequest): CartAvailabil
       endTime: def.endTime,
       label: slotLabel(def),
       available: !worst,
-      remaining: Math.min(...perItemSlot.map((s) => s.remaining), def.capacity),
       reason: worst ? worst.reason : null,
     };
   });
@@ -416,7 +387,7 @@ export function getCartAvailability(req: CartAvailabilityRequest): CartAvailabil
         const bp = getBranchProduct(branch.id, resolveProduct(item.productId, item.productSlug)?.id ?? "");
         if (!bp) return false;
         if (!branchDayCheck(bp, d.date, todayISO).ok) return false;
-        return evalSlot(def, d.date, branch, bp, now, req.reservationScope).available;
+        return evalSlot(def, d.date, branch, bp, now).available;
       }),
     );
     if (shared) {

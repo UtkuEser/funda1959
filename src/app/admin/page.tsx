@@ -1,13 +1,13 @@
-import "@/lib/inventory/server-init";
+import { refreshInventory } from "@/lib/inventory/server-init";
+import { isSupabaseConfigured } from "@/lib/supabase-server";
 import "@/lib/campaigns/server-init";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { listBranches, getBranch, type Weekday } from "@/lib/branch";
-import { dailySlotStates, slotLabel } from "@/lib/delivery/slots";
+import { listBranches, getBranch, isBranchOpenAt, type Weekday } from "@/lib/branch";
+import { weekdayOfISO } from "@/lib/time/istanbul";
+import { slotLabel, slotsForBranchDate } from "@/lib/delivery/slots";
 import { getDeliveryZoneRepository } from "@/lib/delivery/zones";
-import { getReservationRepository, reservedSlotUnits } from "@/lib/reservations";
 import { getOrderRepository } from "@/lib/orders";
-import { catalogProducts } from "@/lib/data";
 import { orderStatusLabel } from "@/lib/order-status";
 import { formatTL } from "@/lib/cart-utils";
 import { getBranchStockView } from "@/lib/inventory/stock-view";
@@ -41,14 +41,9 @@ const todayISO = () => {
   const d = new Date();
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 };
-const productName = (id: string) => catalogProducts.find((p) => p.id === id)?.name ?? id;
 const hhmm = (iso: string) => {
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? "" : `${pad(d.getHours())}:${pad(d.getMinutes())}`;
-};
-const mmss = (ms: number) => {
-  const t = Math.max(0, Math.round(ms / 1000));
-  return `${pad(Math.floor(t / 60))}:${pad(t % 60)}`;
 };
 
 type Props = {
@@ -68,8 +63,12 @@ export default async function AdminPage({ searchParams }: Props) {
   }
 
   const date = sp.date && /^\d{4}-\d{2}-\d{2}$/.test(sp.date) ? sp.date : todayISO();
-  // eslint-disable-next-line react-hooks/purity
-  const renderedAt = Date.now();
+
+  // saved branch stock statuses (database in production) before any section reads availability
+  const inventoryReadOk = await refreshInventory({ strict: true }).then(
+    () => true,
+    () => false,
+  );
 
   const branches = listBranches(repoScope(scope));
   const scopedBranchId =
@@ -80,18 +79,17 @@ export default async function AdminPage({ searchParams }: Props) {
   return (
     <>
       {section === "overview" && (
-        <OverviewSection scope={scope} date={date} renderedAt={renderedAt} />
+        <OverviewSection scope={scope} date={date} />
       )}
       {section === "orders" && <OrdersSection scope={scope} />}
       {section === "stock" && (
-        <StockSection scope={scope} branchId={scopedBranchId} />
+        <StockSection scope={scope} branchId={scopedBranchId} readFailed={!inventoryReadOk} />
       )}
       {section === "campaigns" && <CampaignsSection scope={scope} />}
       {section === "instagram" && <InstagramContentSection />}
       {section === "funda-puan" && <FundaPointsSection scope={scope} />}
       {section === "zones" && <ZonesSection scope={scope} />}
       {section === "slots" && <SlotsSection branchId={scopedBranchId} date={date} />}
-      {section === "reservations" && <ReservationsSection scope={scope} renderedAt={renderedAt} />}
       {section === "branches" && <BranchesSection date={date} />}
     </>
   );
@@ -99,19 +97,8 @@ export default async function AdminPage({ searchParams }: Props) {
 
 /* -------------------------------------------------------------------------- */
 
-function OverviewSection({
-  scope,
-  date,
-  renderedAt,
-}: {
-  scope: AdminScope;
-  date: string;
-  renderedAt: number;
-}) {
+function OverviewSection({ scope, date }: { scope: AdminScope; date: string }) {
   const orders = getOrderRepository().list(repoScope(scope));
-  const reservations = getReservationRepository()
-    .activeHolds()
-    .filter((r) => (scope.authorizedBranchIds ? scope.authorizedBranchIds.includes(r.branchId) : true));
   const branches = listBranches(repoScope(scope));
 
   const today = orders.filter((o) => o.deliveryDate === date);
@@ -122,14 +109,14 @@ function OverviewSection({
     <>
       <PageIntro>
         Bugün {date}. Salt-okunur önizleme; her sorgu <code>authorizedBranchIds</code> ile sınırlanır.
+        {isSupabaseConfigured() && " Sipariş sayıları henüz veritabanından okunmuyor."}
       </PageIntro>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Metric label="Bugün Teslimat" value={today.length} />
         <Metric label="Hazırlanıyor" value={count("preparing")} />
         <Metric label="Hazır" value={count("ready")} />
         <Metric label="Teslimatta" value={count("out_for_delivery")} />
-        <Metric label="Aktif Rezervasyon" value={reservations.length} />
       </div>
 
       <div className="mt-6 grid gap-5 lg:grid-cols-[1.4fr_1fr]">
@@ -155,6 +142,7 @@ function OverviewSection({
                       <Link href={`/siparis-takip?order=${o.orderNumber}`} className="underline underline-offset-2">
                         {o.orderNumber}
                       </Link>
+                      {o.isDemo && <span className="ml-1.5"><Badge>Demo</Badge></span>}
                     </Td>
                     <Td>{hhmm(o.createdAt)}</Td>
                     <Td>{getBranch(o.branchId)?.name.replace("Funda 1959 ", "") ?? "—"}</Td>
@@ -188,12 +176,6 @@ function OverviewSection({
         </Panel>
       </div>
 
-      {reservations.length > 0 && (
-        <p className="mt-4 text-[11.5px] text-neutral-400">
-          {reservations.length} aktif rezervasyon · en yakın bitiş{" "}
-          {mmss(Math.min(...reservations.map((r) => r.expiresAt - renderedAt)))}
-        </p>
-      )}
     </>
   );
 }
@@ -204,7 +186,11 @@ function OrdersSection({ scope }: { scope: AdminScope }) {
   const orders = getOrderRepository().list(repoScope(scope));
   return (
     <>
-      <PageIntro>Bu sunucu oturumunda oluşturulan siparişler (mock store). En yeni üstte.</PageIntro>
+      <PageIntro>
+        {isSupabaseConfigured()
+          ? "Veritabanına kaydedilen siparişler bu ekranda henüz listelenmiyor; liste yalnızca bu sunucu oturumundaki yerel kayıtları gösterir."
+          : "Bu sunucu oturumunda oluşturulan siparişler (mock store). En yeni üstte."}
+      </PageIntro>
       <Panel>
         <TableWrap>
           <Table>
@@ -232,6 +218,7 @@ function OrdersSection({ scope }: { scope: AdminScope }) {
                     <Link href={`/siparis-takip?order=${o.orderNumber}`} className="underline underline-offset-2">
                       {o.orderNumber}
                     </Link>
+                    {o.isDemo && <span className="ml-1.5"><Badge>Demo</Badge></span>}
                   </Td>
                   <Td>{hhmm(o.createdAt)}</Td>
                   <Td>{getBranch(o.branchId)?.name.replace("Funda 1959 ", "") ?? "—"}</Td>
@@ -255,9 +242,11 @@ function OrdersSection({ scope }: { scope: AdminScope }) {
 function StockSection({
   scope,
   branchId,
+  readFailed,
 }: {
   scope: AdminScope;
   branchId: string;
+  readFailed: boolean;
 }) {
   const view = getBranchStockView(branchId);
   const branch = getBranch(branchId);
@@ -270,6 +259,11 @@ function StockSection({
         edilir; müşteri pasif ürünü görmeye ve sipariş vermeye devam eder. Değişiklikler otomatik kaydedilir
         ve yalnızca bu şubeyi etkiler.
       </PageIntro>
+      {readFailed && (
+        <p role="alert" className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-2.5 text-[13px] text-red-800">
+          Kayıtlı stok durumları şu an okunamadı; aşağıdaki durumlar güncel olmayabilir. Sayfayı yenileyin.
+        </p>
+      )}
       <BranchStockManager
         key={branchId}
         branchId={branchId}
@@ -285,15 +279,28 @@ function StockSection({
 /* -------------------------------------------------------------------------- */
 
 async function CampaignsSection({ scope }: { scope: AdminScope }) {
-  const campaigns = await getCampaignRepository().list();
   const branches = listBranches().map((b) => ({ id: b.id, name: b.name }));
   const canManage = scope.user.role === "SUPER_ADMIN";
+  let campaigns: Awaited<ReturnType<ReturnType<typeof getCampaignRepository>["list"]>>;
+  try {
+    campaigns = await getCampaignRepository().list();
+  } catch (err) {
+    console.error("[campaigns] admin read failed", (err as Error).message);
+    return (
+      <>
+        <PageIntro>Homepage&apos;deki kampanya bölümünü besler.</PageIntro>
+        <p role="alert" className="rounded-md border border-red-200 bg-red-50 px-4 py-2.5 text-[13px] text-red-800">
+          Kampanyalar şu an veritabanından okunamadı. Sayfayı yenileyin; sorun sürerse teknik ekibe bildirin.
+        </p>
+      </>
+    );
+  }
 
   return (
     <>
       <PageIntro>
-        Homepage&apos;deki &quot;Aktif Kampanyalar&quot; bölümünü besler. En fazla 4 aktif kampanya, sıra
-        (öncelik) artan, başlangıç tarihi azalan şekilde gösterilir.
+        Homepage&apos;deki kampanya bölümünü besler. Aktif kampanyalar sıra (öncelik) artan, başlangıç tarihi
+        azalan şekilde gösterilir.
         {!canManage && " Bu görünüm salt-okunur."}
       </PageIntro>
       <AdminCampaigns initialCampaigns={campaigns} canManage={canManage} branches={branches} />
@@ -409,91 +416,32 @@ function ZonesSection({ scope }: { scope: AdminScope }) {
 
 function SlotsSection({ branchId, date }: { branchId: string; date: string }) {
   const branch = getBranch(branchId);
-  const states = dailySlotStates(branchId, date, reservedSlotUnits);
+  const windows = slotsForBranchDate(branchId, date);
+  const wd = weekdayOfISO(date) as Weekday;
 
   return (
     <>
       <PageIntro>
-        {branch?.name ?? branchId} · {date}. Şube seçimi üst bardan yapılır.
+        {branch?.name ?? branchId} · {date}. Şube seçimi üst bardan yapılır. Saatlik sipariş sınırı
+        uygulanmaz; bir aralık yalnızca çalışma saati, hazırlık süresi ve şubede pasif ürün kuralıyla kapanır.
       </PageIntro>
-      <Panel title={`${branch?.name ?? branchId} — teslimat slotları`}>
+      <Panel title={`${branch?.name ?? branchId} — teslimat aralıkları`}>
         <TableWrap>
           <Table>
             <thead>
               <tr>
                 <Th>Saat</Th>
-                <Th align="right">Kapasite</Th>
-                <Th align="right">Onaylı</Th>
-                <Th align="right">Rezerve</Th>
-                <Th align="right">Kalan</Th>
                 <Th>Durum</Th>
               </tr>
             </thead>
             <tbody>
-              {states.length === 0 && <EmptyRow cols={6}>Bu gün için slot tanımlı değil.</EmptyRow>}
-              {states.map((s) => (
-                <Row key={s.slotId}>
-                  <Td className="font-medium">{slotLabel(s)}</Td>
-                  <Td align="right" className="tabular-nums">{s.capacity}</Td>
-                  <Td align="right" className="tabular-nums">{s.confirmed}</Td>
-                  <Td align="right" className="tabular-nums">{s.reserved}</Td>
-                  <Td align="right" className={`tabular-nums ${s.remaining === 0 ? "font-semibold" : ""}`}>
-                    {s.remaining}
-                  </Td>
-                  <Td><Badge strong={s.remaining === 0}>{s.remaining === 0 ? "Dolu" : "Açık"}</Badge></Td>
-                </Row>
-              ))}
-            </tbody>
-          </Table>
-        </TableWrap>
-      </Panel>
-    </>
-  );
-}
-
-/* -------------------------------------------------------------------------- */
-
-function ReservationsSection({
-  scope,
-  renderedAt,
-}: {
-  scope: AdminScope;
-  renderedAt: number;
-}) {
-  const reservations = getReservationRepository()
-    .activeHolds()
-    .filter((r) => (scope.authorizedBranchIds ? scope.authorizedBranchIds.includes(r.branchId) : true));
-
-  return (
-    <>
-      <PageIntro>Ödeme sırasında tutulan kapasite (10 dk). Süre dolunca kapasite geri açılır.</PageIntro>
-      <Panel>
-        <TableWrap>
-          <Table>
-            <thead>
-              <tr>
-                <Th>ID</Th>
-                <Th>Şube</Th>
-                <Th>Tarih / Slot</Th>
-                <Th>Ürünler</Th>
-                <Th align="right">Kalan Süre</Th>
-                <Th>Durum</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {reservations.length === 0 && <EmptyRow cols={6}>Aktif rezervasyon yok.</EmptyRow>}
-              {reservations.map((r) => {
-                const remaining = r.expiresAt - renderedAt;
+              {windows.length === 0 && <EmptyRow cols={2}>Bu gün için teslimat aralığı tanımlı değil.</EmptyRow>}
+              {windows.map((w) => {
+                const open = branch ? isBranchOpenAt(branch, wd, w.startTime) : false;
                 return (
-                  <Row key={r.id}>
-                    <Td className="font-mono text-[11px] text-neutral-500">{r.id.slice(0, 20)}…</Td>
-                    <Td>{getBranch(r.branchId)?.name.replace("Funda 1959 ", "")}</Td>
-                    <Td>{r.deliveryDate} · {r.deliverySlotStart}</Td>
-                    <Td>{r.items.map((i) => `${productName(i.productId)} ×${i.quantity}`).join(", ")}</Td>
-                    <Td align="right" className={`font-mono tabular-nums ${remaining < 120_000 ? "font-bold" : ""}`}>
-                      {mmss(remaining)}
-                    </Td>
-                    <Td><Badge>{r.status === "active" ? "Aktif" : r.status}</Badge></Td>
+                  <Row key={w.id}>
+                    <Td className="font-medium">{slotLabel(w)}</Td>
+                    <Td><Badge strong={!open}>{open ? "Açık" : "Çalışma saati dışında"}</Badge></Td>
                   </Row>
                 );
               })}
@@ -506,6 +454,7 @@ function ReservationsSection({
 }
 
 /* -------------------------------------------------------------------------- */
+
 
 function BranchesSection({ date }: { date: string }) {
   // Reachable only for SUPER_ADMIN — see the section-access guard in AdminPage above.

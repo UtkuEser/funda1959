@@ -16,7 +16,6 @@ const NAV = [
   { key: "funda-puan", label: "Funda Puan" },
   { key: "zones", label: "Teslimat Bölgeleri" },
   { key: "slots", label: "Teslimat Slotları" },
-  { key: "reservations", label: "Rezervasyonlar" },
   { key: "branches", label: "Şubeler" },
 ] as const;
 

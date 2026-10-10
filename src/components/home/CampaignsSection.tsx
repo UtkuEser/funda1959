@@ -46,7 +46,15 @@ function resolveCampaignImage(campaign: Campaign): ResolvedImage {
 export async function CampaignsSection() {
   // eslint-disable-next-line react-hooks/purity
   const nowMs = Date.now();
-  const active = await getHomepageCampaignPool(new Date(nowMs));
+  let active: Campaign[];
+  try {
+    active = await getHomepageCampaignPool(new Date(nowMs));
+  } catch (err) {
+    // database unreachable: hide the section rather than break the homepage
+    // or show seed content as if it were the live campaign list
+    console.error("[campaigns] homepage read failed", (err as Error).message);
+    return null;
+  }
   const pool: CampaignWithImage[] = active.map((c) => {
     const image = resolveCampaignImage(c);
     // real pixel size -> the carousel frames the visual at its own aspect ratio

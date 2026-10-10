@@ -5,6 +5,7 @@ import {
   validateInstagramContentInput,
   type NewInstagramContentInput,
 } from "@/lib/social";
+import { PersistenceUnavailableError, assertPersistentWrite, logPersistenceRefusal } from "@/lib/persistence";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +28,21 @@ function toInput(body: Body): NewInstagramContentInput {
   };
 }
 
+/**
+ * Instagram content has no Supabase table yet (SUPABASE_PLAN.md, Aşama 5):
+ * on Vercel a write would only land in one instance's memory -> 503.
+ */
+async function refuseUnlessPersistent(): Promise<NextResponse | null> {
+  try {
+    await assertPersistentWrite("instagram");
+    return null;
+  } catch (err) {
+    if (!(err instanceof PersistenceUnavailableError)) throw err;
+    logPersistenceRefusal(err);
+    return NextResponse.json({ error: err.userMessage }, { status: 503 });
+  }
+}
+
 /** POST — create an Instagram content item. */
 export async function POST(request: Request) {
   let body: Body;
@@ -43,6 +59,8 @@ export async function POST(request: Request) {
   const errors = validateInstagramContentInput(input);
   if (errors.length > 0) return NextResponse.json({ error: errors[0], errors }, { status: 400 });
 
+  const refused = await refuseUnlessPersistent();
+  if (refused) return refused;
   getInstagramContentRepository().create(input);
   return NextResponse.json({ ok: true, items: getInstagramContentRepository().list() });
 }
@@ -64,6 +82,8 @@ export async function PATCH(request: Request) {
   const errors = validateInstagramContentInput(input);
   if (errors.length > 0) return NextResponse.json({ error: errors[0], errors }, { status: 400 });
 
+  const refused = await refuseUnlessPersistent();
+  if (refused) return refused;
   const updated = getInstagramContentRepository().update(body.id, input);
   if (!updated) return NextResponse.json({ error: "İçerik bulunamadı." }, { status: 404 });
   return NextResponse.json({ ok: true, items: getInstagramContentRepository().list() });
@@ -78,6 +98,8 @@ export async function DELETE(request: Request) {
   }
   if (!id) return NextResponse.json({ error: "id gerekli." }, { status: 400 });
 
+  const refused = await refuseUnlessPersistent();
+  if (refused) return refused;
   getInstagramContentRepository().remove(id);
   return NextResponse.json({ ok: true, items: getInstagramContentRepository().list() });
 }

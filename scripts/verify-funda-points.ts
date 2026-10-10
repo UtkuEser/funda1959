@@ -7,6 +7,7 @@
  */
 
 import type { StoredOrder } from "@/lib/orders/repository";
+import { requireTestEnvironmentForWrites } from "./test-environment-guard";
 import {
   awardPointsForOrder,
   reversePointsForOrder,
@@ -53,8 +54,9 @@ function makeOrder(overrides: Partial<StoredOrder> & { phone?: string }): Stored
     discount: overrides.discount ?? 0,
     total: overrides.total ?? 1000,
     paymentStatus: "paid",
+    // a paid order is a real one — a demo order can never be paid (0006)
+    isDemo: false,
     orderStatus: "new",
-    reservationId: null,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
@@ -167,4 +169,5 @@ function main() {
   process.exit(failures === 0 ? 0 : 1);
 }
 
-main();
+// in-memory today; guarded anyway so a later database-backed ledger can't be written from here outside test
+void requireTestEnvironmentForWrites("verify-funda-points").then(main);
