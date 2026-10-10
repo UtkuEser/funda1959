@@ -1,6 +1,7 @@
 import { HOURLY_SLOT_LABELS } from "./delivery/slots";
 import type { CartItem } from "./cart";
 import { getProductDetail } from "./data";
+import { addDaysISO, istanbulDateISO } from "./time/istanbul";
 
 /** One-hour delivery windows, generated from the branches' delivery hours. */
 export const DELIVERY_TIME_SLOTS: string[] = HOURLY_SLOT_LABELS;
@@ -30,14 +31,15 @@ export function maxPreparationHours(items: CartItem[]): number {
   }, 0);
 }
 
-/** Earliest date the whole order can be delivered, given max prep time. */
+/**
+ * Earliest date the whole order can be delivered, given max prep time — an
+ * Istanbul calendar day, whatever the device's time zone. The server checks
+ * the exact date and slot again when the order is placed.
+ */
 export function earliestDeliveryDate(items: CartItem[], from: Date = new Date()): string {
   const prep = maxPreparationHours(items);
   const addDays = prep >= 24 ? Math.ceil(prep / 24) : 0;
-  const d = new Date(from);
-  d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() + addDays);
-  return toISODate(d);
+  return addDaysISO(istanbulDateISO(from), addDays);
 }
 
 /* -------------------------------------------------------------------------- */

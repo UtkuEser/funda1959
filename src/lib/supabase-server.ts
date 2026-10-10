@@ -46,6 +46,8 @@ export function isSupabaseConfigured(): boolean {
  * "42P01" for a missing table). The message never contains the key.
  */
 export class SupabaseRestError extends Error {
+  /** Postgres error message, e.g. the text of a `raise exception` in an RPC */
+  readonly dbMessage: string | null;
   constructor(
     readonly status: number,
     readonly code: string | null,
@@ -53,6 +55,13 @@ export class SupabaseRestError extends Error {
   ) {
     super(`Supabase ${status}: ${body.slice(0, 500)}`);
     this.name = "SupabaseRestError";
+    let message: unknown = null;
+    try {
+      message = (JSON.parse(body) as { message?: unknown }).message;
+    } catch {
+      /* non-JSON error body */
+    }
+    this.dbMessage = typeof message === "string" ? message : null;
   }
 }
 

@@ -1,40 +1,51 @@
 /**
- * Server-side validation + re-pricing for POST /api/orders.
- * The client's prices are treated as advisory only; every unit price is
- * recomputed here from `src/lib/data.ts`, the same source the catalog uses.
+ * Server-side validation + pricing for POST /api/orders. Nothing the browser
+ * sends is trusted beyond the customer's choices:
+ *   - unit prices come from `src/lib/data.ts` (the catalog's own source),
+ *     discount and delivery fee are decided here, the total is recomputed;
+ *   - a delivery order's branch and zone follow from the address
+ *     (`resolveContextBranch`), the client's branch / zone fields are ignored;
+ *   - date and slot are checked again at order time against the availability
+ *     engine — opening hours, preparation time, passive stock, the branch's
+ *     own slots — in Europe/Istanbul time.
+ * Errors: 400 = malformed request, 409 = valid request the order can't be
+ * fulfilled as asked (the message says why).
  */
 
 import { catalogProducts, getProductDetail } from "./data";
-import { getBranchProduct } from "./inventory";
-import { listBranches } from "./branch";
+import { getBranch, listBranches } from "./branch";
+import type { OrderQuote } from "./order";
+import {
+  HORIZON_DAYS,
+  getCartAvailability,
+  reasonMessage,
+  resolveContextBranch,
+  type DeliveryContext,
+  type ReasonCode,
+} from "./availability";
+import { addDaysISO, istanbulDateISO } from "./time/istanbul";
 import {
   ANKARA_DISTRICTS,
   DELIVERY_TIME_SLOTS,
   isValidEmail,
   isValidFullName,
   isValidPhone,
-  toISODate,
 } from "./checkout-utils";
 
 const BRANCH_SLUGS = listBranches().map((b) => b.slug);
 const MAX_QTY = 20;
 
-type BuildResult =
+export type BuildResult =
   | { ok: true; payload: Record<string, unknown> }
-  | { ok: false; error: string };
+  | { ok: false; status: 400 | 409; error: string; reason?: ReasonCode | null };
 
-const fail = (error: string): BuildResult => ({ ok: false, error });
+const fail = (error: string): BuildResult => ({ ok: false, status: 400, error });
+const unavailable = (error: string, reason: ReasonCode | null = null): BuildResult => ({ ok: false, status: 409, error, reason });
 const str = (v: unknown): string => (typeof v === "string" ? v : "");
+/** money in kuruş precision, so the database's sum checks match exactly */
+const money = (v: number): number => Math.round(v * 100) / 100;
 
-function earliestDate(prepHours: number): string {
-  const addDays = prepHours >= 24 ? Math.ceil(prepHours / 24) : 0;
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() + addDays);
-  return toISODate(d);
-}
-
-export function buildOrderPayload(body: unknown): BuildResult {
+export function buildOrderPayload(body: unknown, { now = new Date() }: { now?: Date } = {}): BuildResult {
   if (!body || typeof body !== "object") return fail("Geçersiz istek.");
   const b = body as Record<string, unknown>;
 
@@ -52,8 +63,8 @@ export function buildOrderPayload(body: unknown): BuildResult {
   if (rawItems.length === 0) return fail("Sepetinizde ürün bulunmuyor.");
 
   const items: Record<string, unknown>[] = [];
+  const cartLines: { productId: string; productSlug: string; variantId: string | null; quantity: number }[] = [];
   let subtotal = 0;
-  let maxPrep = 0;
 
   for (const raw of rawItems) {
     const r = (raw ?? {}) as Record<string, unknown>;
@@ -67,8 +78,6 @@ export function buildOrderPayload(body: unknown): BuildResult {
     }
 
     const detail = getProductDetail(slug);
-    maxPrep = Math.max(maxPrep, detail?.preparationTimeHours ?? 24);
-
     const variantId = r.variantId == null ? null : str(r.variantId) || null;
     let unitPrice = product.priceValue;
     let variantLabel: string | null = null;
@@ -81,9 +90,10 @@ export function buildOrderPayload(body: unknown): BuildResult {
     }
 
     if (!Number.isFinite(unitPrice) || unitPrice <= 0) return fail("Ürün fiyatı belirlenemedi.");
+    unitPrice = money(unitPrice);
 
-    const totalPrice = unitPrice * quantity;
-    subtotal += totalPrice;
+    const totalPrice = money(unitPrice * quantity);
+    subtotal = money(subtotal + totalPrice);
 
     const extras = Array.isArray(r.extras)
       ? r.extras.filter((x): x is string => typeof x === "string")
@@ -108,9 +118,10 @@ export function buildOrderPayload(body: unknown): BuildResult {
       extras: extras.length > 0 ? extras : null,
       note: note || null,
     });
+    cartLines.push({ productId: product.id, productSlug: product.slug, variantId, quantity });
   }
 
-  /* ---- delivery ---- */
+  /* ---- delivery: form ---- */
   const d = (b.delivery ?? {}) as Record<string, unknown>;
   const type = str(d.type);
   if (type !== "delivery" && type !== "pickup") return fail("Teslimat türü geçersiz.");
@@ -120,29 +131,19 @@ export function buildOrderPayload(body: unknown): BuildResult {
 
   const timeSlot = str(d.timeSlot);
   if (!DELIVERY_TIME_SLOTS.includes(timeSlot)) return fail("Teslimat saati geçersiz.");
+  const slotStart = timeSlot.slice(0, 5); // "10:00 – 11:00" -> "10:00"
 
-  // branch is routed for delivery too (via the zone) — accept it either way
-  const rawBranch = str(d.branchSlug);
-  if (rawBranch && !BRANCH_SLUGS.includes(rawBranch)) return fail("Mağaza seçimi geçersiz.");
-  const branchSlug: string | null = rawBranch || null;
+  let context: DeliveryContext;
   let address: Record<string, unknown> | null = null;
 
-  // preparation feasibility — branch-aware when we know the branch
-  let effectivePrepHours = maxPrep;
-  if (branchSlug) {
-    effectivePrepHours = 0;
-    for (const it of items) {
-      const bp = getBranchProduct(branchSlug, it.product_id as string);
-      effectivePrepHours = Math.max(effectivePrepHours, bp ? bp.prepTimeMinutes / 60 : maxPrep);
-    }
-  }
-  if (date < earliestDate(effectivePrepHours)) {
-    return fail("Seçilen teslimat tarihi bu sipariş için uygun değil.");
-  }
-
   if (type === "pickup") {
+    // pickup: the customer picks the store
+    const branchSlug = str(d.branchSlug);
     if (!branchSlug) return fail("Bir mağaza seçin.");
+    if (!BRANCH_SLUGS.includes(branchSlug)) return fail("Mağaza seçimi geçersiz.");
+    context = { fulfillmentType: "pickup", district: null, neighborhood: null, deliveryZoneId: null, branchId: branchSlug };
   } else {
+    // delivery: the branch follows from the address — d.branchSlug is ignored
     const a = (d.address ?? null) as Record<string, unknown> | null;
     if (!a) return fail("Teslimat adresi gerekli.");
     const district = str(a.district).trim();
@@ -160,13 +161,33 @@ export function buildOrderPayload(body: unknown): BuildResult {
       apartment: str(a.apartment).trim() || null,
       note: str(a.note).trim() || null,
     };
+    context = { fulfillmentType: "delivery", district, neighborhood, deliveryZoneId: null, branchId: null };
+  }
+
+  /* ---- delivery: availability at order time (Europe/Istanbul) ---- */
+  const today = istanbulDateISO(now);
+  if (date < today) return unavailable("Seçilen teslimat tarihi geçmişte kaldı. Lütfen yeni bir tarih seçin.", "DATE_UNAVAILABLE");
+  if (date > addDaysISO(today, HORIZON_DAYS - 1)) return unavailable("Seçilen teslimat tarihi için henüz sipariş alınmıyor.", "DATE_UNAVAILABLE");
+
+  const resolved = resolveContextBranch(context);
+  if (!resolved.ok) return unavailable(reasonMessage(resolved.reason), resolved.reason);
+
+  const cart = getCartAvailability({ context, items: cartLines, date, slotStart, now });
+  if (!cart.available) {
+    const slot = cart.slots.find((s) => s.startTime === slotStart);
+    const reason = cart.itemIssues[0]?.reason ?? slot?.reason ?? null;
+    if (!slot && !cart.itemIssues.length) {
+      return unavailable("Seçilen teslimat saati bu mağaza için tanımlı değil.", "NO_SLOTS_DEFINED");
+    }
+    return unavailable(reasonMessage(reason) || "Seçilen tarih ve saat bu sipariş için uygun değil.", reason);
   }
 
   /* ---- totals (server-owned) ---- */
-  const discount = 0;
-  // TODO: delivery zone service will determine this.
-  const deliveryFee = 0;
-  const total = subtotal - discount + deliveryFee;
+  const discount = 0; // no discount logic yet (campaigns are content only)
+  // the fee of the zone serving the address — the same figure the product page
+  // shows; Aşama 3 moves it to the database (`delivery_zone_fees`)
+  const deliveryFee = type === "delivery" ? money(resolved.deliveryFee) : 0;
+  const total = money(subtotal - discount + deliveryFee);
 
   const clientRequestId = str(b.clientRequestId).slice(0, 64) || null;
 
@@ -174,8 +195,16 @@ export function buildOrderPayload(body: unknown): BuildResult {
     ok: true,
     payload: {
       client_request_id: clientRequestId,
+      sales_channel: "web",
       customer: { full_name: fullName, phone, email },
-      delivery: { type, branch_slug: branchSlug, date, time_slot: timeSlot, address },
+      delivery: {
+        type,
+        branch_slug: resolved.branch.slug,
+        zone_id: resolved.zoneId,
+        date,
+        time_slot: timeSlot,
+        address,
+      },
       items,
       subtotal,
       delivery_fee: deliveryFee,
@@ -183,5 +212,32 @@ export function buildOrderPayload(body: unknown): BuildResult {
       total,
       order_note: str(b.orderNote).trim() || null,
     },
+  };
+}
+
+/** The figures of a built payload, for the payment screen (POST /api/orders/quote). */
+export function quoteFromPayload(payload: Record<string, unknown>): OrderQuote {
+  const d = payload.delivery as { type: "delivery" | "pickup"; branch_slug: string };
+  const items = payload.items as {
+    product_name: string;
+    variant_label: string | null;
+    quantity: number;
+    unit_price: number;
+    total_price: number;
+  }[];
+  return {
+    deliveryType: d.type,
+    branchName: getBranch(d.branch_slug)?.name ?? null,
+    lines: items.map((i) => ({
+      productName: i.product_name,
+      variantLabel: i.variant_label,
+      quantity: i.quantity,
+      unitPrice: i.unit_price,
+      lineTotal: i.total_price,
+    })),
+    subtotal: payload.subtotal as number,
+    deliveryFee: payload.delivery_fee as number,
+    discount: payload.discount as number,
+    total: payload.total as number,
   };
 }

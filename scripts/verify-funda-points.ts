@@ -57,6 +57,8 @@ function makeOrder(overrides: Partial<StoredOrder> & { phone?: string }): Stored
     // a paid order is a real one — a demo order can never be paid (0006)
     isDemo: false,
     orderStatus: "new",
+    cancellation: null,
+    statusHistory: [],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
@@ -88,6 +90,13 @@ function main() {
   const mobileOrder = makeOrder({ salesChannel: "mobile", subtotal: 500 });
   const mobileResult = awardPointsForOrder(mobileOrder);
   check("mobile order earns points", mobileResult.awarded === true);
+
+  console.log("\n── demo orders never earn (D13) ──");
+  const demoOrder = { ...makeOrder({ salesChannel: "web", subtotal: 1000 }), isDemo: true, paymentStatus: "pending" as const };
+  const demoResult = awardPointsForOrder(demoOrder);
+  check("web demo order does not earn points", demoResult.awarded === false && demoResult.reason === "DEMO_ORDER");
+  check("…and opens no account for its customer", getPointAccount(resolveCustomerId(demoOrder.customer)!) === null);
+  check("…not even on a second attempt", awardPointsForOrder(demoOrder).awarded === false);
 
   console.log("\n── idempotency ──");
   const dupeResult = awardPointsForOrder(webOrder);

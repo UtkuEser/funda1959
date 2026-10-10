@@ -1,14 +1,15 @@
 import { refreshInventory } from "@/lib/inventory/server-init";
-import { isSupabaseConfigured } from "@/lib/supabase-server";
 import "@/lib/campaigns/server-init";
+import "@/lib/orders/server-init";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { listBranches, getBranch, isBranchOpenAt, type Weekday } from "@/lib/branch";
-import { weekdayOfISO } from "@/lib/time/istanbul";
+import { ISTANBUL_TZ, istanbulDateISO, weekdayOfISO } from "@/lib/time/istanbul";
 import { slotLabel, slotsForBranchDate } from "@/lib/delivery/slots";
 import { getDeliveryZoneRepository } from "@/lib/delivery/zones";
-import { getOrderRepository } from "@/lib/orders";
+import { getOrderRepository, type OrderPage, type StoredOrder } from "@/lib/orders";
 import { orderStatusLabel } from "@/lib/order-status";
+import { OrderStatusActions } from "@/components/admin/OrderStatusActions";
 import { formatTL } from "@/lib/cart-utils";
 import { getBranchStockView } from "@/lib/inventory/stock-view";
 import { BranchStockManager } from "@/components/admin/BranchStockManager";
@@ -36,18 +37,18 @@ import { isSectionAllowed } from "@/lib/admin/section-access";
 
 export const dynamic = "force-dynamic";
 
-const pad = (n: number) => String(n).padStart(2, "0");
-const todayISO = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-};
-const hhmm = (iso: string) => {
+// every date and time on the panel is Europe/Istanbul, whatever the server's zone
+const todayISO = () => istanbulDateISO();
+const dayTime = (iso: string) => {
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? "" : `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return Number.isNaN(d.getTime())
+    ? ""
+    : d.toLocaleString("tr-TR", { timeZone: ISTANBUL_TZ, day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 };
+const isISODate = (v: string | undefined): v is string => Boolean(v && /^\d{4}-\d{2}-\d{2}$/.test(v));
 
 type Props = {
-  searchParams: Promise<{ branch?: string; section?: string; date?: string }>;
+  searchParams: Promise<{ branch?: string; section?: string; date?: string; from?: string; to?: string; page?: string }>;
 };
 
 export default async function AdminPage({ searchParams }: Props) {
@@ -62,7 +63,7 @@ export default async function AdminPage({ searchParams }: Props) {
     redirect("/admin");
   }
 
-  const date = sp.date && /^\d{4}-\d{2}-\d{2}$/.test(sp.date) ? sp.date : todayISO();
+  const date = isISODate(sp.date) ? sp.date : todayISO();
 
   // saved branch stock statuses (database in production) before any section reads availability
   const inventoryReadOk = await refreshInventory({ strict: true }).then(
@@ -81,7 +82,14 @@ export default async function AdminPage({ searchParams }: Props) {
       {section === "overview" && (
         <OverviewSection scope={scope} date={date} />
       )}
-      {section === "orders" && <OrdersSection scope={scope} />}
+      {section === "orders" && (
+        <OrdersSection
+          scope={scope}
+          from={isISODate(sp.from) ? sp.from : null}
+          to={isISODate(sp.to) ? sp.to : null}
+          page={Math.max(1, Math.floor(Number(sp.page)) || 1)}
+        />
+      )}
       {section === "stock" && (
         <StockSection scope={scope} branchId={scopedBranchId} readFailed={!inventoryReadOk} />
       )}
@@ -97,23 +105,37 @@ export default async function AdminPage({ searchParams }: Props) {
 
 /* -------------------------------------------------------------------------- */
 
-function OverviewSection({ scope, date }: { scope: AdminScope; date: string }) {
-  const orders = getOrderRepository().list(repoScope(scope));
+async function OverviewSection({ scope, date }: { scope: AdminScope; date: string }) {
   const branches = listBranches(repoScope(scope));
+  const repo = getOrderRepository();
 
-  const today = orders.filter((o) => o.deliveryDate === date);
-  const count = (s: string) => orders.filter((o) => o.orderStatus === s).length;
-  const wd = new Date(`${date}T12:00:00`).getDay() as Weekday;
+  // scope comes from the session: a branch account only ever counts its own orders
+  let latest: OrderPage | null = null;
+  let todayTotal: number | null = null;
+  try {
+    const [recent, today] = await Promise.all([
+      repo.list({ branchIds: scope.authorizedBranchIds, limit: 6, offset: 0 }),
+      repo.list({ branchIds: scope.authorizedBranchIds, from: date, to: date, limit: 0, offset: 0 }),
+    ]);
+    latest = recent;
+    todayTotal = today.total;
+  } catch (err) {
+    console.error("[orders] admin overview read failed", (err as Error).message);
+  }
+  const orders = latest?.rows ?? [];
+  const count = (s: StoredOrder["orderStatus"]) => (latest ? latest.statusCounts[s] ?? 0 : "—");
+  const wd = weekdayOfISO(date) as Weekday;
 
   return (
     <>
       <PageIntro>
-        Bugün {date}. Salt-okunur önizleme; her sorgu <code>authorizedBranchIds</code> ile sınırlanır.
-        {isSupabaseConfigured() && " Sipariş sayıları henüz veritabanından okunmuyor."}
+        Bugün {date} (İstanbul). Her sorgu oturumdaki şube kapsamıyla sınırlanır.
+        {repo.kind === "memory" && " Siparişler bu sunucu oturumunun belleğinden okunuyor (geliştirme)."}
       </PageIntro>
+      {!latest && <OrdersReadWarning />}
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Metric label="Bugün Teslimat" value={today.length} />
+        <Metric label="Bugün Teslimat" value={todayTotal ?? "—"} />
         <Metric label="Hazırlanıyor" value={count("preparing")} />
         <Metric label="Hazır" value={count("ready")} />
         <Metric label="Teslimatta" value={count("out_for_delivery")} />
@@ -134,9 +156,9 @@ function OverviewSection({ scope, date }: { scope: AdminScope; date: string }) {
               </thead>
               <tbody>
                 {orders.length === 0 && (
-                  <EmptyRow cols={5}>Henüz sipariş yok.</EmptyRow>
+                  <EmptyRow cols={5}>{latest ? "Henüz sipariş yok." : "Siparişler okunamadı."}</EmptyRow>
                 )}
-                {orders.slice(0, 6).map((o) => (
+                {orders.map((o) => (
                   <Row key={o.orderNumber}>
                     <Td className="font-medium">
                       <Link href={`/siparis-takip?order=${o.orderNumber}`} className="underline underline-offset-2">
@@ -144,7 +166,7 @@ function OverviewSection({ scope, date }: { scope: AdminScope; date: string }) {
                       </Link>
                       {o.isDemo && <span className="ml-1.5"><Badge>Demo</Badge></span>}
                     </Td>
-                    <Td>{hhmm(o.createdAt)}</Td>
+                    <Td>{dayTime(o.createdAt)}</Td>
                     <Td>{getBranch(o.branchId)?.name.replace("Funda 1959 ", "") ?? "—"}</Td>
                     <Td>{formatTL(o.total)}</Td>
                     <Td><Badge>{orderStatusLabel(o.orderStatus)}</Badge></Td>
@@ -182,56 +204,163 @@ function OverviewSection({ scope, date }: { scope: AdminScope; date: string }) {
 
 /* -------------------------------------------------------------------------- */
 
-function OrdersSection({ scope }: { scope: AdminScope }) {
-  const orders = getOrderRepository().list(repoScope(scope));
+function OrdersReadWarning() {
+  return (
+    <p role="alert" className="mb-4 rounded-md border border-neutral-300 bg-neutral-50 px-3 py-2 text-[12.5px] text-neutral-800">
+      Siparişler şu an okunamadı. Sayfayı biraz sonra yenileyin.
+    </p>
+  );
+}
+
+const ORDERS_PAGE_SIZE = 25;
+
+async function OrdersSection({
+  scope,
+  from,
+  to,
+  page,
+}: {
+  scope: AdminScope;
+  from: string | null;
+  to: string | null;
+  page: number;
+}) {
+  const repo = getOrderRepository();
+  let result: OrderPage | null = null;
+  try {
+    // branch scope from the session — never from the URL
+    result = await repo.list({
+      branchIds: scope.authorizedBranchIds,
+      from,
+      to,
+      limit: ORDERS_PAGE_SIZE,
+      offset: (page - 1) * ORDERS_PAGE_SIZE,
+    });
+  } catch (err) {
+    console.error("[orders] admin list read failed", (err as Error).message);
+  }
+  const orders = result?.rows ?? [];
+  const pages = result ? Math.max(1, Math.ceil(result.total / ORDERS_PAGE_SIZE)) : 1;
+  const pageHref = (p: number) => {
+    const q = new URLSearchParams({ section: "orders" });
+    if (from) q.set("from", from);
+    if (to) q.set("to", to);
+    if (p > 1) q.set("page", String(p));
+    return `/admin?${q.toString()}`;
+  };
+
   return (
     <>
       <PageIntro>
-        {isSupabaseConfigured()
-          ? "Veritabanına kaydedilen siparişler bu ekranda henüz listelenmiyor; liste yalnızca bu sunucu oturumundaki yerel kayıtları gösterir."
-          : "Bu sunucu oturumunda oluşturulan siparişler (mock store). En yeni üstte."}
+        {repo.kind === "supabase"
+          ? "Veritabanındaki siparişler, en yeni üstte. Şube hesabı yalnızca kendi şubesinin siparişlerini görür ve değiştirir; Merkez tüm şubeleri."
+          : "Bu sunucu oturumunda oluşturulan siparişler (geliştirme, bellekte). En yeni üstte."}{" "}
+        Durum bir adım ilerletilir; iptal için gerekçe zorunludur. Teslim edilen sipariş iptal edilmez, iade bu aşamada yok.
       </PageIntro>
+      {!result && <OrdersReadWarning />}
+
+      <form method="get" action="/admin" className="mb-4 flex flex-wrap items-end gap-2.5">
+        <input type="hidden" name="section" value="orders" />
+        <label className="flex flex-col gap-1 text-[11.5px] font-medium text-neutral-600">
+          Teslimat tarihi (başlangıç)
+          <input type="date" name="from" defaultValue={from ?? ""} className="h-9 rounded-md border border-neutral-300 bg-white px-2 text-[13px] text-neutral-900" />
+        </label>
+        <label className="flex flex-col gap-1 text-[11.5px] font-medium text-neutral-600">
+          Teslimat tarihi (bitiş)
+          <input type="date" name="to" defaultValue={to ?? ""} className="h-9 rounded-md border border-neutral-300 bg-white px-2 text-[13px] text-neutral-900" />
+        </label>
+        <button type="submit" className="min-h-[36px] rounded-md bg-neutral-900 px-3 text-[12.5px] font-semibold text-white hover:bg-neutral-700">
+          Filtrele
+        </button>
+        {(from || to) && (
+          <Link href="/admin?section=orders" className="min-h-[36px] content-center rounded-md border border-neutral-300 bg-white px-3 text-[12.5px] font-semibold text-neutral-900 hover:border-neutral-500">
+            Temizle
+          </Link>
+        )}
+      </form>
+
       <Panel>
         <TableWrap>
           <Table>
             <thead>
               <tr>
                 <Th>Sipariş No</Th>
-                <Th>Saat</Th>
+                <Th>Oluşturma</Th>
                 <Th>Şube</Th>
                 <Th>Müşteri</Th>
                 <Th>Tür</Th>
                 <Th>Teslimat</Th>
                 <Th align="right">Tutar</Th>
                 <Th>Durum</Th>
+                <Th>İşlem</Th>
               </tr>
             </thead>
             <tbody>
               {orders.length === 0 && (
-                <EmptyRow cols={8}>
-                  Henüz sipariş yok. Funnel: ürün → sepet → checkout → ödeme.
+                <EmptyRow cols={9}>
+                  {!result ? "Siparişler okunamadı." : from || to ? "Bu tarih aralığında sipariş yok." : "Henüz sipariş yok."}
                 </EmptyRow>
               )}
-              {orders.map((o) => (
-                <Row key={o.orderNumber}>
-                  <Td className="font-medium">
-                    <Link href={`/siparis-takip?order=${o.orderNumber}`} className="underline underline-offset-2">
-                      {o.orderNumber}
-                    </Link>
-                    {o.isDemo && <span className="ml-1.5"><Badge>Demo</Badge></span>}
-                  </Td>
-                  <Td>{hhmm(o.createdAt)}</Td>
-                  <Td>{getBranch(o.branchId)?.name.replace("Funda 1959 ", "") ?? "—"}</Td>
-                  <Td>{o.customer.fullName}</Td>
-                  <Td>{o.fulfillmentType === "pickup" ? "Mağazadan" : "Adrese"}</Td>
-                  <Td>{o.deliveryDate} · {o.deliverySlot}</Td>
-                  <Td align="right" className="tabular-nums">{formatTL(o.total)}</Td>
-                  <Td><Badge>{orderStatusLabel(o.orderStatus)}</Badge></Td>
-                </Row>
-              ))}
+              {orders.map((o) => {
+                const last = o.statusHistory.at(-1);
+                return (
+                  <Row key={o.orderNumber}>
+                    <Td className="font-medium">
+                      <Link href={`/siparis-takip?order=${o.orderNumber}`} className="underline underline-offset-2">
+                        {o.orderNumber}
+                      </Link>
+                      {o.isDemo && <span className="ml-1.5"><Badge>Demo</Badge></span>}
+                    </Td>
+                    <Td>{dayTime(o.createdAt)}</Td>
+                    <Td>{getBranch(o.branchId)?.name.replace("Funda 1959 ", "") ?? "—"}</Td>
+                    <Td>{o.customer.fullName}</Td>
+                    <Td>{o.fulfillmentType === "pickup" ? "Mağazadan" : "Adrese"}</Td>
+                    <Td>{o.deliveryDate} · {o.deliverySlot}</Td>
+                    <Td align="right" className="tabular-nums">{formatTL(o.total)}</Td>
+                    <Td>
+                      <Badge>{orderStatusLabel(o.orderStatus)}</Badge>
+                      {o.cancellation ? (
+                        <p className="mt-1 max-w-[220px] text-[11.5px] text-neutral-500">
+                          {o.cancellation.by} · {dayTime(o.cancellation.at)}
+                          <br />
+                          Gerekçe: {o.cancellation.reason}
+                        </p>
+                      ) : (
+                        last && (
+                          <p className="mt-1 text-[11.5px] text-neutral-500">
+                            {last.actorName} · {dayTime(last.at)}
+                          </p>
+                        )
+                      )}
+                    </Td>
+                    <Td>
+                      <OrderStatusActions orderNumber={o.orderNumber} status={o.orderStatus} deliveryType={o.fulfillmentType} />
+                    </Td>
+                  </Row>
+                );
+              })}
             </tbody>
           </Table>
         </TableWrap>
+        {result && result.total > 0 && (
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-neutral-200 px-4 py-3 text-[12.5px] text-neutral-600">
+            <span>
+              {result.total} sipariş · sayfa {Math.min(page, pages)} / {pages}
+            </span>
+            <span className="flex gap-2">
+              {page > 1 && (
+                <Link href={pageHref(page - 1)} className="rounded-md border border-neutral-300 bg-white px-3 py-1.5 font-semibold text-neutral-900 hover:border-neutral-500">
+                  ← Önceki
+                </Link>
+              )}
+              {page < pages && (
+                <Link href={pageHref(page + 1)} className="rounded-md border border-neutral-300 bg-white px-3 py-1.5 font-semibold text-neutral-900 hover:border-neutral-500">
+                  Sonraki →
+                </Link>
+              )}
+            </span>
+          </div>
+        )}
       </Panel>
     </>
   );

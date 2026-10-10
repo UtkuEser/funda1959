@@ -57,3 +57,26 @@ export const ACTIVE_STATUSES: OrderStatus[] = [
   "ready",
   "out_for_delivery",
 ];
+
+/*
+ * Admin status changes (SUPABASE_PLAN.md, A12). A branch account changes only
+ * its own branch's orders, Merkez any branch — the scope check lives on the
+ * server (api/admin/orders + RPC update_order_status, migration 0007). The
+ * same rules run in the DB function; these copies drive the panel and the
+ * local in-memory store.
+ */
+
+/** The single next step on the order's timeline; null once delivered or cancelled. */
+export function nextOrderStatus(status: OrderStatus, deliveryType: "delivery" | "pickup"): OrderStatus | null {
+  const timeline = deliveryType === "pickup" ? PICKUP_TIMELINE : DELIVERY_TIMELINE;
+  const i = timeline.indexOf(status);
+  return i >= 0 && i < timeline.length - 1 ? timeline[i + 1] : null;
+}
+
+/** Cancelling a delivered order (or refunding a payment) is not part of this phase. */
+export function canCancelOrder(status: OrderStatus): boolean {
+  return status !== "delivered" && status !== "cancelled";
+}
+
+export const CANCEL_REASON_MIN = 3;
+export const CANCEL_REASON_MAX = 500;

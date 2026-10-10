@@ -31,6 +31,8 @@ const TABLE_PROBES: { table: string; select: string; migration: string }[] = [
   { table: "app_environment", select: "name", migration: "0004" },
   { table: "campaigns", select: "image_has_text,seed_key", migration: "0005" },
   { table: "orders", select: "is_demo", migration: "0006" },
+  { table: "orders", select: "sales_channel,delivery_zone_id,cancel_reason", migration: "0007" },
+  { table: "order_status_events", select: "id", migration: "0007" },
 ];
 
 export async function GET() {

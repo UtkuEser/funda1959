@@ -11,14 +11,17 @@
  * payment status "pending" — never "paid" without a provider confirmation —
  * and is marked `is_demo = true` here, whatever the payload says. Production
  * order intake is closed (§6.1), so demo orders only reach the test project.
+ *
+ * No Funda Puan is earned here, in any store: every order is a demo order
+ * (D13), and earning for paid orders is wired with the database ledger in
+ * Aşama 6 — not switched on by this file.
  */
 
 import type { OrderSummary } from "../order";
 import { createOrder as createOrderViaSupabase, expectedDataEnvironment, isSupabaseConfigured } from "../supabase-server";
 import { assertPersistentWrite } from "../persistence";
-import { awardPointsForOrder } from "../funda-points";
 import {
-  getOrderRepository,
+  memoryOrders,
   orderToSummary,
   type NewOrderInput,
   type StoredOrderItem,
@@ -44,6 +47,7 @@ type OrderPayload = {
   delivery?: {
     type?: unknown;
     branch_slug?: unknown;
+    zone_id?: unknown;
     date?: unknown;
     time_slot?: unknown;
     address?: unknown;
@@ -76,14 +80,11 @@ export class OrderIntakeClosedError extends Error {
 const s = (v: unknown): string => (typeof v === "string" ? v : "");
 const n = (v: unknown): number => (typeof v === "number" && Number.isFinite(v) ? v : Number(v) || 0);
 
-export type PlaceOrderOptions = {
-  deliveryZoneId?: string | null;
-};
-
-export async function placeOrder(
-  payload: unknown,
-  options: PlaceOrderOptions = {},
-): Promise<OrderSummary> {
+/**
+ * Writes an order `buildOrderPayload()` produced — branch, zone and amounts
+ * are already the server's own. Never call it with browser input directly.
+ */
+export async function placeOrder(payload: unknown): Promise<OrderSummary> {
   if (!isOrderIntakeOpen()) throw new OrderIntakeClosedError();
 
   // every order is a demo order (D8) — set here, never taken from the payload
@@ -133,8 +134,9 @@ export async function placeOrder(
       : null;
 
   const input: NewOrderInput = {
+    clientRequestId: s(p.client_request_id) || null,
     branchId,
-    deliveryZoneId: options.deliveryZoneId ?? null,
+    deliveryZoneId: type === "delivery" ? s(d.zone_id) || null : null,
     fulfillmentType: type,
     // this flow is the web checkout; a future mobile app sets "mobile" here.
     salesChannel: "web",
@@ -157,17 +159,8 @@ export async function placeOrder(
     orderStatus: "new",
   };
 
-  const stored = getOrderRepository().create(input);
-
-  // Funda Puan bookkeeping must never break order creation — a real
-  // deployment would move this behind a transaction/outbox so a crash here
-  // can be retried instead of silently dropping the award.
-  try {
-    awardPointsForOrder(stored);
-  } catch (err) {
-    console.error(`[funda-points] awardPointsForOrder failed for ${stored.orderNumber}`, err);
-  }
-
+  // a demo order earns no Funda Puan (D13) — no award call here
+  const stored = memoryOrders.create(input);
   return orderToSummary(stored);
 }
 
@@ -177,6 +170,6 @@ export async function getPublicOrder(orderNumber: string): Promise<OrderSummary 
     const { getOrderSummary } = await import("../supabase-server");
     return getOrderSummary(orderNumber);
   }
-  const row = getOrderRepository().get(orderNumber);
+  const row = await memoryOrders.get(orderNumber);
   return row ? orderToSummary(row) : null;
 }

@@ -122,6 +122,26 @@ export type CreateOrderResult =
   | { ok: true; order: OrderSummary }
   | { ok: false; error: string };
 
+/**
+ * POST /api/orders/quote — the server's own figures for a CreateOrderRequest,
+ * computed by the same code as POST /api/orders (nothing is written). The
+ * payment screen shows these, so its total is the order's total.
+ */
+export type OrderQuote = {
+  deliveryType: "delivery" | "pickup";
+  branchName: string | null;
+  lines: { productName: string; variantLabel: string | null; quantity: number; unitPrice: number; lineTotal: number }[];
+  /** products only */
+  subtotal: number;
+  deliveryFee: number;
+  discount: number;
+  total: number;
+};
+
+export type OrderQuoteResult =
+  | { ok: true; quote: OrderQuote }
+  | { ok: false; error: string; reason?: string | null };
+
 /* -------------------------------------------------------------------------- */
 /* Demo helper — kept for local testing / fallback only. Production checkout   */
 /* uses the server-generated order number, never this.                        */

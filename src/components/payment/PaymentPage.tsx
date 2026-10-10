@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Container } from "@/components/shared/Container";
@@ -9,7 +9,7 @@ import { clearCart } from "@/lib/cart";
 import { useCart } from "@/lib/use-cart";
 import { formatCartDate } from "@/lib/cart-utils";
 import { getCheckoutHandoff, type CheckoutHandoff } from "@/lib/checkout-handoff";
-import type { CreateOrderResult } from "@/lib/order";
+import type { CreateOrderResult, OrderQuoteResult } from "@/lib/order";
 import {
   PaymentForm,
   validateCard,
@@ -17,9 +17,7 @@ import {
   type CardFormValue,
   type CardFormErrors,
 } from "./PaymentForm";
-import { PaymentSummary } from "./PaymentSummary";
-
-const IS_DEV = process.env.NODE_ENV !== "production";
+import { PaymentSummary, type QuoteState } from "./PaymentSummary";
 
 function PaymentSteps() {
   const steps = ["Sepet", "Teslimat", "Ödeme"];
@@ -84,10 +82,34 @@ function Line({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function PaymentPage() {
+/** `demoOrdersEnabled` is decided on the server: local + Vercel Preview only. */
+export function PaymentPage({ demoOrdersEnabled }: { demoOrdersEnabled: boolean }) {
   const router = useRouter();
   const items = useCart();
   const [handoff] = useState<CheckoutHandoff | null>(() => getCheckoutHandoff());
+
+  // The summary shows the server's figures for exactly the request this page
+  // submits, so the total on screen is the order's total (delivery fee included).
+  const [quote, setQuote] = useState<QuoteState>(() => (handoff ? { status: "loading" } : { status: "unavailable" }));
+  useEffect(() => {
+    if (!handoff) return;
+    const ctrl = new AbortController();
+    const failed = "Tutar şu an hesaplanamadı. Lütfen sayfayı yenileyin.";
+    fetch("/api/orders/quote", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(handoff.request),
+      signal: ctrl.signal,
+    })
+      .then(async (res) => {
+        const data = (await res.json().catch(() => null)) as OrderQuoteResult | null;
+        setQuote(data?.ok ? { status: "ready", quote: data.quote } : { status: "error", error: (data && !data.ok && data.error) || failed });
+      })
+      .catch(() => {
+        if (!ctrl.signal.aborted) setQuote({ status: "error", error: failed });
+      });
+    return () => ctrl.abort();
+  }, [handoff]);
 
   const [card, setCard] = useState<CardFormValue>(EMPTY_CARD);
   const [errors, setErrors] = useState<CardFormErrors>({});
@@ -123,7 +145,7 @@ export function PaymentPage() {
     setPending(true);
   };
 
-  // Dev-only: run the funnel end to end — no payment is taken, the order stays "pending" (D8).
+  // Local + Preview only: run the funnel end to end — no payment is taken, the order stays "pending" (D8).
   const demoComplete = async () => {
     if (!handoff || submitting) return;
     setSubmitting(true);
@@ -206,7 +228,7 @@ export function PaymentPage() {
                   </p>
                 )}
 
-                {IS_DEV && (
+                {demoOrdersEnabled && (
                   <div className="mt-4">
                     <button
                       type="button"
@@ -214,7 +236,7 @@ export function PaymentPage() {
                       disabled={!handoff || submitting}
                       className="font-sans text-[12.5px] font-semibold text-taupe underline decoration-taupe/40 underline-offset-4 transition-colors hover:text-burgundy disabled:opacity-50"
                     >
-                      {submitting ? "Demo akışı çalışıyor…" : "Demo Akışı Tamamla (yalnızca geliştirme)"}
+                      {submitting ? "Demo akışı çalışıyor…" : "Demo Akışı Tamamla (test siparişi, ödeme alınmaz)"}
                     </button>
                   </div>
                 )}
@@ -232,7 +254,7 @@ export function PaymentPage() {
 
             <div>
               <div className="lg:sticky lg:top-24">
-                <PaymentSummary items={items} />
+                <PaymentSummary items={items} quote={quote} />
               </div>
             </div>
           </div>

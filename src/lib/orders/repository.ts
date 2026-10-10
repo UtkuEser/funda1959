@@ -1,15 +1,19 @@
 /**
  * Order repository abstraction.
  *
- * The checkout/payment flow talks to `getOrderRepository()`, never Supabase or
- * an array directly. `MockOrderRepository` is an in-memory store used while
- * Supabase is not wired; a `SupabaseOrderRepository` slots in with the same
- * interface later. `/hesabim/siparislerim` will read through the same seam.
+ * Admin screens and the status route talk to `getOrderRepository()`, never
+ * Supabase or an array directly. `SupabaseOrderRepository`
+ * (./supabase-repository.ts, registered by ./server-init.ts) reads the
+ * database; `MockOrderRepository` is the in-memory store a developer machine
+ * without Supabase uses. Both apply the same rules: branch scope, delivery-date
+ * filter, pagination, and the status rules of SUPABASE_PLAN.md A12.
+ * `/hesabim/siparislerim` will read through the same seam (Aşama 5).
  */
 
 import type { CheckoutAddress, OrderStatus, OrderSummary, PaymentStatus, SalesChannel } from "../order";
 import { generateOrderReference } from "../order";
 import { getBranch } from "../branch";
+import { CANCEL_REASON_MIN, canCancelOrder, nextOrderStatus } from "../order-status";
 
 export type StoredOrderItem = {
   productId: string;
@@ -25,9 +29,22 @@ export type StoredOrderItem = {
   note?: string | null;
 };
 
+/** One admin status change — who, when, from what to what (and why, for a cancel). */
+export type OrderStatusEvent = {
+  fromStatus: OrderStatus;
+  toStatus: OrderStatus;
+  actorAccount: string;
+  actorName: string;
+  reason: string | null;
+  at: string;
+};
+
+export type OrderCancellation = { reason: string; by: string; at: string };
+
 export type StoredOrder = {
   id: string;
   orderNumber: string;
+  /** branch slug; null only on delivery orders created before migration 0007 */
   branchId: string | null;
   deliveryZoneId: string | null;
   fulfillmentType: "delivery" | "pickup";
@@ -51,6 +68,9 @@ export type StoredOrder = {
    */
   isDemo: boolean;
   orderStatus: OrderStatus;
+  cancellation: OrderCancellation | null;
+  /** oldest first */
+  statusHistory: OrderStatusEvent[];
   createdAt: string;
   updatedAt: string;
 };
@@ -70,17 +90,52 @@ export function orderToSummary(o: StoredOrder): OrderSummary {
 
 /* -------------------------------------------------------------------------- */
 
+export type OrderListQuery = {
+  /** null / undefined = every branch (Merkez); otherwise only these branch slugs */
+  branchIds?: string[] | null;
+  /** delivery-date range, inclusive (YYYY-MM-DD); open when null */
+  from?: string | null;
+  to?: string | null;
+  limit: number;
+  offset: number;
+};
+
+export type OrderPage = {
+  /** newest first */
+  rows: StoredOrder[];
+  /** all orders matching the query, before paging */
+  total: number;
+  statusCounts: Partial<Record<OrderStatus, number>>;
+};
+
+export type OrderActor = { account: string; name: string };
+
+export type StatusChangeRequest = {
+  orderNumber: string;
+  toStatus: OrderStatus;
+  reason: string | null;
+  actor: OrderActor;
+  /** the caller's scope from the session: null = every branch (Merkez) */
+  branchIds: string[] | null;
+};
+
+export type StatusChangeError = "NOT_FOUND" | "FORBIDDEN" | "ORDER_CLOSED" | "INVALID_TRANSITION" | "REASON_REQUIRED";
+
+export type StatusChangeResult = { ok: true; order: StoredOrder } | { ok: false; error: StatusChangeError };
+
 export interface OrderRepository {
-  create(input: NewOrderInput): StoredOrder;
-  get(orderNumber: string): StoredOrder | null;
-  list(scope?: { authorizedBranchIds?: string[] }): StoredOrder[];
-  updateStatus(orderNumber: string, status: OrderStatus): StoredOrder | null;
+  readonly kind: "memory" | "supabase";
+  get(orderNumber: string): Promise<StoredOrder | null>;
+  list(query: OrderListQuery): Promise<OrderPage>;
+  changeStatus(req: StatusChangeRequest): Promise<StatusChangeResult>;
 }
 
 export type NewOrderInput = Omit<
   StoredOrder,
-  "id" | "orderNumber" | "createdAt" | "updatedAt" | "paymentStatus" | "isDemo" | "orderStatus"
+  "id" | "orderNumber" | "createdAt" | "updatedAt" | "paymentStatus" | "isDemo" | "orderStatus" | "cancellation" | "statusHistory"
 > & {
+  /** idempotency key — the same submit retried returns the order already created */
+  clientRequestId?: string | null;
   paymentStatus?: PaymentStatus;
   /** defaults to true, like `orders.is_demo` (0006) */
   isDemo?: boolean;
@@ -89,59 +144,102 @@ export type NewOrderInput = Omit<
 
 const nowISO = () => new Date().toISOString();
 
+/** Checks shared by both stores, in the same order as RPC update_order_status (0007). */
+export function checkStatusChange(order: StoredOrder | null, req: StatusChangeRequest): StatusChangeError | null {
+  if (!order) return "NOT_FOUND";
+  if (req.branchIds && !(order.branchId && req.branchIds.includes(order.branchId))) return "FORBIDDEN";
+  if (!canCancelOrder(order.orderStatus)) return "ORDER_CLOSED";
+  if (req.toStatus === "cancelled") {
+    return (req.reason?.trim().length ?? 0) >= CANCEL_REASON_MIN ? null : "REASON_REQUIRED";
+  }
+  return req.toStatus === nextOrderStatus(order.orderStatus, order.fulfillmentType) ? null : "INVALID_TRANSITION";
+}
+
 /**
  * In-memory store. Kept on `globalThis` so a Route Handler and a Server
  * Component in the same Node process share the same rows (Next may load the
  * module into separate registries per entry otherwise).
  */
-const globalStore = globalThis as unknown as { __fundaOrders?: Map<string, StoredOrder> };
+const globalStore = globalThis as unknown as {
+  __fundaOrders?: Map<string, StoredOrder>;
+  __fundaOrderRequests?: Map<string, string>;
+};
 globalStore.__fundaOrders ??= new Map<string, StoredOrder>();
+globalStore.__fundaOrderRequests ??= new Map<string, string>();
 
-class MockOrderRepository implements OrderRepository {
+export class MockOrderRepository implements OrderRepository {
+  readonly kind = "memory" as const;
   private readonly rows = globalStore.__fundaOrders!;
+  private readonly requests = globalStore.__fundaOrderRequests!;
 
   create(input: NewOrderInput): StoredOrder {
-    const isDemo = input.isDemo ?? true;
+    const { clientRequestId, ...rest } = input;
+    const existing = clientRequestId ? this.rows.get(this.requests.get(clientRequestId) ?? "") : undefined;
+    if (existing) return existing;
+
+    const isDemo = rest.isDemo ?? true;
     // "paid" only ever comes from a payment provider's confirmation (D8)
-    const paymentStatus = input.paymentStatus ?? "pending";
+    const paymentStatus = rest.paymentStatus ?? "pending";
     // same rule as the DB check `orders_demo_never_paid` (0006)
     if (isDemo && paymentStatus === "paid") throw new Error("a demo order can never be paid");
     const orderNumber = generateOrderReference();
     const order: StoredOrder = {
-      ...input,
+      ...rest,
       id: `ord_${orderNumber}`,
       orderNumber,
       paymentStatus,
       isDemo,
-      orderStatus: input.orderStatus ?? "new",
+      orderStatus: rest.orderStatus ?? "new",
+      cancellation: null,
+      statusHistory: [],
       createdAt: nowISO(),
       updatedAt: nowISO(),
     };
     this.rows.set(orderNumber, order);
+    if (clientRequestId) this.requests.set(clientRequestId, orderNumber);
     return order;
   }
 
-  get(orderNumber: string): StoredOrder | null {
+  async get(orderNumber: string): Promise<StoredOrder | null> {
     return this.rows.get(orderNumber) ?? null;
   }
 
-  list(scope?: { authorizedBranchIds?: string[] }): StoredOrder[] {
-    const all = [...this.rows.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-    if (!scope?.authorizedBranchIds) return all;
-    const allow = new Set(scope.authorizedBranchIds);
-    return all.filter((o) => o.branchId && allow.has(o.branchId));
+  async list(q: OrderListQuery): Promise<OrderPage> {
+    const matching = [...this.rows.values()]
+      .filter((o) => !q.branchIds || (o.branchId !== null && q.branchIds.includes(o.branchId)))
+      .filter((o) => (!q.from || o.deliveryDate >= q.from) && (!q.to || o.deliveryDate <= q.to))
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    const statusCounts: Partial<Record<OrderStatus, number>> = {};
+    for (const o of matching) statusCounts[o.orderStatus] = (statusCounts[o.orderStatus] ?? 0) + 1;
+    return { rows: matching.slice(q.offset, q.offset + q.limit), total: matching.length, statusCounts };
   }
 
-  updateStatus(orderNumber: string, status: OrderStatus): StoredOrder | null {
-    const cur = this.rows.get(orderNumber);
-    if (!cur) return null;
-    const next = { ...cur, orderStatus: status, updatedAt: nowISO() };
-    this.rows.set(orderNumber, next);
-    return next;
+  async changeStatus(req: StatusChangeRequest): Promise<StatusChangeResult> {
+    const cur = this.rows.get(req.orderNumber) ?? null;
+    const error = checkStatusChange(cur, req);
+    if (error || !cur) return { ok: false, error: error ?? "NOT_FOUND" };
+
+    const at = nowISO();
+    const reason = req.toStatus === "cancelled" ? req.reason!.trim() : null;
+    const next: StoredOrder = {
+      ...cur,
+      orderStatus: req.toStatus,
+      cancellation: reason ? { reason, by: req.actor.name, at } : cur.cancellation,
+      statusHistory: [
+        ...cur.statusHistory,
+        { fromStatus: cur.orderStatus, toStatus: req.toStatus, actorAccount: req.actor.account, actorName: req.actor.name, reason, at },
+      ],
+      updatedAt: at,
+    };
+    this.rows.set(req.orderNumber, next);
+    return { ok: true, order: next };
   }
 }
 
-let repo: OrderRepository = new MockOrderRepository();
+/** The in-memory store itself — the order engine writes here on a developer machine without Supabase. */
+export const memoryOrders = new MockOrderRepository();
+
+let repo: OrderRepository = memoryOrders;
 
 export function setOrderRepository(next: OrderRepository): void {
   repo = next;

@@ -71,7 +71,7 @@ export type AwardPointsResult =
   | { awarded: true; transaction: FundaPointTransaction }
   | {
       awarded: false;
-      reason: "OFFLINE_CHANNEL" | "NO_CUSTOMER" | "ZERO_POINTS" | "ALREADY_AWARDED";
+      reason: "DEMO_ORDER" | "OFFLINE_CHANNEL" | "NO_CUSTOMER" | "ZERO_POINTS" | "ALREADY_AWARDED";
       transaction?: FundaPointTransaction;
     };
 

@@ -4,5 +4,4 @@ export {
   getPublicOrder,
   isOrderIntakeOpen,
   OrderIntakeClosedError,
-  type PlaceOrderOptions,
 } from "./engine";

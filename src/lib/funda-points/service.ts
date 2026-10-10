@@ -113,12 +113,17 @@ function refundReversalKey(orderId: string): string {
  * transaction (unique business key `<orderId>:PURCHASE_EARN`, enforced in
  * the repository).
  *
- * Never throws for expected non-award outcomes (offline channel, no
- * resolvable customer, zero eligible points) — the order engine must not
+ * A demo order (`isDemo`, no payment taken — SUPABASE_PLAN.md D8/D13) never
+ * earns, whichever store it lives in.
+ *
+ * Never throws for expected non-award outcomes (demo order, offline channel,
+ * no resolvable customer, zero eligible points) — the order engine must not
  * let Funda Puan bookkeeping fail order creation. Callers should still
  * wrap this in try/catch for genuine ledger errors.
  */
 export function awardPointsForOrder(order: StoredOrder): AwardPointsResult {
+  if (order.isDemo) return { awarded: false, reason: "DEMO_ORDER" };
+
   const channel = resolveOrderSalesChannel(order);
   if (!isOnlineSalesChannel(channel)) return { awarded: false, reason: "OFFLINE_CHANNEL" };
 

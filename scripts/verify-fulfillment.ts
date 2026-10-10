@@ -7,10 +7,11 @@
 import { getProductAvailability, getCartAvailability } from "@/lib/availability";
 import { resolveZone } from "@/lib/delivery/zones";
 import { placeOrder, getPublicOrder } from "@/lib/orders";
+import { istanbulDateISO, istanbulInstant } from "@/lib/time/istanbul";
 import { requireTestEnvironmentForWrites } from "./test-environment-guard";
 
-const NOW = new Date();
-NOW.setHours(11, 0, 0, 0); // deterministic "morning" clock
+// deterministic "morning" clock: 11:00 in Istanbul today, whatever the machine's zone
+const NOW = istanbulInstant(istanbulDateISO(), "11:00");
 
 let failures = 0;
 function check(label: string, cond: boolean) {
@@ -163,6 +164,7 @@ async function main() {
     delivery: {
       type: "delivery",
       branch_slug: "incek",
+      zone_id: zone?.id ?? null,
       date: a.requestedDate,
       time_slot: "18:00 – 20:00",
       address: {
@@ -186,7 +188,7 @@ async function main() {
     discount: 0,
     total: 1120,
   };
-  const summary = await placeOrder(payload, { deliveryZoneId: zone?.id ?? null });
+  const summary = await placeOrder(payload);
   console.log("  order:", summary.orderNumber, "| branch:", summary.branchName, "| total:", summary.total);
   check("order created with branch İncek", summary.branchName === "Funda 1959 İncek");
   const fetched = await getPublicOrder(summary.orderNumber);
