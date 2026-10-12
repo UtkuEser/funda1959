@@ -1,6 +1,6 @@
 # Funda 1959 — Supabase'e Geçiş Planı
 
-> **Durum:** Planlama dokümanı + Aşama 0 uygulaması. Ortam/yönetim kararları (D1–D4) ve iş kararları (D5–D11) işlendi. Aşama 0 kodu ve `0006` hazır (2026-10-10). `funda1959-test` kuruldu (`0001`–`0006` + `test` işareti); `supabase-test` dalı (`e897090`) Vercel Preview'da. **Aşama 1 Preview'da doğrulandı (2026-10-10).** **Aşama 2 tamamlandı (2026-10-10): `0007` `funda1959-test`'e uygulandı; local + gerçek test Supabase ve Preview doğrulaması geçti (`2c75944`).** **Aşama 3 tamamlandı (2026-10-10, `63331f7`; Preview doğrulandı).** **Aşama 4: `0009` `funda1959-test`'e uygulandı, gerçek test Supabase kontrolleri geçti; kod `supabase-test` dalına pushlandı (`04d7f43` fiyat yönetimi, `5c73517` ürün başına tek satır + açılır boyut düzenleme). Preview'da yalnızca Macaron fiyat eşleşmesi ve açılır boyut ekranı doğrulandı; diğer Preview kontrolleri yapılmadı (2026-10-12).** **Aşama 5 (müşteri üyeliği): local `.env.local` kuruldu, `0010` `funda1959-test`'te çalıştırıldı ve kullanıcının gerçek local üyelik testleri geçti (2026-10-12). Kod commit edilmedi, Preview yok. Google ve Funda Puan kapalı; özel SMTP sonraya bırakıldı.** Production projesi kurulmadı; `main` (`60355bf`) ve Production değişmedi.
+> **Durum:** Planlama dokümanı + Aşama 0 uygulaması. Ortam/yönetim kararları (D1–D4) ve iş kararları (D5–D11) işlendi. Aşama 0 kodu ve `0006` hazır (2026-10-10). `funda1959-test` kuruldu (`0001`–`0006` + `test` işareti); `supabase-test` dalı (`e897090`) Vercel Preview'da. **Aşama 1 Preview'da doğrulandı (2026-10-10).** **Aşama 2 tamamlandı (2026-10-10): `0007` `funda1959-test`'e uygulandı; local + gerçek test Supabase ve Preview doğrulaması geçti (`2c75944`).** **Aşama 3 tamamlandı (2026-10-10, `63331f7`; Preview doğrulandı).** **Aşama 4: `0009` `funda1959-test`'e uygulandı, gerçek test Supabase kontrolleri geçti; kod `supabase-test` dalına pushlandı (`04d7f43` fiyat yönetimi, `5c73517` ürün başına tek satır + açılır boyut düzenleme). Preview'da yalnızca Macaron fiyat eşleşmesi ve açılır boyut ekranı doğrulandı; diğer Preview kontrolleri yapılmadı (2026-10-12).** **Aşama 5 (müşteri üyeliği): `c6f1292` `supabase-test`'e pushlandı ve Preview'da Ready; `0010` `funda1959-test`'te; kullanıcının local ve Preview testleri ile local otomatik kontroller (38/38) geçti; temel akışlar local ve Preview'da doğrulandı, kalan kontroller ertelendi (2026-10-12). Google ve Funda Puan kapalı; özel SMTP sonraya bırakıldı.** Production projesi kurulmadı; `main` (`60355bf`) ve Production değişmedi.
 > **Çalışma klasörü:** `funda1959-supabase-test` — GitHub `supabase-test` dalının ZIP'i (`.git` yok; önceki yerel klasör silindi). Plan ilk olarak `funda1959-git` — son commit `60355bf` + commit edilmemiş değişiklikler — üzerinde hazırlandı (bkz. §8).
 > **Kapsam:** Site ve admin paneli aynı Next.js projesinde kalır; ayrıştırma kapsam dışıdır.
 > **Son güncelleme:** 2026-10-12
@@ -56,6 +56,7 @@
 | **D27** (2026-10-12; D26'nın uygulaması düzeltildi) | **Test ortamında kayıt akışı denenebilir:** web ekibi local ve Preview'da (`funda1959-test`) test hesaplarıyla kayıt olabilir. **Gerçek müşteriye üyeliğin açılması ve hukuki metinlerin tamamlanması ayrı kalır.** Sahte onay kaydı oluşturulmaz. | `isSignupOpen()` yalnızca test verisinde açık; Production'da kayıt istek gönderilmeden 403. Test projesinde "Allow new users to sign up" açık, production projesinde kapalı. Açılış: metinler (A24) + kod değişikliği + ayrı onay. |
 | **D28** (2026-10-12) | **Checkout ve sipariş detayı:** varsayılan adres checkout'ta önceden seçili olabilir. Müşteri **kendi siparişinin iptal gerekçesini görebilir.** | Varsayılan adres yalnızca formda adres yokken ve kayıtlı bölge boş ya da aynıyken seçilir; başlıkta seçilen başka bölgenin yerine geçmez. Gerekçe görünür, işlemi yapan hesap görünmez (§8.2). |
 | **D29** (2026-10-12) | **Otomatik şifre geçersizleştirme veya toplu oturum kapatma uygulanmaz.** E-posta doğrulaması kapalı kalır (D23). Google ↔ e-posta/şifre hesap eşleşmesi güvenli biçimde çözülemiyorsa Google bağlantısı etkinleştirilmez. | Supabase belgeleri doğrulandı; otomatik bağlama doğrulama kapalıyken güvensiz ve kapatılamıyor → Google engelli (§8.2 "Google engeli", A25). Çıkış yalnızca o tarayıcının oturumunu kapatır (`scope: "local"`). |
+| **D30** (A26, 2026-10-12) | **Şifre değişince diğer oturumlar:** Supabase'in, şifre güncellenince aynı hesabın diğer oturumlarını sonlandırma davranışı **korunur.** | Supabase diğer oturumların yenileme belirteçlerini iptal eder; o oturumlar en geç erişim belirtecinin süresi dolunca (varsayılan 1 saat) kapanır. Uygulama kendisi oturum kapatmaz (D29 geçerli). Kabul kriteri buna göre düzeltildi. |
 
 **Henüz kararlaştırılmayanlar:** kampanya tarihleri ve koşulları, ve §9'daki diğer konular **onaylanmış sayılmaz**.
 
@@ -93,7 +94,7 @@
 - **Tamamlanan:** `funda1959-test` + Preview kurulumu (§7.6, adım 12–13), Aşama 1 doğrulaması (§8), Aşama 2'nin local + gerçek test Supabase doğrulaması ve Preview doğrulaması (§7.6 "Aşama 2 kurulum kontrolü"), Aşama 3'ün local + gerçek test Supabase doğrulaması ve Preview doğrulaması (`63331f7`; §7.6 "Aşama 3 kurulum kontrolü", 2026-10-10).
 - **Sıradaki:**
   - Aşama 4 (fiyat yönetimi): fiyat kararları D16–D21 işlendi; her boyutun fiyatı ayrı düzenlenebilir (47 fiyat), p13 kartı ₺260. `0009` `funda1959-test`'e uygulandı; local ve gerçek test Supabase kontrolleri geçti (2026-10-12, §7.6). Kod pushlandı (`04d7f43`, `5c73517`); Preview'da yalnızca Macaron fiyat eşleşmesi ve açılır boyut ekranı doğrulandı. Kalan Preview kontrolleri bekliyor (§7.6 "Aşama 4 kurulum kontrolü", adım 4),
-  - Aşama 5 (müşteri üyeliği): local + gerçek `funda1959-test` testleri kullanıcı tarafından geçildi (§8.2). Preview hazırlığı tamam (Preview `SUPABASE_ANON_KEY`, dalın yönlendirme adresi; kullanıcı). Commit + push `origin/supabase-test`'e (2026-10-12). Sırada Preview kabul kontrolleri (§7.6 "Henüz yapılmamış kabul kontrolleri"); Preview testleri yapılmış sayılmaz. Google engeli kararı bekliyor (A25),
+  - Aşama 5 (müşteri üyeliği): temel akışlar local ve Preview'da doğrulandı, kalan kontroller ertelendi ve açık (§7.6 "Aşama 5 durumu"); D30 kabul edildi. Sıradaki aşama (Aşama 6, Funda Puan) için kararlar bekleniyor; kod ve migration yok. Google engeli kararı bekliyor (A25),
   - Production kurulumu (§7.6, adım 14) ayrı onayla; sipariş alımı kapalı kalır (§6.1).
 - **Kalan bilinen sorunlar [K]:**
   - Teslimat ücreti ve minimum (Aşama 3): ücret `delivery_zone_fees`'ten (D15), minimum 500 TL adrese teslimde (D14); `0008` test projesinde (2026-10-10), production'da yok. Bölge/mahalle listeleri ve test projesindeki ücretler test amaçlı, onaylı fiyat değil (A4).
@@ -889,37 +890,92 @@ Yeni değişken yalnızca sonraki deploy'a girer: push'tan önce eklenmeli (sonr
 - **Özel SMTP sonraya bırakıldı:** yerleşik e-posta yalnızca proje ekibi üyelerinin adreslerine ve saatte birkaç e-posta gönderir. Preview'da sıfırlama bir ekip üyesi adresiyle denenmeli.
 - **Sağlayıcılar:** Google, Apple ve Facebook kapalı kalır (A25).
 
-**Henüz yapılmamış kabul kontrolleri (2026-10-12)**
+**Push (2026-10-12)**
 
-*Preview'da (commit + push sonrası)*
+- Commit `c6f1292` ("Aşama 5: müşteri üyeliği, profil, kayıtlı adresler ve üye siparişleri"): 64 dosya. Yalnızca `origin/supabase-test`'e push edildi (`5c73517..c6f1292`, ileri sarma, zorlama yok); `main`, Production ve migration yok.
+- Vercel Preview build: push'tan sonraki ~11 dakikada GitHub'a durum kaydı gelmedi; aynı saatlerde Vercel'de açık bir olay vardı ("Increased build and deployment failures"). Kullanıcı daha sonra **`c6f1292` Preview dağıtımının Vercel'de Ready olduğunu doğruladı.**
 
-1. Merkez `/api/health` şunları göstermeli:
-   - `expectedData: test` ve `0001`–`0010` hepsi `ok`;
-   - `customerAuth`: `configured: true`, `signupOpenInCode: true`, `signupEnabledInSupabase: true`, `emailConfirmationOff: true`;
-   - `providersEnabledInSupabase` içinde google, apple ve facebook `false`.
-2. Local'de geçen akışların Preview'da tekrarı: kayıt → oturum; çıkış ve giriş; profil ve adreslerin yenileme sonrası kalması; checkout otomatik doldurma; sıfırlama e-postasının **Preview adresine** dönmesi; başka hesabın sipariş numarasının "bulunamadı" demesi.
+**Sonuç — Preview (`supabase-test` @ `c6f1292` + `funda1959-test`, kullanıcı tarafından doğrulandı, 2026-10-12)**
 
-*Local'de de bildirilmeyen, yapılmış sayılmayanlar*
+- Mevcut hesapla giriş.
+- Profil, kayıtlı adresler ve üye siparişlerinin görüntülenmesi.
+- Şifre sıfırlama: e-postadaki bağlantı Preview adresine döndü; yeni şifreyle yeniden giriş yapıldı.
 
-3. Siparişin hesaba bağlanması: girişliyken verilen sipariş Siparişlerim'de görünür ve `orders.customer_user_id` doludur. Aynı e-postayla verilmiş misafir siparişi listede görünmez.
-4. İptal edilen siparişte gerekçe görünür, işlemi yapan hesap görünmez.
-5. Adres kuralları: 11. adres reddedilir; varsayılan silinince en eski adres varsayılan olur.
-6. "Beni hatırla" kapalıyken tarayıcı kapanınca oturum biter.
-7. Şifre sıfırlama ayrıntıları:
-   - kayıtsız e-postaya da aynı yanıt;
-   - eski şifre geçersiz olur;
-   - başka tarayıcıdaki oturum kapanmaz;
-   - 15 dakikayı geçen bağlantı reddedilir.
-8. `customer_profiles.terms_version` ve `terms_accepted_at` boş kalır (onay kaydı yok); salt okunur SQL ile teyit edilir.
-9. Supabase bağlıyken değişmeyenler:
-   - misafir checkout aynen çalışır;
-   - admin girişleri ve sipariş ekranı etkilenmez;
-   - Funda Puan hareketi yazılmaz.
-10. Google butonu görünmez ve Supabase panelinde sağlayıcılar kapalıdır.
+Bu liste dışındaki Preview kontrolleri yapılmış sayılmaz.
 
-*Production'da (kurulduğunda; Preview'da denenemez)*
+**Sonuç — local derlenmiş sürüm + gerçek `funda1959-test`, otomatik kontroller (2026-10-12): 38/38**
 
-11. Kayıt 403, `POST /api/orders` 503, demo butonu yok; Production'da `SUPABASE_ANON_KEY` tanımlı değil.
+`next build` çıktısı ayrı bir süreçte (3100 portu) `.env.local` ile çalıştırıldı. Betik scratchpad'deydi ve depoya girmedi; token, şifre ve anahtar yazdırmadı. E-posta gönderilmedi, migration çalıştırılmadı.
+
+- **Health (Merkez):** `expectedData: test`, `database: ready`, `0001`–`0010` 14 kontrolün hepsi `ok`. `customerAuth`: kodda kayıt açık, Supabase'de kayıt açık, e-posta doğrulaması kapalı; Google, Apple ve Facebook kapalı.
+- **Sosyal giriş:** `/giris`'te buton yok; Google başlatma → `/giris?hata=saglayici`.
+- **Kayıt:** iki yeni hesap doğrudan oturum açtı. Çerezler `HttpOnly` ve `SameSite=Lax`, "Beni hatırla" açıkken `Max-Age` var.
+- **Onay kaydı yok:** yeni profillerde `terms_version` ve `terms_accepted_at` boş; test projesindeki 4 profilin hiçbirinde onay kaydı yok (salt okunur sorgu).
+- **"Beni hatırla" kapalı:** oturum çerezlerinde `Max-Age` ve `Expires` yok; `funda_auth_persist=0`.
+- **Adresler:**
+  - 10 adres kaydedildi, ilki varsayılan; 11. adres 409.
+  - 3. adres varsayılan yapılınca tek varsayılan kaldı.
+  - Varsayılan silinince en eski adres varsayılan oldu (veritabanında teyit).
+  - Başka hesabın adresi silinemedi (404).
+- **Üye siparişi:**
+  - Girişliyken verilen demo sipariş: `orders.customer_user_id` oturumdaki hesap oldu; gövdeye konan başka hesabın kimliği yok sayıldı. Sipariş demo ve `pending`.
+  - Aynı e-postayla verilen misafir siparişinde `customer_user_id` boş.
+  - Siparişlerim üye siparişini gösteriyor, misafir siparişini göstermiyor.
+  - Başka hesap bu sipariş detayında "Sipariş Bulunamadı" görüyor.
+- **Admin ve iptal:** Merkez girişi ve sipariş ekranı çalışıyor, üye siparişi listede. Gerekçeli iptal sonrası müşteri detayında "İptal gerekçesi" ve gerekçe görünüyor; `cancelled_by` değeri görünmüyor.
+- **Değişmeyenler:** misafir checkout Supabase bağlıyken 201 döndü. Funda Puan'da müşteri için hesap ve hareket oluşmadı (404).
+- **Şifre:**
+  - Normal oturumdan `recovery` modu 403 döndü (gerçek Supabase `amr` kontrolü).
+  - Yanlış mevcut şifre 400; doğru şifreyle değişiklik 200.
+  - Eski şifre reddedildi, yenisi kabul edildi.
+  - Kayıtsız e-postaya sıfırlama isteği `{"ok":true}` döndü (e-posta gönderilmedi).
+- **Çıkış:** yalnızca o tarayıcı çıkış yaptı; diğer tarayıcıdaki oturum açık kaldı.
+- **Bulgu — şifre değişince diğer oturumlar Supabase tarafından kapatılıyor:**
+  - Şifre değiştikten sonra aynı hesabın başka tarayıcıdaki oturumunun yenileme belirteci `400 refresh_token_not_found` döndü.
+  - Kontrol denemesi: şifre değişmeden yenileme 200.
+  - Bu, Supabase'in kendi davranışı; uygulama kodu oturum kapatmıyor (D29 korunuyor). Diğer oturum, erişim belirtecinin süresi dolana kadar (varsayılan 1 saat) çalışıyor, sonra girişe düşüyor.
+  - Şifre sıfırlamada da aynı Auth işlemi (`updateUser`) kullanıldığından aynı sonuç beklenir [V].
+- **Production simülasyonu (local, `VERCEL_ENV=production`, test projesine bağlı; gerçek Production değildir):**
+  - `/api/health` → `env_mismatch`, veri isteği yok.
+  - Kayıt 403 `SIGNUP_CLOSED`; `/uye-ol` "Üyelik henüz açılmadı" diyor.
+  - `POST /api/orders` 503 "Online sipariş alımı henüz açılmadı."
+  - Demo butonu bu yöntemle doğrulanamadı: buton istemci tarafında, sepet olduğunda çiziliyor.
+- **Test kayıtları (`funda1959-test`'te korunuyor; sentetik, e-posta `a5local-202610121640-{a,b}@example.com`):**
+  - 2 hesap; A hesabında 9 adres.
+  - `FND-20261012-739E`: üye siparişi, gel-al GOP, gerekçeyle iptal (Merkez).
+  - `FND-20261012-611C`: misafir siparişi, yeni.
+  - A hesabının şifresi test sırasında iki kez değiştirildi.
+
+**Aşama 5 kabul kontrolleri — durum (2026-10-12)**
+
+| # | Kontrol | Durum |
+|---|---|---|
+| 1 | Merkez `/api/health` (0001–0010, `customerAuth`, sağlayıcılar kapalı) | **Kısmen:** local'de aynı test projesiyle tamam (Supabase tarafı doğrulandı). Preview'da çağrılması **ertelendi** (2026-10-12; geçti sayılmaz). |
+| 2 | Local akışların Preview'da tekrarı | **Kısmen (kullanıcı):** mevcut hesapla giriş; profil, adres ve üye siparişi görüntüleme; Preview'a dönen bağlantıyla şifre sıfırlama ve yeniden giriş geçti. **Ertelendi (2026-10-12; geçti sayılmaz):** Preview'da yeni kayıt, çıkış, düzenleme sonrası yenileme, checkout otomatik doldurma, başka hesabın sipariş numarası. |
+| 3 | Sipariş hesaba bağlanıyor; misafir siparişi bağlanmıyor | **Tamam** (local, gerçek test projesi). |
+| 4 | İptal gerekçesi görünür, işlemi yapan hesap görünmez | **Tamam** (local). |
+| 5 | 11. adres reddi; varsayılan silinince en eski adres | **Tamam** (local). |
+| 6 | "Beni hatırla" kapalıyken oturum tarayıcıyla biter | **Kısmen:** çerezler oturum çerezi (`Max-Age`/`Expires` yok). Gerçek tarayıcı kapatma **ertelendi**; bazı tarayıcılar "kaldığın yerden devam et" ayarıyla oturum çerezlerini saklar. |
+| 7a | Kayıtsız e-postaya aynı yanıt | **Tamam** (local; `{"ok":true}`). |
+| 7b | Eski şifre geçersiz olur | **Tamam:** profil şifre değişikliğiyle (local). Sıfırlama sonrası kullanıcı yeni şifreyle girdi; eski şifre ayrıca denenmedi. |
+| 7c | Şifre değişince diğer oturumlar | **Kapandı — D30:** Supabase diğer oturumları en geç 1 saat içinde sonlandırır; bu davranış korunur. Kod oturum kapatmaz. Local'de doğrulandı (yenileme belirteci iptal, kontrol denemesi geçerli). |
+| 7d | 15 dakikayı geçen sıfırlama bağlantısı reddedilir | **Ertelendi (2026-10-12; geçti sayılmaz):** gerçek e-posta ve 16 dakika bekleme gerekir (yerleşik SMTP yalnızca ekip adresleri). |
+| 8 | Onay kaydı yok | **Tamam** (test projesindeki tüm profiller). |
+| 9 | Misafir checkout, admin, Funda Puan değişmedi | **Tamam** (local). |
+| 10 | Google butonu yok, sağlayıcılar kapalı | **Tamam** (local; Supabase ayarları health'ten). |
+| 11 | Production: kayıt 403, sipariş 503, demo butonu yok, anon anahtar yok | **Kısmen:** local Production simülasyonunda kayıt 403 ve sipariş 503. Gerçek Production kurulmadı. Anon anahtarın Production'da olmadığını kullanıcı bildirdi. Demo butonu HTML'den doğrulanamadı. |
+
+**Aşama 5 durumu (2026-10-12): temel akışlar local ve Preview'da doğrulandı; kalan kontroller ertelendi**
+
+Ertelenen kontroller **açık** kalır ve geçti sayılmaz:
+
+1. Preview'da yeni kayıt ve çıkış; profil ve adres düzenleyip yenileme; checkout otomatik doldurma; başka hesabın sipariş numarası (madde 2).
+2. Preview'da Merkez oturumuyla `/api/health` (madde 1).
+3. 15 dakikayı geçen sıfırlama bağlantısının reddi (madde 7d).
+4. "Beni hatırla" kapalıyken gerçek tarayıcı kapatma (madde 6).
+5. Gerçek Production kontrolleri (madde 11): Production kurulunca.
+
+Aşama 5 dışında, canlıya geçişle ilgili konular: Google (A25), üyelik metinleri (A24), özel SMTP (ertelendi), production projesi kurulumu (§7.6 adım 14) ve gerçek Production kontrolleri.
 
 *Google — engelli (§8.2, A25)*
 
@@ -965,7 +1021,7 @@ Aşamalar bağımlılık sırasındadır ve **tek tek** uygulanır; her biri ayr
 | **2. Siparişler** | `0007_orders_hardening.sql`; `lib/order-server.ts` (motorla yeniden uygunluk, İstanbul tarihi, adresten şube/bölge, sunucuda fiyat/indirim/ücret); `app/api/orders` (stok okunamazsa 503, 400/409); `lib/orders/repository.ts` (asenkron depo, kapsam/filtre/sayfa, D12 kuralları), `lib/orders/supabase-repository.ts`, `lib/orders/server-init.ts`; `PATCH /api/admin/orders`; `app/admin/page.tsx` (DB'den genel bakış + liste, tarih filtresi, sayfalama, İstanbul saati, iptal kaydı), `components/admin/OrderStatusActions.tsx`; demo butonu local + Preview (`app/hizli-siparis-odeme/page.tsx`, `PaymentPage`); ödeme ekranı tutarları sunucudan (`POST /api/orders/quote`, `PaymentSummary`: ürün toplamı + teslimat ücreti ayrı, toplam = sipariş toplamı); demo siparişe puan yok (D13: `funda-points/service.ts`, `orders/engine.ts`); `lib/checkout-utils.ts`; `lib/order-status.ts`; `/api/health` `0007`; `scripts/verify-orders.ts` | 0, 1, D12 | **Tamamlandı (2026-10-10)**: `0007` test projesine uygulandı; local + gerçek `funda1959-test` (45/45 + doğrudan RPC eşzamanlılık) ve Preview (`2c75944`; 7AA6 ₺165 tutarlı, şube kapsamı, adım adım teslim, gerekçeli iptal) doğrulandı (§7.6 "Sonuç"). | Sipariş yenileme ve yeni oturumda korunur. Aynı istek 2 kez (sıralı ve eşzamanlı) → tek sipariş, aynı numara. Demo sipariş `pending` + etiketli. Geçersiz tarih/saat/pasif ürün/bölge → 409; stok okunamazsa 503. Teslimat şubesi adresten. Şube yalnızca kendi siparişlerini görür ve değiştirir; Merkez hepsini. İptal gerekçeli ve kayıtlı; teslim edilmiş sipariş iptal edilmez. |
 | **3. Teslimat ücreti + minimum sipariş** | `0008_delivery_zone_fees.sql`; `lib/order-rules.ts` (500 TL); `lib/delivery/fees.ts` + `fees-server.ts` (Supabase / local dosya / sunucusuz ortamda kullanılamaz); motor (`DELIVERY_FEE_NOT_SET`, `DELIVERY_INFO_UNAVAILABLE`); `lib/order-server.ts` (ücret + `BELOW_MINIMUM`, 503); `api/orders` (önceki siparişi istek kimliğiyle önce bulur), `api/orders/quote`, `api/availability`; `PATCH /api/admin/delivery-fees` (yalnızca Merkez); admin "Bölgeler" + `DeliveryFeeEditor`; `formatTL` kuruş; sepet / hızlı sipariş / checkout minimum (`DeliveryMinimumNotice`) ve sunucudan ücret (`POST /api/delivery-fee`, `useDeliveryFee`, `OrderTotals`); checkout'ta kayıtlı adresin ilk açılışta kontrolü; ödeme ekranında demo butonu yalnızca geçerli tutar hesabıyla; PDP ve ödeme özeti ücret durumu; `zones.ts`'ten örnek ücret ve minimumlar kaldırıldı; `/api/health` `0008`; `scripts/test-fee-store.ts`, `verify-orders`, `verify-fulfillment` | 2; D14, D15 | **Tamamlandı (2026-10-10)**: `0008` test projesinde; local + gerçek `funda1959-test` (57/57 sunucu + RPC, 24/24 ekran, 33/33 ücret düzenleyici, 33/33 sepet → checkout → ödeme → sipariş) ve Preview (`63331f7`; `FND-20261010-4866` ₺540 + ₺230 = ₺770, admin'de görünüyor) doğrulandı (§7.6 "Aşama 3 kurulum kontrolü") | Ücreti belirlenmemiş bölgeye adrese teslim alınmaz, ücretsiz kabul edilmez; gel-al çalışır. Açıkça ücretsiz bölge 0 TL. Kuruşlu ücret yuvarlanmadan. Ücret okunamazsa "Teslimat bilgisi şu an alınamıyor". 499,99 reddedilir, 500 kabul edilir; indirimle altına düşen reddedilir; gel-al muaf. Şube ücret yazamaz (403). Tekrarlanan istek ikinci sipariş oluşturmaz; ücret sonradan değişse de eski sipariş korunur. |
 | **4. Fiyat yönetimi** | `0009_product_prices.sql` (tablo + `create_order` v5); `lib/pricing/{prices,prices-server,prices-context,use-cart-prices}`; `lib/order-server.ts` ve motor aynı çözücü; `api/prices` (GET gösterim, POST sepet), `PATCH /api/admin/prices` (yalnızca Merkez); admin "Fiyatlar" (`ProductPricesTable`, `ProductPriceEditor`); fiyat gösteren sayfalar istek anında + `PricesProvider`; kart, hızlı sipariş, arama ve sıralama güncel fiyat; sepet / hızlı sipariş / checkout satır fiyatları sunucudan; `/api/health` `0009`; `scripts/verify-prices.ts`, `test-price-store.ts`. Teslimat Bölgeleri tablosu da istemci bileşeni (`ZoneFeesTable`) | 0 | **`0009` `funda1959-test`'te; local (mock e2e 255/255, tarayıcı 39/39 + 30/30, `verify-prices` 61/61) ve gerçek test Supabase'i (58/58) doğrulandı (2026-10-12)**; kararlar D16–D21 işlendi; **pushlandı (`04d7f43`, `5c73517`)**; Preview'da yalnızca Macaron fiyat eşleşmesi ve açılır boyut ekranı doğrulandı, diğer Preview kontrolleri bekliyor → §7.6 "Aşama 4 kurulum kontrolü" | Merkez fiyatı değiştirir; şube hesabı 403. Yeni fiyat katalogda, PDP'de, aramada, hızlı siparişte, sepette, checkout'ta, ödeme hesabında ve siparişte aynı. Eski siparişlerin kalemleri değişmez. Bilinmeyen ürün/varyant reddedilir. Fiyat okunamazsa sipariş ve ödeme hesabı 503. Kayıt sonrası admin tablosu hemen güncel; başarısız kayıt başarı göstermez. Kart en küçük boyutun fiyatını ("başlayan" ifadesi olmadan), ürün sayfası seçilen boyutun fiyatını gösterir. Her boyut ayrı düzenlenir, diğer boyutlar değişmez (D20). Eski fiyat yalnızca belirlenmiş ürün veya boyutta: Trüf kartı ₺260, 12'li seçilince ₺520 ~~₺580~~ (D21). |
-| **5. Müşteri üyeliği** | Ayrıntı §8.2. `0010`; Supabase Auth sunucuda (`@supabase/ssr` + `@supabase/supabase-js` [V]); e-posta + şifre ve Google (Apple, Facebook kurulunca); `lib/auth.ts`, `lib/account-service.ts`, `/giris`, `/uye-ol`, `/sifremi-unuttum`, yeni `/sifre-yenile` ve `/uyelik-tamamla`, `/hesabim/*`; checkout'ta profil ve kayıtlı adres; `src/proxy.ts`; `SUPABASE_ANON_KEY` | 2; D22–D29; gerçek müşteriye açılış için A24 (metinler) + ayrı onay | **Local + gerçek `funda1959-test` kullanıcı tarafından doğrulandı (2026-10-12)**: `.env.local` kuruldu, `0010` test projesinde; kayıt/giriş/çıkış, profil ve adres kalıcılığı, checkout doldurma, şifre sıfırlama, başka hesabın siparişine erişim engeli geçti. Commit ve Preview bekliyor; kalan kabul kontrolleri §7.6. Google engelli (A25) | Üye olur (metinler yayımlanınca), girer (e-posta veya Google), çıkar, şifresini e-postayla sıfırlar; profil ve en fazla 10 adres yönetir; yalnızca girişliyken verdiği siparişleri görür, başkasınınkini göremez. Misafir sipariş, admin girişleri ve yetkileri değişmez; Funda Puan kapalı. |
+| **5. Müşteri üyeliği** | Ayrıntı §8.2. `0010`; Supabase Auth sunucuda (`@supabase/ssr` + `@supabase/supabase-js` [V]); e-posta + şifre ve Google (Apple, Facebook kurulunca); `lib/auth.ts`, `lib/account-service.ts`, `/giris`, `/uye-ol`, `/sifremi-unuttum`, yeni `/sifre-yenile` ve `/uyelik-tamamla`, `/hesabim/*`; checkout'ta profil ve kayıtlı adres; `src/proxy.ts`; `SUPABASE_ANON_KEY` | 2; D22–D29; gerçek müşteriye açılış için A24 (metinler) + ayrı onay | **Temel akışlar local ve Preview'da doğrulandı; kalan kontroller ertelendi (2026-10-12)**: `c6f1292` Preview'da Ready; kullanıcının local ve Preview testleri; local otomatik 38/38 (gerçek test projesi). Ertelenen ve açık kalan kontroller §7.6 "Aşama 5 durumu". D30 (diğer oturumlar Supabase davranışı). Google engelli (A25) | Üye olur (metinler yayımlanınca), girer (e-posta veya Google), çıkar, şifresini e-postayla sıfırlar; profil ve en fazla 10 adres yönetir; yalnızca girişliyken verdiği siparişleri görür, başkasınınkini göremez. Misafir sipariş, admin girişleri ve yetkileri değişmez; Funda Puan kapalı. |
 | **6. Funda Puan** | `0011`; puan RPC'leri; `lib/funda-points/*` (DB, partiler); Hesabım puan ekranı; admin ekranı DB'den; checkout'ta puan kullanımı | 5; §9 puan soruları | Bekliyor | 5.000 TL → 500 puan, sipariş sonrası hemen görünür. Teslimat ücreti puana girmez. Puanlı siparişte kazanım yok (onaylanan kapsamla). Her parti 1 yıl, yeni alışveriş uzatmaz. İptal/iadede geri alma + iade. Tekrarlanan istekte tek hareket. Yalnızca online kullanım. |
 | **7. Instagram** | `0012`; `lib/social/*` DB deposu; (Storage kararına göre yükleme) | 0; içerik kaynağı kararı | Bekliyor | Admin değişikliği yenileme sonrası korunur. |
 | **8. İletişim talepleri** | `0013`; `app/iletisim/page.tsx` → `POST /api/contact`; admin listesi | 0; iletim/KVKK kararı | Bekliyor | Talep kaydedilir; tekrar gönderim çift kayıt üretmez. |
@@ -1001,7 +1057,8 @@ Durum (2026-10-12):
 - **Kod hazırlığı yapıldı, commit edilmedi.**
 - `0010_customer_accounts.sql` **`funda1959-test`'te çalıştırıldı (kullanıcı)**; production'a uygulanmadı.
 - Paketler kuruldu: `@supabase/ssr` 0.12.7, `@supabase/supabase-js` 2.117.3.
-- **Local `.env.local` kuruldu; gerçek `funda1959-test` ile local testler kullanıcı tarafından geçildi** (aşağıda "Doğrulama"). Preview yok.
+- **Local `.env.local` kuruldu; gerçek `funda1959-test` ile local testler kullanıcı tarafından geçildi** (aşağıda "Doğrulama").
+- **Commit `c6f1292` `supabase-test`'e pushlandı, Preview'da Ready.** Temel akışlar local ve Preview'da doğrulandı; kalan kontroller ertelendi (§7.6 "Aşama 5 durumu").
 - **Google kod düzeyinde kapalı** (aşağıda "Google engeli"); Funda Puan kapalı; özel SMTP sonraya bırakıldı.
 
 **Kapsam:** e-posta + şifre ile kayıt ve giriş, çıkış, e-postayla şifre sıfırlama, profil, kayıtlı adresler, üyenin kendi siparişleri, checkout'ta üye bilgisi; Google girişi için altyapı (kapalı).
@@ -1025,7 +1082,7 @@ Durum (2026-10-12):
 | Kayıt | **Yalnızca test verisiyle açık** (local + Preview, `isSignupOpen`, D27); Production'da istek gönderilmeden 403. E-posta doğrulaması yok (D23): kayıttan sonra oturum açık. Metin yayımlanmadığı için onay kutusu ve onay kaydı yok; formdaki not bunu söyler (D26). Pazarlama kutusu kaldırıldı. Aynı e-posta: "Bu e-postayla bir hesap var…". `0010` yoksa Auth'ta hesap açılmadan 503. |
 | Giriş | E-posta + şifre (telefon alanı kaldırıldı). Yanlış şifre ve kayıtsız e-posta aynı mesajı alır. Profili olmayan hesap `/uyelik-tamamla`'ya gider. |
 | Çıkış | Yalnızca bu tarayıcının oturumu kapanır (`scope: "local"`). Supabase cevap vermese de çerezler silinir. |
-| Şifre sıfırlama | Her e-postaya aynı yanıt. Bağlantı `/auth/confirm`'e (`token_hash` + `type=recovery`), oradan `/sifre-yenile`'ye gider. Oturum bu bağlantıyla son 15 dakikada açıldıysa (`amr` kaydı) yeni şifre mevcut şifre sorulmadan kabul edilir; açılmadıysa reddedilir. Diğer oturumlar kapatılmaz (D29). |
+| Şifre sıfırlama | Her e-postaya aynı yanıt. Bağlantı `/auth/confirm`'e (`token_hash` + `type=recovery`), oradan `/sifre-yenile`'ye gider. Oturum bu bağlantıyla son 15 dakikada açıldıysa (`amr` kaydı) yeni şifre mevcut şifre sorulmadan kabul edilir; açılmadıysa reddedilir. Uygulama diğer oturumları kapatmaz (D29); Supabase ise şifre güncellenince diğer oturumların yenileme belirteçlerini iptal eder, o oturumlar en geç 1 saat içinde kapanır (D30). |
 | Profil | Ad soyad ve telefon düzenlenir; e-posta salt okunur. Şifre değişikliğinde mevcut şifre, kalıcı olmayan ayrı bir girişle doğrulanır; o geçici oturum hemen kapatılır (yalnızca o). |
 | Adresler | En fazla 10 adres, tek varsayılan. İlk adres varsayılan olur; varsayılan silinirse en eski adres varsayılan olur. Varsayılan doğrudan kaldırılamaz; başka bir adres varsayılan yapılır. İlçe ve mahalle checkout'taki bölge listesinden seçilir. Listeden çıkan bölgedeki adres silinmez ama checkout'ta seçilemez. |
 | Siparişlerim | Yalnızca girişliyken verilen siparişler (`customer_user_id`). Detayda iptal gerekçesi görünür (D28); işlemi yapan hesap görünmez. Başkasının sipariş numarası "bulunamadı" der. |
@@ -1124,7 +1181,7 @@ Gerçek Supabase'ten önce yapılan kontroller:
 - **Kayıt ve oturum:** test projesinde e-postayla kayıt → doğrudan oturum. Yenileme ve yeni sekmede oturum sürer; çıkıştan sonra korunan sayfalar `/giris`'e yönlendirir.
 - **Onay ve Production:** `customer_profiles.terms_version` boş kalır (onay kaydı yok). Production'da kayıt 403 döner.
 - **Google:** butonu görünmez; Supabase panelinde Google kapalıdır.
-- **Şifre sıfırlama:** var olan ve olmayan e-postaya aynı yanıt; bağlantı Preview adresine döner; yeni şifreyle giriş yapılır, eski şifre geçersiz olur; diğer oturumlar kapatılmaz.
+- **Şifre sıfırlama:** var olan ve olmayan e-postaya aynı yanıt; bağlantı Preview adresine döner; yeni şifreyle giriş yapılır, eski şifre geçersiz olur; uygulama diğer oturumları kapatmaz; Supabase diğer oturumları en geç 1 saat içinde sonlandırır (D30).
 - **Profil ve adresler:** yenilemeden sonra korunur. 11. adres reddedilir; tek varsayılan.
 - **Siparişlerim:** girişliyken verilen sipariş listede ve `orders.customer_user_id` dolu. Aynı e-postayla verilmiş misafir siparişi listede yok. Başka üyenin sipariş numarası "bulunamadı"; iptal edilen siparişte gerekçe görünür.
 - **Değişmeyenler:** misafir checkout aynen çalışır; admin girişleri ve yetkileri aynı kalır; Funda Puan hareketi yazılmaz.
@@ -1134,7 +1191,7 @@ Gerçek Supabase'ten önce yapılan kontroller:
 
 ## 9. Açık kararlar
 
-D1–D29 netleşti. Aşağıdakiler **hâlâ açık** ve onaylanmış sayılmaz. Koddan çıkarılabilen konular (şube listesi, çalışma saatleri, bölge mahalleleri, saatlik aralıklar, hazırlık süreleri, %10 oranı) sorulmuyor.
+D1–D30 netleşti. Aşağıdakiler **hâlâ açık** ve onaylanmış sayılmaz. Koddan çıkarılabilen konular (şube listesi, çalışma saatleri, bölge mahalleleri, saatlik aralıklar, hazırlık süreleri, %10 oranı) sorulmuyor.
 
 | # | Konu | Neden önemli |
 |---|---|---|
@@ -1145,6 +1202,7 @@ D1–D29 netleşti. Aşağıdakiler **hâlâ açık** ve onaylanmış sayılmaz.
 | ~~A22~~ | **Kararlaştırıldı → D21 (2026-10-12).** Trüf kartı 6'lı ₺260, eski fiyat yok; ürün sayfasında 12'li seçilince ₺520 ~~₺580~~; eski fiyat yalnızca ait olduğu boyutta. | — |
 | **A23** | **Tek fiyatlı ürünün eski fiyatı ürün sayfasında:** Portakallı Mermer Kek (p18) kartta ₺240 ~~₺290~~ gösteriyor; ürün sayfası eski fiyatı **hiç göstermiyordu** ve değiştirilmedi. Ürün sayfasında da gösterilsin mi? | Karara kadar bugünkü gibi (yalnızca kartta). |
 | **A24** | **KVKK aydınlatma metni ve üyelik koşulları:** metinlerin içeriği, kayıtta hangi onayların alınacağı, sürümleme. İşletme ve hukuk danışmanından gelir. | Yayımlanana kadar onay kaydı yok; gerçek müşteriye üyelik açılmaz (D26, D27). Google, Apple ve Facebook uygulamalarını canlıya almak için de gizlilik politikası adresi gerekir. |
+| ~~A26~~ | **Kararlaştırıldı → D30 (2026-10-12).** Şifre değişince Supabase'in diğer oturumları sonlandırma davranışı korunur. | — |
 | **A25** | **Google girişi:** e-posta doğrulaması kapalıyken (D23) Supabase aynı e-postalı Google girişini mevcut şifreli hesaba otomatik bağlıyor ve bunu kapatan belgelenmiş ayar yok; şifre geçersizleştirme ve toplu oturum kapatma istenmedi (D29). Seçenekler: (1) "Confirm email" açılsın, (2) Google yalnızca şifreli hesabı olmayan e-postalara — ayrı tasarım ve test, (3) Google'sız devam. | Karara kadar Google kodda ve Supabase panelinde kapalı (§8.2). Apple/Facebook için de aynı soru geçerli. |
 | ~~A3~~ | **Kararlaştırıldı → D14 (2026-10-10).** Adrese teslim 500 TL, ürün toplamı − indirim, teslimat ücreti hariç; gel-al muaf. | — |
 | **A4** | **Bölgeler ve ücret tutarları:** ücret mekanizması kararlaştırıldı (D15); **bölge/mahalle listeleri ve bölge başına ücret tutarları henüz onaylanmadı.** Mevcut listeler test amaçlı. | Merkez ücret girene kadar o bölgeye adrese teslim kapalı (D15). |
