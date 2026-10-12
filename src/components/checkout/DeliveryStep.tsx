@@ -3,6 +3,8 @@ import { branches } from "@/lib/data";
 import { DELIVERY_TIME_SLOTS } from "@/lib/checkout-utils";
 import { formatCartDate } from "@/lib/cart-utils";
 import { deliverableDistricts, deliverableNeighborhoods } from "@/lib/delivery/zones";
+import type { AccountAddress } from "@/lib/account-service";
+import { isServiceArea } from "@/lib/customers/validation";
 import { Field, RadioCard, SelectField, TextAreaField, TextField } from "./fields";
 import type { AddressFields, CheckoutState, DeliveryErrors, DeliveryPatch } from "./CheckoutPage";
 
@@ -15,6 +17,9 @@ export function DeliveryStep({
   onDistrictChange,
   onNeighborhoodChange,
   regionNotice,
+  savedAddresses = [],
+  savedAddressId = null,
+  onSavedAddressChange,
 }: {
   value: CheckoutState;
   errors: DeliveryErrors;
@@ -26,6 +31,10 @@ export function DeliveryStep({
   onNeighborhoodChange: (neighborhood: string) => void;
   /** what a region change did to the branch / the chosen date and time */
   regionNotice: string | null;
+  /** a signed-in member's saved addresses (D24); empty for guests */
+  savedAddresses?: AccountAddress[];
+  savedAddressId?: string | null;
+  onSavedAddressChange?: (id: string) => void;
 }) {
   const isPickup = value.deliveryType === "pickup";
   const district = value.address.district;
@@ -69,6 +78,29 @@ export function DeliveryStep({
         {!isPickup && (
           <div className="space-y-5">
             <h3 className="font-sans text-[15px] font-semibold text-espresso">Teslimat Adresi</h3>
+
+            {savedAddresses.length > 0 && onSavedAddressChange && (
+              <Field label="Kayıtlı Adreslerim" htmlFor="savedAddress" optional>
+                <select
+                  id="savedAddress"
+                  value={savedAddressId ?? ""}
+                  onChange={(e) => onSavedAddressChange(e.target.value)}
+                  className="h-12 w-full rounded-md border border-sand bg-cream-light px-3.5 font-sans text-[14px] text-espresso focus:border-burgundy focus:outline-none"
+                >
+                  <option value="">Kayıtlı adres seçin veya aşağıya yazın</option>
+                  {savedAddresses.map((a) => {
+                    const served = isServiceArea(a.district, a.neighborhood);
+                    return (
+                      <option key={a.id} value={a.id} disabled={!served}>
+                        {a.label} — {a.district} / {a.neighborhood}
+                        {a.isDefault ? " (varsayılan)" : ""}
+                        {served ? "" : " · teslimat yok"}
+                      </option>
+                    );
+                  })}
+                </select>
+              </Field>
+            )}
 
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               <Field label="İlçe" htmlFor="district" error={errors.district}>

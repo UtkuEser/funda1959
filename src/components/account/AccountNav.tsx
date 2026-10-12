@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LogoutButton } from "./LogoutButton";
 
 export type AccountNavKey = "dashboard" | "orders" | "addresses" | "profile";
 
@@ -54,13 +55,7 @@ export function AccountNav({ current }: { current: AccountNavKey }) {
           );
         })}
         <li className="mt-3 border-t border-sand-light pt-3">
-          {/* TODO: real signOut() + session clear when Supabase Auth is connected */}
-          <Link
-            href="/giris"
-            className="block py-1.5 pl-3 font-sans text-[14px] font-medium text-warm-brown transition-colors hover:text-burgundy"
-          >
-            Çıkış Yap
-          </Link>
+          <LogoutButton className="block py-1.5 pl-3 text-left font-sans text-[14px] font-medium text-warm-brown transition-colors hover:text-burgundy" />
         </li>
       </ul>
     </nav>

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getAccount } from "@/lib/account-service";
+import type { AccountData } from "@/lib/account-service";
 import { formatCartDate, formatTL } from "@/lib/cart-utils";
 import { StatusBadge } from "./StatusBadge";
 
@@ -34,8 +34,8 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-export function AccountDashboard() {
-  const { profile, addresses, orders } = getAccount();
+export function AccountDashboard({ data }: { data: AccountData }) {
+  const { profile, addresses, orders } = data;
   const lastOrder = orders[0];
   const defaultAddress = addresses.find((a) => a.isDefault) ?? addresses[0];
   const profileComplete = Boolean(profile.fullName && profile.phone && profile.email);

@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
-import Link from "next/link";
 import { Container } from "@/components/shared/Container";
 import { AccountNav, type AccountNavKey } from "./AccountNav";
+import { LogoutButton } from "./LogoutButton";
 
 export function AccountShell({
   current,
@@ -33,13 +33,7 @@ export function AccountShell({
             <div className="mt-7">{children}</div>
 
             <div className="mt-12 border-t border-sand-light pt-5 lg:hidden">
-              {/* TODO: real signOut() when Supabase Auth is connected */}
-              <Link
-                href="/giris"
-                className="font-sans text-[13px] font-semibold text-warm-brown hover:text-burgundy"
-              >
-                Çıkış Yap
-              </Link>
+              <LogoutButton className="font-sans text-[13px] font-semibold text-warm-brown hover:text-burgundy" />
             </div>
           </div>
         </div>

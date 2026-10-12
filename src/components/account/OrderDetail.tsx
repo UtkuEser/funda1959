@@ -49,11 +49,17 @@ export function OrderDetail({ order }: { order: AccountOrder }) {
       </div>
       <p className="mt-1 font-sans text-[13px] text-taupe">
         Sipariş tarihi: {formatCartDate(order.createdAt)}
+        {order.isDemo && " · Demo sipariş (ödeme alınmadı)"}
       </p>
 
       <div className="mt-6 space-y-6">
         <Section title="Sipariş Durumu">
           <OrderTimeline status={order.status} deliveryType={order.deliveryType} />
+          {order.status === "cancelled" && order.cancelReason && (
+            <p className="mt-3 font-sans text-[13.5px] leading-relaxed text-warm-brown">
+              <span className="font-semibold text-espresso">İptal gerekçesi:</span> {order.cancelReason}
+            </p>
+          )}
         </Section>
 
         <Section title="Ürünler">
@@ -126,7 +132,7 @@ export function OrderDetail({ order }: { order: AccountOrder }) {
             <SummaryRow label="Ara Toplam" value={formatTL(order.subtotal)} />
             <SummaryRow
               label="Teslimat"
-              value={order.deliveryFee > 0 ? formatTL(order.deliveryFee) : "—"}
+              value={order.deliveryFee > 0 ? formatTL(order.deliveryFee) : order.deliveryType === "delivery" ? "Ücretsiz" : "—"}
             />
             {order.discount > 0 && (
               <SummaryRow label="İndirim" value={`- ${formatTL(order.discount)}`} />

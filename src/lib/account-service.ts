@@ -1,27 +1,22 @@
 /**
- * Account data boundary — TUR 2 (frontend preview only).
+ * Account data boundary — Aşama 5 (SUPABASE_PLAN.md §8.2, D24).
  *
- * Every /hesabim page reads through these functions, never a raw array and
- * never localStorage / sessionStorage / Supabase directly. The bodies return
- * generic mock data with no real personal information and nothing is
- * persisted.
- *
- * TODO: replace with Supabase Auth + account API. Same call shape:
- *   getAccountProfile()      -> select customers where auth uid
- *   getAccountOrders()       -> select orders (+ order_items) where customer_id
- *   getAccountOrder(no)      -> single order + items
- *   getAccountAddresses()    -> select addresses where customer_id
- *   updateProfile(payload)   -> update customers
- *   changePassword(payload)  -> supabase.auth.updateUser({ password })
- *   saveAddress / deleteAddress -> upsert / delete addresses
+ * Client-safe: the types every /hesabim screen and the server share, plus the
+ * browser's writes to `/api/account/*`. Reads happen on the server
+ * (`lib/customers`, always filtered by the signed-in member), never here —
+ * there is no mock data any more.
  */
 
-import type { AuthActionResult } from "./auth";
+import { accountRequest, type AuthActionResult } from "./auth";
 import type { CheckoutAddress, OrderStatus } from "./order";
+
+/** D24: a member keeps at most this many addresses; one of them is the default. */
+export const MAX_SAVED_ADDRESSES = 10;
 
 export type AccountProfile = {
   fullName: string;
   phone: string;
+  /** the sign-in e-mail; not editable in this phase (D24) */
   email: string;
 };
 
@@ -37,7 +32,7 @@ export type AccountAddressInput = {
   isDefault?: boolean;
 };
 
-export type AccountAddress = AccountAddressInput & { id: string };
+export type AccountAddress = AccountAddressInput & { id: string; isDefault: boolean };
 
 export type AccountOrderItem = {
   productName: string;
@@ -52,7 +47,7 @@ export type AccountOrderItem = {
 export type AccountOrder = {
   orderNumber: string;
   status: OrderStatus;
-  createdAt: string; // ISO yyyy-mm-dd
+  createdAt: string; // ISO yyyy-mm-dd, Istanbul day
   deliveryType: "delivery" | "pickup";
   deliveryDate: string;
   deliveryTimeSlot: string;
@@ -64,6 +59,10 @@ export type AccountOrder = {
   discount: number;
   total: number;
   orderNote?: string;
+  /** the member may see why their order was cancelled; not who cancelled it */
+  cancelReason: string | null;
+  /** every order is a demo until a payment provider exists (D8) */
+  isDemo: boolean;
 };
 
 export type AccountData = {
@@ -72,146 +71,18 @@ export type AccountData = {
   orders: AccountOrder[];
 };
 
-/* -------------------------------------------------------------------------- */
-/* Mock data — generic, no real personal info, not persisted.                 */
-/* -------------------------------------------------------------------------- */
-
-const MOCK: AccountData = {
-  profile: { fullName: "", phone: "", email: "" },
-
-  addresses: [
-    {
-      id: "addr-ev",
-      label: "Ev",
-      district: "Çankaya",
-      neighborhood: "Gaziosmanpaşa",
-      addressLine: "Filistin Caddesi No: 12",
-      building: "Nar Apartmanı",
-      floor: "3",
-      apartment: "4",
-      isDefault: true,
-    },
-    {
-      id: "addr-is",
-      label: "İş",
-      district: "Yenimahalle",
-      neighborhood: "Batıkent",
-      addressLine: "1. Cadde No: 45, Kat 2",
-    },
-  ],
-
-  orders: [
-    {
-      orderNumber: "FND-20260829-AB12",
-      status: "preparing",
-      createdAt: "2026-08-29",
-      deliveryType: "delivery",
-      deliveryDate: "2026-08-30",
-      deliveryTimeSlot: "14:00 – 16:00",
-      branchName: null,
-      address: {
-        district: "Çankaya",
-        neighborhood: "Gaziosmanpaşa",
-        addressLine: "Filistin Caddesi No: 12",
-        building: "Nar Apartmanı",
-        floor: "3",
-        apartment: "4",
-      },
-      items: [
-        {
-          productName: "Çikolatalı Çilekli Pasta",
-          variantLabel: "8–10 Kişilik",
-          quantity: 1,
-          lineTotal: 1050,
-          cakeMessage: "İyi ki doğdun Ece",
-          extras: ["Mum Ekle"],
-        },
-        { productName: "Fıstıklı Baklava", variantLabel: "1 kg", quantity: 1, lineTotal: 510 },
-      ],
-      subtotal: 1560,
-      deliveryFee: 0,
-      discount: 0,
-      total: 1560,
-      orderNote: "Kapıda arayınız.",
-    },
-    {
-      orderNumber: "FND-20260812-K7Q9",
-      status: "delivered",
-      createdAt: "2026-08-12",
-      deliveryType: "pickup",
-      deliveryDate: "2026-08-13",
-      deliveryTimeSlot: "16:00 – 18:00",
-      branchName: "Panora",
-      address: null,
-      items: [
-        { productName: "Pralinli Çikolata Kutusu", variantLabel: "12'li", quantity: 2, lineTotal: 1300 },
-      ],
-      subtotal: 1300,
-      deliveryFee: 0,
-      discount: 0,
-      total: 1300,
-    },
-    {
-      orderNumber: "FND-20260720-M3X1",
-      status: "cancelled",
-      createdAt: "2026-07-20",
-      deliveryType: "delivery",
-      deliveryDate: "2026-07-22",
-      deliveryTimeSlot: "10:00 – 12:00",
-      branchName: null,
-      address: {
-        district: "Yenimahalle",
-        neighborhood: "Batıkent",
-        addressLine: "1. Cadde No: 45",
-      },
-      items: [
-        { productName: "Doğum Günü Koleksiyonu", variantLabel: "8–10 Kişilik", quantity: 1, lineTotal: 950 },
-      ],
-      subtotal: 950,
-      deliveryFee: 0,
-      discount: 0,
-      total: 950,
-    },
-  ],
-};
+/** What checkout gets for a signed-in member (D24): contact prefill + saved addresses. */
+export type CheckoutMember = { profile: AccountProfile; addresses: AccountAddress[] };
 
 /* -------------------------------------------------------------------------- */
-/* Read boundary                                                              */
+/* Writes — the server checks the session and saves only the member's rows    */
 /* -------------------------------------------------------------------------- */
 
-export function getAccount(): AccountData {
-  return MOCK;
-}
-
-export function getAccountProfile(): AccountProfile {
-  return MOCK.profile;
-}
-
-export function getAccountAddresses(): AccountAddress[] {
-  return MOCK.addresses;
-}
-
-export function getAccountOrders(): AccountOrder[] {
-  return MOCK.orders;
-}
-
-export function getAccountOrder(orderNumber: string): AccountOrder | null {
-  return MOCK.orders.find((o) => o.orderNumber === orderNumber) ?? null;
-}
-
-/* -------------------------------------------------------------------------- */
-/* Write boundary — stubs. No persistence. Swap for real API later.           */
-/* -------------------------------------------------------------------------- */
-
-const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
-
-export async function updateProfile(payload: AccountProfile): Promise<AuthActionResult> {
-  await wait(600);
-  if (!payload.fullName.trim()) {
-    return { ok: false, error: "Ad ve soyadınızı girin." };
-  }
-  // TODO: Supabase — update customers. Nothing is persisted in TUR 2.
-  return { ok: true, message: "Bilgileriniz kaydedilmeye hazır." };
+export async function updateProfile(payload: Pick<AccountProfile, "fullName" | "phone">): Promise<
+  | { ok: true; profile: AccountProfile; message?: string }
+  | { ok: false; error: string; code?: string; fieldErrors?: Record<string, string> }
+> {
+  return accountRequest<{ profile: AccountProfile; message?: string }>("/api/account/profile", payload, "PATCH");
 }
 
 export type ChangePasswordPayload = {
@@ -219,11 +90,25 @@ export type ChangePasswordPayload = {
   newPassword: string;
 };
 
-export async function changePassword(payload: ChangePasswordPayload): Promise<AuthActionResult> {
-  await wait(600);
-  if (payload.currentPassword.length === 0) {
-    return { ok: false, error: "Mevcut şifrenizi girin." };
-  }
-  // TODO: Supabase — supabase.auth.updateUser({ password }). Never persisted here.
-  return { ok: true, message: "Şifreniz güncellenmeye hazır." };
+export async function changePassword(
+  payload: ChangePasswordPayload,
+): Promise<AuthActionResult | { ok: false; error: string; code?: string; fieldErrors?: Record<string, string> }> {
+  return accountRequest<{ message?: string }>("/api/account/password", { mode: "change", ...payload });
+}
+
+export type AddressesResult =
+  | { ok: true; addresses: AccountAddress[] }
+  | { ok: false; error: string; code?: string; fieldErrors?: Record<string, string> };
+
+/** Creates (no id) or updates one of the member's addresses; answers the full, saved list. */
+export async function saveAddress(input: AccountAddressInput, id?: string): Promise<AddressesResult> {
+  return accountRequest<{ addresses: AccountAddress[] }>("/api/account/addresses", { id: id ?? null, address: input });
+}
+
+export async function deleteAddress(id: string): Promise<AddressesResult> {
+  return accountRequest<{ addresses: AccountAddress[] }>(
+    `/api/account/addresses?id=${encodeURIComponent(id)}`,
+    undefined,
+    "DELETE",
+  );
 }

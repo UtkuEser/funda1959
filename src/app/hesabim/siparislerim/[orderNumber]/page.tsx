@@ -1,21 +1,34 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { AccountShell } from "@/components/account/AccountShell";
+import { AccountUnavailable } from "@/components/account/AccountUnavailable";
 import { OrderDetail } from "@/components/account/OrderDetail";
-import { getAccountOrder } from "@/lib/account-service";
+import { requireMemberPage } from "@/lib/customer-auth/next";
+import { getCustomerRepository } from "@/lib/customers/repository";
 
 export const metadata: Metadata = {
   title: "Sipariş Detayı",
   robots: { index: false, follow: false },
 };
 
+/** Another member's order number answers "not found" — never their data. */
 export default async function SiparisDetayPage({
   params,
 }: {
   params: Promise<{ orderNumber: string }>;
 }) {
   const { orderNumber } = await params;
-  const order = getAccountOrder(decodeURIComponent(orderNumber));
+  const number = decodeURIComponent(orderNumber);
+  const member = await requireMemberPage(`/hesabim/siparislerim/${encodeURIComponent(number)}`);
+  if (member.kind !== "member") return <AccountUnavailable current="orders" title="Sipariş Detayı" />;
+
+  let order;
+  try {
+    order = /^FND-[0-9A-Z-]{6,24}$/.test(number) ? await getCustomerRepository().getOrder(member.userId, number) : null;
+  } catch (err) {
+    console.error("[hesabim] order could not be read", { error: (err as Error).message });
+    return <AccountUnavailable current="orders" title="Sipariş Detayı" />;
+  }
 
   if (!order) {
     return (

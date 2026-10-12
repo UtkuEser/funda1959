@@ -14,7 +14,9 @@
  *   - delivery fee from the fee store (D15) — never the zone list; an unset
  *     fee refuses delivery, an unreadable one answers 503 (no older values);
  *   - delivery minimum 500 TL on products − discount, fee excluded, pickup
- *     exempt (D14, `lib/order-rules.ts`).
+ *     exempt (D14, `lib/order-rules.ts`);
+ *   - the member an order belongs to comes from the route's verified session
+ *     (`customerUserId`), never from the request body (D24).
  * Errors: 400 = malformed request, 409 = valid request the order can't be
  * fulfilled as asked (the message says why), 503 = prices or delivery fees
  * can't be read.
@@ -58,7 +60,15 @@ const str = (v: unknown): string => (typeof v === "string" ? v : "");
 /** money in kuruş precision, so the database's sum checks match exactly */
 const money = roundMoney;
 
-export function buildOrderPayload(body: unknown, { now = new Date() }: { now?: Date } = {}): BuildResult {
+/**
+ * `customerUserId` — the signed-in member the order belongs to (D24), taken by
+ * the route from the verified session; null for a guest. Nothing in `body`
+ * can set or change it.
+ */
+export function buildOrderPayload(
+  body: unknown,
+  { now = new Date(), customerUserId = null }: { now?: Date; customerUserId?: string | null } = {},
+): BuildResult {
   if (!body || typeof body !== "object") return fail("Geçersiz istek.");
   const b = body as Record<string, unknown>;
 
@@ -231,6 +241,7 @@ export function buildOrderPayload(body: unknown, { now = new Date() }: { now?: D
     payload: {
       client_request_id: clientRequestId,
       sales_channel: "web",
+      customer_user_id: customerUserId,
       customer: { full_name: fullName, phone, email },
       delivery: {
         type,

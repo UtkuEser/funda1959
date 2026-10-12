@@ -7,7 +7,8 @@
  * database; `MockOrderRepository` is the in-memory store a developer machine
  * without Supabase uses. Both apply the same rules: branch scope, delivery-date
  * filter, pagination, and the status rules of SUPABASE_PLAN.md A12.
- * `/hesabim/siparislerim` will read through the same seam (Aşama 5).
+ * A member's own orders (`/hesabim/siparislerim`) are read by
+ * `lib/customers/repository.ts`, filtered by the member's id.
  */
 
 import type { CheckoutAddress, OrderStatus, OrderSummary, PaymentStatus, SalesChannel } from "../order";
@@ -50,6 +51,11 @@ export type StoredOrder = {
   fulfillmentType: "delivery" | "pickup";
   /** undefined on legacy rows — treat as "web" (see funda-points/service.ts) */
   salesChannel?: SalesChannel;
+  /**
+   * The member the order belongs to (D24; `orders.customer_user_id`, 0010).
+   * Set by the server from the verified session only; null/undefined = guest.
+   */
+  customerUserId?: string | null;
   customer: { fullName: string; phone: string; email: string };
   address: CheckoutAddress | null;
   items: StoredOrderItem[];

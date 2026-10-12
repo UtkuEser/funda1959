@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { AccountProfile } from "@/lib/account-service";
 import { changePassword, updateProfile } from "@/lib/account-service";
 import { PASSWORD_HINT, isValidPassword } from "@/lib/auth";
-import { formatPhone, isValidEmail, isValidFullName, isValidPhone } from "@/lib/checkout-utils";
+import { formatPhone, isValidFullName, isValidPhone } from "@/lib/checkout-utils";
 import {
   AuthField,
   AuthInput,
@@ -17,7 +17,7 @@ import {
 /* Profil bilgileri                                                            */
 /* -------------------------------------------------------------------------- */
 
-type ProfileErrors = Partial<Record<"fullName" | "phone" | "email", string>>;
+type ProfileErrors = Partial<Record<"fullName" | "phone", string>>;
 
 function ProfileForm({ profile }: { profile: AccountProfile }) {
   const [form, setForm] = useState<AccountProfile>({ ...profile });
@@ -41,7 +41,6 @@ function ProfileForm({ profile }: { profile: AccountProfile }) {
     const e: ProfileErrors = {};
     if (!isValidFullName(form.fullName)) e.fullName = "Ad ve soyadınızı girin.";
     if (!isValidPhone(form.phone)) e.phone = "Geçerli bir telefon numarası girin.";
-    if (!isValidEmail(form.email)) e.email = "Geçerli bir e-posta adresi girin.";
     return e;
   };
 
@@ -58,17 +57,22 @@ function ProfileForm({ profile }: { profile: AccountProfile }) {
     const found = validate();
     setErrors(found);
     if (Object.keys(found).length > 0) {
-      const first = (["fullName", "phone", "email"] as const).find((k) => found[k]);
+      const first = (["fullName", "phone"] as const).find((k) => found[k]);
       if (first) document.getElementById(first)?.focus();
       return;
     }
     setSaving(true);
     setFailed(null);
-    // TODO: Supabase — updateProfile persists nothing in TUR 2.
-    const result = await updateProfile(form);
+    const result = await updateProfile({ fullName: form.fullName, phone: form.phone });
     setSaving(false);
-    if (result.ok) setDone(result.message ?? "Bilgileriniz kaydedilmeye hazır.");
-    else setFailed(result.error);
+    if (result.ok) {
+      // what the database stored, not what was typed
+      setForm(result.profile);
+      setDone(result.message ?? "Bilgileriniz kaydedildi.");
+    } else {
+      setFailed(result.error);
+      if (result.fieldErrors) setErrors(result.fieldErrors as ProfileErrors);
+    }
   };
 
   return (
@@ -99,21 +103,16 @@ function ProfileForm({ profile }: { profile: AccountProfile }) {
           />
         </AuthField>
 
-        <AuthField label="E-posta" htmlFor="email" error={errors.email}>
-          <AuthInput
-            id="email"
-            value={form.email}
-            onChange={(v) => set({ email: v })}
-            onBlur={() => blur("email")}
-            error={errors.email}
-            type="email"
-            inputMode="email"
-            autoComplete="email"
-          />
-        </AuthField>
+        <div>
+          <p className="block font-sans text-[12.5px] font-semibold text-espresso">E-posta</p>
+          <p className="mt-1 flex h-12 items-center rounded-md border border-sand-light bg-cream px-3.5 font-sans text-[14px] text-warm-brown">
+            {form.email}
+          </p>
+          <p className="mt-1 font-sans text-[12px] text-taupe">Giriş adresiniz; şu an değiştirilemez.</p>
+        </div>
       </div>
 
-      {done && <AuthSuccess title="Hazır" text={done} />}
+      {done && <AuthSuccess title="Kaydedildi" text={done} />}
       {failed && (
         <p role="alert" className="font-sans text-[13px] text-chocolate-light">
           {failed}
@@ -183,17 +182,17 @@ function PasswordChangeForm() {
     }
     setSaving(true);
     setFailed(null);
-    // TODO: Supabase — supabase.auth.updateUser({ password }). Nothing changes in TUR 2.
     const result = await changePassword({
       currentPassword: form.currentPassword,
       newPassword: form.newPassword,
     });
     setSaving(false);
     if (result.ok) {
-      setDone(result.message ?? "Şifreniz güncellenmeye hazır.");
+      setDone(result.message ?? "Şifreniz güncellendi.");
       setForm(EMPTY_PW);
     } else {
       setFailed(result.error);
+      if ("fieldErrors" in result && result.fieldErrors) setErrors(result.fieldErrors as PwErrors);
     }
   };
 
@@ -243,7 +242,7 @@ function PasswordChangeForm() {
         </AuthField>
       </div>
 
-      {done && <AuthSuccess title="Hazır" text={done} />}
+      {done && <AuthSuccess title="Şifre güncellendi" text={done} />}
       {failed && (
         <p role="alert" className="font-sans text-[13px] text-chocolate-light">
           {failed}

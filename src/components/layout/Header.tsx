@@ -69,8 +69,8 @@ export function Header() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.6} d="M21 21l-4.3-4.3M11 18a7 7 0 100-14 7 7 0 000 14z" />
                 </svg>
               </button>
-              {/* customer sign-in page — sign-in is still a front-end stub (lib/auth.ts, no session) */}
-              <Link href="/giris" aria-label="Hesabım" className={ICON_BUTTON}>
+              {/* Hesabım — signed-out visitors are sent on to /giris by the page itself */}
+              <Link href="/hesabim" aria-label="Hesabım" className={ICON_BUTTON}>
                 <svg className={ICON} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.6} d="M18 20v-1.2a4.8 4.8 0 00-4.8-4.8h-2.4A4.8 4.8 0 006 18.8V20M12 11a4 4 0 100-8 4 4 0 000 8z" />
                 </svg>

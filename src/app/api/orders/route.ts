@@ -6,6 +6,8 @@ import { SupabaseRestError } from "@/lib/supabase-server";
 import { PRICES_UNAVAILABLE_ERROR, buildOrderPayload } from "@/lib/order-server";
 import { OrderIntakeClosedError, findOrderByRequestId, isOrderIntakeOpen, placeOrder } from "@/lib/orders";
 import { PersistenceUnavailableError, logPersistenceRefusal } from "@/lib/persistence";
+import { routeCookieJar } from "@/lib/customer-auth/next";
+import { resolveOrderMember } from "@/lib/customer-auth/operations";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +25,7 @@ const STOCK_UNREADABLE_ERROR = "Stok bilgisi şu an doğrulanamadı; siparişini
  */
 const RULE_CHANGED: Record<string, string> = {
   price_mismatch: "Ürün fiyatı az önce güncellendi; siparişiniz alınmadı. Lütfen tutarı yeniden kontrol edin.",
+  invalid_customer_account: "Üyelik bilgileriniz doğrulanamadı; siparişiniz alınmadı. Lütfen sayfayı yenileyip tekrar deneyin.",
   delivery_fee_mismatch: "Teslimat ücreti az önce güncellendi; siparişiniz alınmadı. Lütfen tutarı yeniden kontrol edin.",
   delivery_fee_not_set: "Bu bölge için teslimat ücreti belirlenmedi; adrese teslim şu an yapılamıyor. Mağazadan teslim alabilirsiniz.",
   below_minimum: "Adrese teslim için minimum sipariş tutarına ulaşılmadı.",
@@ -60,6 +63,18 @@ export async function POST(request: Request) {
     }
   }
 
+  // D24: a signed-in member's order belongs to their account — the id comes
+  // from the session Supabase verified, never from the body. Guests stay
+  // guests; a session that can't be checked refuses rather than turning a
+  // member's order into a guest order.
+  const member = await resolveOrderMember(await routeCookieJar());
+  if (!member.ok) {
+    return NextResponse.json(
+      { ok: false, error: "Oturumunuz şu an doğrulanamadı; siparişiniz alınmadı. Lütfen biraz sonra tekrar deneyin." },
+      { status: 503 },
+    );
+  }
+
   // the order is checked against the saved branch stock — never against stale
   // or seed values: if the statuses can't be read, no order is taken
   try {
@@ -82,7 +97,7 @@ export async function POST(request: Request) {
 
   // 400 malformed / 409 not deliverable as asked (date, slot, stock, zone, fee,
   // minimum) / 503 prices or fees unreadable
-  const built = buildOrderPayload(body);
+  const built = buildOrderPayload(body, { customerUserId: member.userId });
   if (!built.ok) {
     return NextResponse.json({ ok: false, error: built.error, reason: built.reason ?? null }, { status: built.status });
   }

@@ -4,9 +4,9 @@ import { useState } from "react";
 import Link from "next/link";
 import { requestPasswordReset } from "@/lib/auth";
 import { isValidEmail } from "@/lib/checkout-utils";
-import { AuthField, AuthInput, AuthSuccess, SubmitButton } from "./fields";
+import { AuthField, AuthInput, AuthNotice, AuthSuccess, SubmitButton } from "./fields";
 
-export function ForgotPasswordForm() {
+export function ForgotPasswordForm({ available, notice }: { available: boolean; notice?: string | null }) {
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | undefined>(undefined);
   const [touched, setTouched] = useState(false);
@@ -17,7 +17,7 @@ export function ForgotPasswordForm() {
 
   const onSubmit = async (ev: React.FormEvent) => {
     ev.preventDefault();
-    if (submitting) return;
+    if (submitting || !available) return;
 
     setTouched(true);
     if (!isValidEmail(email)) {
@@ -53,6 +53,9 @@ export function ForgotPasswordForm() {
 
   return (
     <form onSubmit={onSubmit} noValidate className="space-y-5">
+      {notice && <AuthNotice>{notice}</AuthNotice>}
+      {!available && <AuthNotice>Üyelik servisi şu an kullanılamıyor. Lütfen daha sonra tekrar deneyin.</AuthNotice>}
+
       <AuthField label="E-posta" htmlFor="email" error={emailError ?? error}>
         <AuthInput
           id="email"
@@ -67,7 +70,7 @@ export function ForgotPasswordForm() {
         />
       </AuthField>
 
-      <SubmitButton loading={submitting} loadingLabel="Gönderiliyor…">
+      <SubmitButton loading={submitting} loadingLabel="Gönderiliyor…" disabled={!available}>
         Sıfırlama Bağlantısı Gönder
       </SubmitButton>
 

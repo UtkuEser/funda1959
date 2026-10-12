@@ -49,6 +49,7 @@ type PayloadItem = {
 
 type OrderPayload = {
   client_request_id?: unknown;
+  customer_user_id?: unknown;
   customer?: { full_name?: unknown; phone?: unknown; email?: unknown };
   delivery?: {
     type?: unknown;
@@ -146,6 +147,8 @@ export async function placeOrder(payload: unknown): Promise<OrderSummary> {
     fulfillmentType: type,
     // this flow is the web checkout; a future mobile app sets "mobile" here.
     salesChannel: "web",
+    // the member, as buildOrderPayload set it from the verified session (null = guest)
+    customerUserId: s(p.customer_user_id) || null,
     customer: {
       fullName: s(p.customer?.full_name),
       phone: s(p.customer?.phone),

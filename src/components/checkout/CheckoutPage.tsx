@@ -16,6 +16,8 @@ import {
   isValidPhone,
 } from "@/lib/checkout-utils";
 import type { CreateOrderRequest } from "@/lib/order";
+import type { AccountAddress, CheckoutMember } from "@/lib/account-service";
+import { isServiceArea } from "@/lib/customers/validation";
 import { setCheckoutHandoff } from "@/lib/checkout-handoff";
 import { resolveZone } from "@/lib/delivery/zones";
 import { useDelivery } from "@/lib/delivery/context";
@@ -85,10 +87,12 @@ const FIELD_ORDER = [
 /** "10:00 – 11:00" -> "10:00" */
 const slotStartOf = (label: string | null) => label?.match(/(\d{2}:\d{2})/)?.[1];
 
-function initialState(items: CartItem[]): FormState {
+function initialState(items: CartItem[], member: CheckoutMember | null): FormState {
   const first = items[0];
+  const p = member?.profile;
   return {
-    contact: { fullName: "", phone: "", email: "" },
+    // D24: a member's contact comes from the profile; editable for this order only
+    contact: p ? { fullName: p.fullName, phone: p.phone, email: p.email } : { fullName: "", phone: "", email: "" },
     deliveryType: first?.deliveryType === "pickup" ? "pickup" : "delivery",
     branch: first?.branch ?? null,
     address: { ...EMPTY_ADDRESS },
@@ -114,12 +118,14 @@ function Breadcrumb() {
   );
 }
 
-export function CheckoutPage() {
+export function CheckoutPage({ member = null }: { member?: CheckoutMember | null }) {
   const router = useRouter();
   const items = useCart();
 
   const { context, isHydrated, setDeliveryAddress, setDeliveryDistrict } = useDelivery();
-  const [state, setState] = useState<FormState>(() => initialState([]));
+  const [state, setState] = useState<FormState>(() => initialState([], member));
+  // the saved address the delivery fields currently hold (null once the customer edits them)
+  const [savedAddressId, setSavedAddressId] = useState<string | null>(null);
   const [seeded, setSeeded] = useState(false);
   const [contactErrors, setContactErrors] = useState<ContactErrors>({});
   const [deliveryErrors, setDeliveryErrors] = useState<DeliveryErrors>({});
@@ -141,7 +147,7 @@ export function CheckoutPage() {
   // Seed the form from the cart once real items are available (render-phase adjust).
   if (!seeded && items.length > 0) {
     setSeeded(true);
-    setState(initialState(items));
+    setState(initialState(items, member));
   }
 
   useEffect(() => {
@@ -187,13 +193,61 @@ export function CheckoutPage() {
   // a new district clears the neighbourhood (shared-context rule)
   const changeDistrict = (d: string) => {
     setDeliveryDistrict(d || null);
+    setSavedAddressId(null);
     clearRegionErrors();
   };
   const changeNeighborhood = (n: string) => {
     if (n) setDeliveryAddress(district, n);
     else setDeliveryDistrict(district || null);
+    setSavedAddressId(null);
     clearRegionErrors();
   };
+
+  /** A member picks one of their saved addresses: its area goes to the shared context, the rest to the form. */
+  const applySavedAddress = (a: AccountAddress) => {
+    if (a.district !== district || a.neighborhood !== neighborhood) setDeliveryAddress(a.district, a.neighborhood);
+    setState((s) => ({
+      ...s,
+      address: {
+        addressLine: a.addressLine,
+        building: a.building ?? "",
+        floor: a.floor ?? "",
+        apartment: a.apartment ?? "",
+        note: a.note ?? "",
+      },
+    }));
+    setSavedAddressId(a.id);
+    setDeliveryErrors((e) => {
+      const next = { ...e };
+      delete next.district;
+      delete next.neighborhood;
+      delete next.addressLine;
+      return next;
+    });
+  };
+  const selectSavedAddress = (id: string) => {
+    const a = member?.addresses.find((x) => x.id === id);
+    if (a) applySavedAddress(a);
+    else setSavedAddressId(null);
+  };
+
+  /*
+   * D24: the member's default address may start selected — only when the form
+   * has no address yet and the stored area is empty or already that address's
+   * area (an area chosen in the header is never overridden). Once per visit.
+   */
+  const defaultApplied = useRef(false);
+  useEffect(() => {
+    if (defaultApplied.current || !member || !isHydrated || !seeded) return;
+    defaultApplied.current = true;
+    const def = member.addresses.find((a) => a.isDefault && isServiceArea(a.district, a.neighborhood));
+    if (!def || state.deliveryType !== "delivery" || state.address.addressLine.trim()) return;
+    const sameArea = (!district && !neighborhood) || (district === def.district && neighborhood === def.neighborhood);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time prefill after the stored area is read
+    if (sameArea) applySavedAddress(def);
+    // runs once, when the stored delivery context and the cart are both available
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [member, isHydrated, seeded]);
 
   /*
    * The stored address when the page opens, and every change of it (here, in
@@ -287,6 +341,7 @@ export function CheckoutPage() {
 
   const patchAddress = (p: Partial<AddressFields>) => {
     setState((s) => ({ ...s, address: { ...s.address, ...p } }));
+    setSavedAddressId(null);
     setDeliveryErrors((e) => {
       const next = { ...e };
       for (const k of Object.keys(p)) delete next[k as keyof DeliveryErrors];
@@ -466,7 +521,7 @@ export function CheckoutPage() {
       <div className="mt-7 grid gap-10 lg:grid-cols-[1fr_360px] lg:gap-14 lg:items-start">
         {/* Form */}
         <div>
-          <ContactStep value={state.contact} errors={contactErrors} onChange={patchContact} />
+          <ContactStep value={state.contact} errors={contactErrors} onChange={patchContact} isMember={Boolean(member)} />
 
           <div className="mt-8 border-t border-sand-light pt-8">
             <DeliveryStep
@@ -478,6 +533,9 @@ export function CheckoutPage() {
               onDistrictChange={changeDistrict}
               onNeighborhoodChange={changeNeighborhood}
               regionNotice={state.deliveryType === "delivery" ? regionNotice : null}
+              savedAddresses={member?.addresses ?? []}
+              savedAddressId={savedAddressId}
+              onSavedAddressChange={selectSavedAddress}
             />
           </div>
 

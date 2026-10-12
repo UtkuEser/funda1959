@@ -180,15 +180,17 @@ export function SubmitButton({
   children,
   loading,
   loadingLabel,
+  disabled = false,
 }: {
   children: ReactNode;
   loading: boolean;
   loadingLabel: string;
+  disabled?: boolean;
 }) {
   return (
     <button
       type="submit"
-      disabled={loading}
+      disabled={loading || disabled}
       aria-busy={loading}
       className="h-12 w-full rounded-md bg-burgundy font-sans text-[15px] font-semibold text-cream-light transition-colors hover:bg-chocolate-light disabled:cursor-not-allowed disabled:bg-burgundy/45"
     >
@@ -204,6 +206,18 @@ export function AuthDivider({ label }: { label: string }) {
       <span className="font-sans text-[12px] text-taupe">{label}</span>
       <span className="h-px flex-1 bg-sand-light" aria-hidden />
     </div>
+  );
+}
+
+/** A calm, non-error notice above a form (service unavailable, test-only sign-up, expired link …). */
+export function AuthNotice({ children }: { children: ReactNode }) {
+  return (
+    <p
+      role="status"
+      className="rounded-md border border-sand-light bg-cream-light px-3.5 py-3 font-sans text-[13px] leading-relaxed text-warm-brown"
+    >
+      {children}
+    </p>
   );
 }
 

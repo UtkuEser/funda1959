@@ -5,10 +5,13 @@ export function ContactStep({
   value,
   errors,
   onChange,
+  isMember = false,
 }: {
   value: ContactInfo;
   errors: ContactErrors;
   onChange: (patch: Partial<ContactInfo>) => void;
+  /** signed in: the fields came from the profile and the order goes to the account */
+  isMember?: boolean;
 }) {
   return (
     <section>
@@ -57,7 +60,9 @@ export function ContactStep({
       </div>
 
       <p className="mt-5 font-sans text-[12.5px] text-taupe">
-        Üye olmadan sipariş verebilirsiniz.
+        {isMember
+          ? "Bilgileriniz profilinizden dolduruldu; bu sipariş için değiştirebilirsiniz. Sipariş hesabınıza eklenecek."
+          : "Üye olmadan sipariş verebilirsiniz."}
       </p>
     </section>
   );

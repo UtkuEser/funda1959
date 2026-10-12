@@ -1,29 +1,27 @@
 /**
- * Auth service boundary — TUR 1 (frontend only).
+ * Customer auth — the browser's side (Aşama 5, SUPABASE_PLAN.md §8.2).
  *
- * These are STUBS. There is no real backend, no session, no credential
- * storage, no email delivery. The password is never persisted or logged.
+ * Every call goes to our own `/api/account/*` routes; the browser never talks
+ * to Supabase and never holds a Supabase key or token (the session lives in
+ * httpOnly cookies set by the server). Passwords are sent once, to our
+ * server, and never stored or logged here.
  *
- * To connect Supabase Auth later, replace only the bodies below:
- *   signIn               -> supabase.auth.signInWithPassword({ email/phone, password })
- *   signUp               -> supabase.auth.signUp({ email, password, options: { data } })
- *   requestPasswordReset -> supabase.auth.resetPasswordForEmail(email)
- * TODO: connect Supabase Auth.
+ * Client-safe: no server imports. `safeNextPath` and the password rule are
+ * shared with the server.
  */
 
-import { isValidEmail, isValidPhone } from "./checkout-utils";
-
 export type AuthActionResult =
-  | { ok: true; message?: string }
+  | { ok: true; message?: string; redirect?: string }
   | { ok: false; error: string; code?: string };
 
-/** Consumer social login providers wired into this auth architecture. */
+/** Social providers the code knows about (D22). Instagram is not a customer sign-in. */
 export type SocialAuthProvider = "google" | "apple" | "facebook";
 
 export type LoginPayload = {
-  identifier: string; // e-posta or telefon
+  email: string;
   password: string;
   remember: boolean;
+  next?: string;
 };
 
 export type RegisterPayload = {
@@ -31,91 +29,99 @@ export type RegisterPayload = {
   phone: string;
   email: string;
   password: string;
-  consentKvkk: boolean;
-  consentMarketing: boolean;
+  /** only sent once the membership texts are published (D26); never assumed */
+  acceptTerms?: boolean;
+  next?: string;
 };
 
 export type ForgotPasswordPayload = {
   email: string;
 };
 
-/** Shared password policy — used by register + profile password change. */
+/** The published membership texts, as the forms show them (none yet — D26, A24). */
+export type MembershipTermsView = {
+  version: string;
+  /** KVKK aydınlatma metni */
+  privacyNoticeHref: string;
+  /** üyelik koşulları */
+  termsHref: string;
+};
+
+/** Shared password policy — used by register, reset and profile password change. */
 export const PASSWORD_HINT = "En az 8 karakter, bir harf ve bir rakam.";
 export const isValidPassword = (value: string): boolean =>
-  value.length >= 8 && /[a-zA-Z]/.test(value) && /[0-9]/.test(value);
+  value.length >= 8 && value.length <= 72 && /[a-zA-Z]/.test(value) && /[0-9]/.test(value);
 
-export function identifierKind(value: string): "email" | "phone" | "unknown" {
-  const v = value.trim();
-  if (v.includes("@")) return isValidEmail(v) ? "email" : "unknown";
-  if (isValidPhone(v)) return "phone";
-  return "unknown";
+/**
+ * A redirect target from a `?next=` value: only a path on this site, never
+ * another origin ("//evil", "/\\evil", "https://…") and never an API route.
+ */
+export function safeNextPath(raw: unknown, fallback = "/hesabim"): string {
+  if (typeof raw !== "string" || raw.length === 0 || raw.length > 300) return fallback;
+  if (!raw.startsWith("/") || raw.startsWith("//") || raw.startsWith("/\\") || /[\r\n\t]/.test(raw)) return fallback;
+  if (raw === "/api" || raw.startsWith("/api/")) return fallback;
+  return raw;
 }
 
-const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+const NETWORK_ERROR = "Bağlantı kurulamadı. Lütfen tekrar deneyin.";
+
+/** POST/PATCH/DELETE to one of our account routes; the server's message is shown as is. */
+export async function accountRequest<T extends Record<string, unknown> = Record<string, unknown>>(
+  url: string,
+  body: unknown,
+  method: "POST" | "PATCH" | "DELETE" = "POST",
+): Promise<({ ok: true } & T) | { ok: false; error: string; code?: string; fieldErrors?: Record<string, string> }> {
+  try {
+    const res = await fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: body === undefined ? undefined : JSON.stringify(body),
+      cache: "no-store",
+    });
+    const data = (await res.json().catch(() => null)) as
+      | ({ ok?: boolean; error?: string; code?: string; fieldErrors?: Record<string, string> } & T)
+      | null;
+    if (res.ok && data?.ok) return data as { ok: true } & T;
+    return { ok: false, error: data?.error ?? NETWORK_ERROR, code: data?.code, fieldErrors: data?.fieldErrors };
+  } catch {
+    return { ok: false, error: NETWORK_ERROR };
+  }
+}
 
 export async function signIn(payload: LoginPayload): Promise<AuthActionResult> {
-  await wait(600);
-  if (identifierKind(payload.identifier) === "unknown" || payload.password.length === 0) {
-    return { ok: false, error: "Bilgilerinizi kontrol edip tekrar deneyin." };
-  }
-  // TODO: connect Supabase Auth. No session is created in TUR 1.
-  return { ok: true, message: "Giriş bilgileriniz doğrulandı." };
+  return accountRequest<{ redirect?: string }>("/api/account/login", payload);
 }
 
 export async function signUp(payload: RegisterPayload): Promise<AuthActionResult> {
-  await wait(700);
-  if (!payload.consentKvkk) {
-    return { ok: false, error: "Devam etmek için gerekli onayı işaretleyin." };
-  }
-  // TODO: connect Supabase Auth. No user is created in TUR 1.
-  return { ok: true, message: "Hesabınız oluşturulmaya hazır." };
+  return accountRequest<{ redirect?: string; message?: string }>("/api/account/register", payload);
 }
 
-const SOCIAL_PROVIDER_LABEL: Record<SocialAuthProvider, string> = {
-  google: "Google",
-  apple: "Apple",
-  facebook: "Facebook",
-};
-
-/**
- * Social sign-in boundary — STUB. No real OAuth is started here.
- *
- * Nothing is persisted: no token, no session, no cookie, no localStorage /
- * sessionStorage, no fake user. The stub returns a controlled
- * `provider_not_configured` result so the UI can show a calm "coming soon"
- * notice without pretending a login happened.
- *
- * TODO: connect Supabase OAuth. Replace the body with, per provider:
- *   return supabaseBrowser().auth.signInWithOAuth({
- *     provider,                       // "google" | "apple" | "facebook"
- *     options: { redirectTo: `${window.location.origin}/auth/callback?next=/hesabim` },
- *   });
- * Provider credentials (Google Cloud / Meta / Apple Developer) are configured in
- * the Supabase dashboard, not in this file. The /auth/callback route and the
- * post-login redirect are added together with that integration.
- *
- * TODO: collect missing phone after first social sign-in — Google / Apple /
- * Facebook do not reliably return a phone number and checkout/orders need one.
- */
-export async function signInWithSocialProvider(
-  provider: SocialAuthProvider,
-): Promise<AuthActionResult> {
-  await wait(400);
-  return {
-    ok: false,
-    code: "provider_not_configured",
-    error: `${SOCIAL_PROVIDER_LABEL[provider]} ile giriş yakında etkinleştirilecek.`,
-  };
+export async function signOut(): Promise<AuthActionResult> {
+  return accountRequest("/api/account/logout", {});
 }
 
-export async function requestPasswordReset(
-  payload: ForgotPasswordPayload,
-): Promise<AuthActionResult> {
-  await wait(600);
-  if (!isValidEmail(payload.email)) {
-    return { ok: false, error: "Geçerli bir e-posta adresi girin." };
-  }
-  // TODO: connect Supabase Auth. Generic response — never reveals whether the
-  // account exists (account-enumeration safe).
-  return { ok: true };
+/** Same answer whether or not an account exists for the address (no account enumeration). */
+export async function requestPasswordReset(payload: ForgotPasswordPayload): Promise<AuthActionResult> {
+  return accountRequest("/api/account/password-reset", payload);
+}
+
+/** New password after an e-mailed reset link (`/sifre-yenile`); the server checks the link's session. */
+export async function setNewPassword(payload: { newPassword: string }): Promise<AuthActionResult> {
+  return accountRequest<{ redirect?: string }>("/api/account/password", { mode: "recovery", ...payload });
+}
+
+/** First profile of a signed-in account that has none yet (`/uyelik-tamamla`). */
+export async function completeMembership(payload: {
+  fullName: string;
+  phone: string;
+  acceptTerms?: boolean;
+  next?: string;
+}): Promise<AuthActionResult> {
+  return accountRequest<{ redirect?: string }>("/api/account/profile", payload, "POST");
+}
+
+/** Where a social sign-in starts — a full-page navigation, not a fetch. */
+export function socialSignInHref(provider: SocialAuthProvider, next?: string): string {
+  const q = next ? `?next=${encodeURIComponent(next)}` : "";
+  return `/api/account/oauth/${provider}${q}`;
 }

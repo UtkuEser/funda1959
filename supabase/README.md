@@ -133,6 +133,28 @@ refused and pickup keeps working.
 Until `0009` is applied the app runs on catalog prices (no price can have been
 stored) and the admin "Fiyatlar" screen refuses to save.
 
+`migrations/0010_customer_accounts.sql` — Aşama 5, customer membership
+(SUPABASE_PLAN.md §8.2, D22–D29). **Applied to `funda1959-test` (2026-10-12, by the
+web team); not applied to production.**
+
+- `customer_profiles` — one row per member (`auth.users`): name, phone, a copy
+  of the sign-in e-mail. `terms_version` / `terms_accepted_at` stay NULL until
+  the membership texts are published — no consent is recorded "as if" given.
+  No marketing-consent column.
+- `customer_addresses` — at most 10 per member, exactly one default while any
+  exist (the first one; the oldest after the default is deleted). Written only
+  by `save_customer_address` / `delete_customer_address` (locked per member).
+- `orders.customer_user_id` — NULL = guest; existing orders stay NULL (guest
+  orders are never linked).
+- `list_customer_orders` / `get_customer_order` — a member's own orders, with
+  the cancel reason, never the admin account that changed the status.
+- `create_order` v6 — v5 + `customer_user_id` (set by the server from the
+  verified session; must have a profile, else `invalid_customer_account`).
+- RLS on, no policies; every function service role only.
+
+Until `0010` is applied, sign-up refuses with 503 before creating an Auth
+user, and orders stay guest orders.
+
 ## Applying it
 
 With the Supabase CLI (project linked):
@@ -142,7 +164,7 @@ supabase db push
 ```
 
 Or paste a migration file into **SQL Editor** and run it, in order
-(`0001` → `0002` → `0003` → `0004` → `0005` → `0006` → `0007` → `0008` → `0009`), **in both
+(`0001` → `0002` → `0003` → `0004` → `0005` → `0006` → `0007` → `0008` → `0009` → `0010`), **in both
 projects** (`funda1959-test`, `funda1959-production`) — a new migration goes
 to the test project first (SUPABASE_PLAN.md §7.6, "Aşama 2 kurulum kontrolü").
 
@@ -159,7 +181,8 @@ Until the marker row exists, the app sends no request to any application
 table — reads and writes alike.
 
 Check with `GET /api/health` on the deployment (`"database": "ready"`); a
-Merkez Yönetim session also sees which migrations are applied (`0001`–`0009`).
+Merkez Yönetim session also sees which migrations are applied (`0001`–`0010`)
+and the customer Auth settings (sign-ups, e-mail confirmation, providers).
 These checks run only once the marker matches and use `limit=0`, so no
 customer or order row is ever read.
 
@@ -178,7 +201,8 @@ Copy `.env.example` → `.env.local` and fill:
 | --- | --- | --- |
 | `SUPABASE_URL` (or `NEXT_PUBLIC_SUPABASE_URL`) | server | project URL |
 | `SUPABASE_SERVICE_ROLE_KEY` | server only | `POST /api/orders`, confirmation page, campaign admin CRUD, homepage campaign reads, branch stock status. Never shipped to the browser. |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | — | reserved for future client use |
+| `SUPABASE_ANON_KEY` | server only | customer Auth (Aşama 5): sign-up, sign-in, password reset, session refresh in `src/proxy.ts`. The anon/publishable key isn't secret, but it is never sent to the browser. Without it membership shows "kullanılamıyor"; guest checkout keeps working. |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | — | stays empty: the browser never talks to Supabase |
 
 Both `SUPABASE_URL` (or `NEXT_PUBLIC_SUPABASE_URL`) and
 `SUPABASE_SERVICE_ROLE_KEY` must be set for campaigns to use Supabase —
@@ -209,6 +233,17 @@ again by the quote and the order, and once more inside `create_order`.
 **Admin orders:** `/admin?section=orders` (`from`, `to`, `page`) and the
 overview `→ SupabaseOrderRepository → rpc list_orders` with the branch scope of
 the signed session; `PATCH /api/admin/orders` `→ rpc update_order_status`.
+
+**Customer accounts (Aşama 5):** `/giris`, `/uye-ol`, `/sifremi-unuttum`,
+`/sifre-yenile`, `/uyelik-tamamla`, `/hesabim/*` `→ /api/account/*`
+(`src/lib/customer-auth/operations.ts`) — Supabase Auth on the server only
+(anon key, httpOnly cookies), environment marker checked before every Auth
+call; member rows through `src/lib/customers/repository.ts` (service role,
+always filtered by the session's user id). `src/proxy.ts` only refreshes the
+session. Sign-up is open with test data only (local + Preview); Production
+answers 403. Social sign-in: no provider allowed in code yet (Google blocked,
+SUPABASE_PLAN.md §8.2) — keep Google, Apple and Facebook off in the dashboard.
+`POST /api/orders` sets `customer_user_id` from the verified session.
 
 **Campaigns:** `/admin?section=campaigns` (SUPER_ADMIN) `→ POST/PATCH/DELETE
 /api/admin/campaigns → SupabaseCampaignRepository` (plain REST CRUD, no RPC

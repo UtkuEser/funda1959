@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { resolveAdminScope } from "@/lib/admin/access";
 import { isSupabaseConfigured, probeRelation } from "@/lib/supabase-server";
+import { customerAuthConfig, isSignupOpen } from "@/lib/customer-auth/config";
+import { readAuthSettings } from "@/lib/customer-auth/providers";
 import {
   expectedDataEnvironment,
   isServerlessRuntime,
@@ -20,7 +22,8 @@ export const dynamic = "force-dynamic";
  * Public answer: status words only. A Merkez Yönetim session additionally
  * gets per-table checks (which migrations are applied) — only once the
  * marker matches, and schema-only (`limit=0`): no customer or order row is
- * ever read. Never any key or URL.
+ * ever read — plus the customer Auth settings that matter for Aşama 5
+ * (sign-ups open, "Confirm email" off, enabled providers). Never any key or URL.
  */
 
 const TABLE_PROBES: { table: string; select: string; migration: string }[] = [
@@ -35,6 +38,9 @@ const TABLE_PROBES: { table: string; select: string; migration: string }[] = [
   { table: "order_status_events", select: "id", migration: "0007" },
   { table: "delivery_zone_fees", select: "zone_id,state,fee,updated_by,updated_at", migration: "0008" },
   { table: "product_prices", select: "product_id,variant_key,price,updated_by,updated_at", migration: "0009" },
+  { table: "customer_profiles", select: "auth_user_id,full_name,phone,email,terms_version,terms_accepted_at", migration: "0010" },
+  { table: "customer_addresses", select: "id,auth_user_id,is_default", migration: "0010" },
+  { table: "orders", select: "customer_user_id", migration: "0010" },
 ];
 
 export async function GET() {
@@ -74,6 +80,23 @@ export async function GET() {
     } else if (configured) {
       // wrong or unmarked project: nothing but the marker is touched
       body.migrations = "not_checked";
+    }
+    // customer membership (§8.2): only once the marker matches
+    if (!customerAuthConfig()) {
+      body.customerAuth = { configured: false };
+    } else if (database === "ready") {
+      const settings = await readAuthSettings({ fresh: true });
+      body.customerAuth = settings
+        ? {
+            configured: true,
+            signupOpenInCode: isSignupOpen(),
+            signupEnabledInSupabase: settings.signupEnabled,
+            emailConfirmationOff: settings.emailAutoconfirm,
+            providersEnabledInSupabase: settings.externalEnabled,
+          }
+        : { configured: true, settings: "unreadable" };
+    } else {
+      body.customerAuth = { configured: true, settings: "not_checked" };
     }
   }
 
