@@ -19,7 +19,7 @@ import {
   type ProductPriceRecord,
 } from "@/lib/pricing/prices";
 import { refreshProductPrices } from "@/lib/pricing/prices-server";
-import { ProductPricesTable, type ProductPriceRow } from "@/components/admin/ProductPricesTable";
+import { ProductPricesTable, type ProductPriceProduct } from "@/components/admin/ProductPricesTable";
 import { getOrderRepository, type OrderPage, type StoredOrder } from "@/lib/orders";
 import { orderStatusLabel } from "@/lib/order-status";
 import { OrderStatusActions } from "@/components/admin/OrderStatusActions";
@@ -556,14 +556,20 @@ async function PricesSection() {
   const tableMissing = records !== null && productPriceTableMissing();
   const canEdit = records !== null && !tableMissing;
   const stored = new Map((records ?? []).map((r) => [`${r.productId}|${r.variantKey}`, r]));
-  // plain rows for the client table (see ZonesSection): one per price — the
-  // single price, or each size of a product with sizes (D20)
-  const priceRows = catalogProducts.flatMap((p): ProductPriceRow[] => {
+  // plain data for the client table (see ZonesSection): one entry per product
+  // with its single price, or with each of its sizes (D20)
+  const priceProducts = catalogProducts.map((p): ProductPriceProduct => {
     const sizes = productSizes(p);
-    if (sizes.length === 0) {
-      return [{ productId: p.id, variantKey: "", name: p.name, size: null, category: p.categoryName, unit: catalogPriceSuffix(p), catalogPrice: p.priceValue, oldPrice: p.oldPrice ?? null, stored: stored.get(`${p.id}|`) ?? null }];
-    }
-    return sizes.map((v) => ({ productId: p.id, variantKey: v.id, name: p.name, size: v.label, category: p.categoryName, unit: "", catalogPrice: v.price, oldPrice: v.oldPrice ?? null, stored: stored.get(`${p.id}|${v.id}`) ?? null }));
+    return {
+      productId: p.id,
+      name: p.name,
+      category: p.categoryName,
+      unit: sizes.length > 0 ? "" : catalogPriceSuffix(p),
+      prices:
+        sizes.length > 0
+          ? sizes.map((v) => ({ variantKey: v.id, size: v.label, catalogPrice: v.price, oldPrice: v.oldPrice ?? null, stored: stored.get(`${p.id}|${v.id}`) ?? null }))
+          : [{ variantKey: "", size: null, catalogPrice: p.priceValue, oldPrice: p.oldPrice ?? null, stored: stored.get(`${p.id}|`) ?? null }],
+    };
   });
 
   return (
@@ -572,9 +578,9 @@ async function PricesSection() {
         Mevcut ürünlerin fiyatları. Ürün ekleme, silme, görsel ve içerik bu ekrandan değişmez; şube stokları (aktif/pasif) ayrı
         yönetilir. Kaydedilen fiyat katalogda, ürün sayfasında, aramada, hızlı siparişte, sepette ve ödeme hesabında hemen geçerli olur;
         verilmiş siparişlerin fiyatları değişmez. Fiyatı kaydedilmemiş ürün veya boyut katalog fiyatıyla satılır.{" "}
-        <strong>Boyutlu ürünlerde her boyutun fiyatı ayrı girilir; bir boyutu değiştirmek diğerlerini değiştirmez.</strong> Kartta
-        en küçük boyutun fiyatı görünür. Üstü çizili eski fiyat yalnızca belirlenmiş ürün veya boyutta ve güncel fiyattan yüksekken
-        görünür; fiyat değişince kendiliğinden oluşmaz.
+        <strong>Boyutlu ürünlerde ürün adına veya oka tıklayınca boyutlar açılır; her boyutun fiyatı ayrı girilir ve ayrı kaydedilir,
+        bir boyutu değiştirmek diğerlerini değiştirmez.</strong> Kartta en küçük boyutun fiyatı görünür. Üstü çizili eski fiyat
+        yalnızca belirlenmiş ürün veya boyutta ve güncel fiyattan yüksekken görünür; fiyat değişince kendiliğinden oluşmaz.
       </PageIntro>
       {records === null && (
         <p role="alert" className="mb-4 rounded-md border border-neutral-300 bg-neutral-50 px-3 py-2 text-[12.5px] text-neutral-800">
@@ -586,7 +592,7 @@ async function PricesSection() {
           Fiyat tablosu henüz kurulmadı (migration 0009). Bütün ürünler katalog fiyatıyla satılıyor; fiyat değiştirilemez.
         </p>
       )}
-      <ProductPricesTable rows={priceRows} readable={records !== null} canEdit={canEdit} />
+      <ProductPricesTable products={priceProducts} readable={records !== null} canEdit={canEdit} />
     </>
   );
 }

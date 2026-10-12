@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { formatTL } from "@/lib/cart-utils";
 import { MAX_PRODUCT_PRICE, type ProductPriceRecord } from "@/lib/pricing/prices";
 
@@ -14,6 +14,8 @@ import { MAX_PRODUCT_PRICE, type ProductPriceRecord } from "@/lib/pricing/prices
  * current price asks for a second click, so a typo like 450 for 45 is not
  * saved by accident. The verified row goes to the table (`onSaved`), which
  * shows it at once — no route refresh is needed for the screen to be current.
+ * Its state (`onStatusChange`) lets a collapsed product show that one of its
+ * sizes is unsaved, saving or refused.
  */
 
 const amountText = (price: number) => price.toFixed(2).replace(".", ",");
@@ -26,6 +28,9 @@ const BIG_CHANGE = 0.5;
 
 type Outcome = { kind: "saved" | "failed" | "unknown"; text: string };
 
+/** idle: shows the stored price; dirty: another value typed, not sent; then the request's state */
+export type EditorStatus = "idle" | "dirty" | "saving" | "failed" | "unknown";
+
 export function ProductPriceEditor({
   productId,
   variantKey,
@@ -33,6 +38,7 @@ export function ProductPriceEditor({
   unit,
   updatedAt,
   onSaved,
+  onStatusChange,
 }: {
   productId: string;
   /** the size id, or '' for a product with a single price */
@@ -44,6 +50,7 @@ export function ProductPriceEditor({
   updatedAt: string | null;
   /** the row the database stored, after it was checked against the request */
   onSaved?: (row: ProductPriceRecord) => void;
+  onStatusChange?: (productId: string, variantKey: string, status: EditorStatus) => void;
 }) {
   const [amount, setAmount] = useState(amountText(price));
   const [saving, setSaving] = useState(false);
@@ -65,6 +72,17 @@ export function ProductPriceEditor({
   const changed = amountOk && !samePrice(parsed, price);
   const change = amountOk ? (parsed - price) / price : 0;
   const stored = `${formatTL(price)}${unit}`;
+  const failed = outcome !== null && outcome.kind !== "saved";
+  const status: EditorStatus = saving
+    ? "saving"
+    : failed
+      ? (outcome.kind === "unknown" ? "unknown" : "failed")
+      : confirming || !(amountOk && samePrice(parsed, price))
+        ? "dirty"
+        : "idle";
+  useEffect(() => {
+    onStatusChange?.(productId, variantKey, status);
+  }, [onStatusChange, productId, variantKey, status]);
 
   async function save() {
     if (inFlight.current) return; // one request at a time
@@ -110,10 +128,8 @@ export function ProductPriceEditor({
     }
   }
 
-  const failed = outcome !== null && outcome.kind !== "saved";
-
   return (
-    <div className="flex min-w-[220px] flex-col gap-1.5">
+    <div className="flex min-w-0 flex-col gap-1.5 break-words xl:min-w-[200px]">
       <div className="flex flex-wrap items-center gap-1.5">
         <input
           aria-label="Yeni fiyat (TL)"
