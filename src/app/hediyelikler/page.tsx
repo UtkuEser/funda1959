@@ -3,6 +3,8 @@ import { catalogProducts } from "@/lib/data";
 import { LandingHero } from "@/components/landing/LandingHero";
 import { CategoryShowcase } from "@/components/landing/CategoryShowcase";
 import { FeaturedProductStrip } from "@/components/landing/FeaturedProductStrip";
+import { PricesProvider } from "@/lib/pricing/prices-context";
+import { getDisplayPriceMap } from "@/lib/pricing/prices-server";
 import { EditorialSteps } from "@/components/landing/EditorialSteps";
 import { EditorialSplit } from "@/components/landing/EditorialSplit";
 import { BurgundyCTA } from "@/components/landing/BurgundyCTA";
@@ -72,9 +74,12 @@ const CORPORATE_FEATURES = [
 
 const giftProducts = catalogProducts.filter((p) => p.isGift).slice(0, 4);
 
-export default function HediyeliklerPage() {
+// current prices (SUPABASE_PLAN.md, D5): read per request, never from the build
+export const dynamic = "force-dynamic";
+
+export default async function HediyeliklerPage() {
   return (
-    <>
+    <PricesProvider prices={await getDisplayPriceMap()}>
       <LandingHero
         eyebrow="Hediyelikler"
         title={
@@ -191,6 +196,6 @@ export default function HediyeliklerPage() {
         primary={{ label: "Hediyelikleri Keşfet", href: "#hediye-secimi" }}
         secondary={{ label: "Mağazalarımızı Gör", href: "/subeler" }}
       />
-    </>
+    </PricesProvider>
   );
 }

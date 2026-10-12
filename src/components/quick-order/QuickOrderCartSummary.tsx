@@ -5,6 +5,7 @@ import { useCart } from "@/lib/use-cart";
 import { formatTL, itemTotal, quantityTotal, subtotal } from "@/lib/cart-utils";
 import { useDelivery } from "@/lib/delivery/context";
 import { useDeliveryFee } from "@/lib/delivery/use-delivery-fee";
+import { useCartPriceSync } from "@/lib/pricing/use-cart-prices";
 import { DeliveryMinimumNotice, useDeliveryMinimum } from "@/components/cart/DeliveryMinimumNotice";
 import { OrderTotals } from "@/components/cart/OrderTotals";
 
@@ -16,6 +17,7 @@ export function QuickOrderCartSummary() {
   const minimum = useDeliveryMinimum(sub);
   const { context, isHydrated } = useDelivery();
   const fee = useDeliveryFee(context.fulfillmentType, context.district, context.neighborhood, isHydrated && !empty);
+  const prices = useCartPriceSync(items);
 
   return (
     <div className="rounded-lg border border-sand-light bg-cream-light p-5">
@@ -47,7 +49,7 @@ export function QuickOrderCartSummary() {
 
           <div className="my-4 border-t border-sand-light" />
 
-          <OrderTotals subtotal={sub} fee={fee} compact />
+          <OrderTotals subtotal={sub} fee={fee} compact pricesUnverified={prices === "failed"} />
           <DeliveryMinimumNotice shortfall={minimum.shortfall} onPickup={minimum.switchToPickup} />
         </>
       )}

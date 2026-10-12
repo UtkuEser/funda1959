@@ -18,7 +18,18 @@ function Row({ label, value, compact }: { label: string; value: React.ReactNode;
   );
 }
 
-export function OrderTotals({ subtotal, fee, compact = false }: { subtotal: number; fee: DeliveryFeeView; compact?: boolean }) {
+export function OrderTotals({
+  subtotal,
+  fee,
+  compact = false,
+  pricesUnverified = false,
+}: {
+  subtotal: number;
+  fee: DeliveryFeeView;
+  compact?: boolean;
+  /** the current product prices could not be confirmed (useCartPriceSync "failed") */
+  pricesUnverified?: boolean;
+}) {
   const amount = feeAmount(fee);
   const muted = (t: string) => <span className="text-[13px] text-taupe">{t}</span>;
   const feeValue =
@@ -51,6 +62,11 @@ export function OrderTotals({ subtotal, fee, compact = false }: { subtotal: numb
         </span>
       </div>
 
+      {pricesUnverified && (
+        <p role="status" className="mt-3 font-sans text-[12px] leading-relaxed text-chocolate-light">
+          Güncel ürün fiyatları şu an doğrulanamadı; tutar ödeme adımında kesinleşir.
+        </p>
+      )}
       {fee.status === "refused" && (
         <p role="alert" className="mt-3 font-sans text-[12.5px] leading-relaxed text-chocolate-light">
           {fee.message}

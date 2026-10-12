@@ -7,6 +7,7 @@ import { SampleDataNote } from "@/components/delivery/SampleDataNote";
 import { ProductGridCard } from "./ProductGridCard";
 import { useDelivery } from "@/lib/delivery/context";
 import { useCatalogVerdicts } from "@/lib/delivery/use-catalog-verdicts";
+import { usePricedProducts } from "@/lib/pricing/prices-context";
 import {
   catalogCategories,
   catalogPastaOccasions,
@@ -68,8 +69,11 @@ export function CatalogView({ slug = "tumu" }: { slug?: string }) {
 
   const showPastaFilters = cakeCatalogSlugs.includes(listing.navSlug);
 
+  // current prices (D5), so "price" sorting follows what the cards show
+  const listingProducts = usePricedProducts(listing.products);
+
   const results = useMemo(() => {
-    let list: CatalogProduct[] = listing.products;
+    let list: CatalogProduct[] = listingProducts;
 
     if (quick.includes("today")) list = list.filter((p) => verdicts[p.id]?.available);
     if (quick.includes("customizable")) list = list.filter((p) => p.customizable);
@@ -82,14 +86,14 @@ export function CatalogView({ slug = "tumu" }: { slug?: string }) {
     }
 
     const sorted = [...list];
-    if (sort === "price-asc") sorted.sort((a, b) => a.priceValue - b.priceValue);
-    else if (sort === "price-desc") sorted.sort((a, b) => b.priceValue - a.priceValue);
+    if (sort === "price-asc") sorted.sort((a, b) => a.cardPrice - b.cardPrice);
+    else if (sort === "price-desc") sorted.sort((a, b) => b.cardPrice - a.cardPrice);
     else if (sort === "bestsellers") sorted.sort((a, b) => Number(!!b.isBestSeller) - Number(!!a.isBestSeller));
     else if (sort === "new") sorted.sort((a, b) => Number(!!b.isNew) - Number(!!a.isNew));
     else sorted.sort((a, b) => Number(!!b.isFeatured) - Number(!!a.isFeatured));
 
     return sorted;
-  }, [listing, occasion, serving, quick, verdicts, sort, showPastaFilters]);
+  }, [listingProducts, occasion, serving, quick, verdicts, sort, showPastaFilters]);
 
   // Reset pagination when the result set changes (render-phase state adjust).
   const signature = `${listing.slug}|${occasion}|${serving}|${quick.join(",")}|${sort}`;

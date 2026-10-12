@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { QuickOrderPage } from "@/components/quick-order/QuickOrderPage";
+import { PricesProvider } from "@/lib/pricing/prices-context";
+import { getDisplayPriceMap } from "@/lib/pricing/prices-server";
 
 export const metadata: Metadata = {
   title: "Hızlı Sipariş",
@@ -8,6 +10,13 @@ export const metadata: Metadata = {
   alternates: { canonical: "/hizli-siparis" },
 };
 
-export default function HizliSiparisPage() {
-  return <QuickOrderPage />;
+// current prices (SUPABASE_PLAN.md, D5): read per request, never from the build
+export const dynamic = "force-dynamic";
+
+export default async function HizliSiparisPage() {
+  return (
+    <PricesProvider prices={await getDisplayPriceMap()}>
+      <QuickOrderPage />
+    </PricesProvider>
+  );
 }

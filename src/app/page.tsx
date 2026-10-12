@@ -8,10 +8,12 @@ import { BestSellers } from "@/components/home/BestSellers";
 import { InstagramContentSection } from "@/components/home/InstagramContentSection";
 import { catalogProducts } from "@/lib/data";
 import { celebrationPool } from "@/lib/celebration-finder";
+import { PricesProvider } from "@/lib/pricing/prices-context";
+import { getDisplayPriceMap } from "@/lib/pricing/prices-server";
 
 /**
- * Campaigns (and social content) are read per request — from Supabase when
- * configured — so an admin edit shows up without a rebuild.
+ * Campaigns, prices (and social content) are read per request — from
+ * Supabase when configured — so an admin edit shows up without a rebuild.
  */
 export const dynamic = "force-dynamic";
 
@@ -21,7 +23,8 @@ const cakePool = celebrationPool(catalogProducts);
  * Fixed order: hero -> branch -> campaigns -> categories -> celebrations (the
  * cake finder, shared with /ozel-gun) -> best sellers -> social videos -> footer.
  */
-export default function HomePage() {
+export default async function HomePage() {
+  const prices = await getDisplayPriceMap();
   return (
     <>
       <HeroSection slides={resolveHeroSlides()} />
@@ -32,7 +35,9 @@ export default function HomePage() {
       </div>
       <CategoryGrid />
       <CelebrationQuiz products={cakePool} variant="section" />
-      <BestSellers />
+      <PricesProvider prices={prices}>
+        <BestSellers />
+      </PricesProvider>
       <InstagramContentSection />
     </>
   );

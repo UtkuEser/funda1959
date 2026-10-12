@@ -1,15 +1,16 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { catalogListingSlugs, resolveCatalogListing } from "@/lib/data";
+import { resolveCatalogListing } from "@/lib/data";
 import { CatalogView } from "@/components/catalog/CatalogView";
+import { PricesProvider } from "@/lib/pricing/prices-context";
+import { getDisplayPriceMap } from "@/lib/pricing/prices-server";
 
 type Props = {
   params: Promise<{ kategori: string }>;
 };
 
-export async function generateStaticParams() {
-  return catalogListingSlugs.map((kategori) => ({ kategori }));
-}
+// current prices (SUPABASE_PLAN.md, D5): read per request, never from the build
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { kategori } = await params;
@@ -30,5 +31,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function KategoriPage({ params }: Props) {
   const { kategori } = await params;
   if (kategori === "tumu" || !resolveCatalogListing(kategori)) notFound();
-  return <CatalogView slug={kategori} />;
+  return (
+    <PricesProvider prices={await getDisplayPriceMap()}>
+      <CatalogView slug={kategori} />
+    </PricesProvider>
+  );
 }

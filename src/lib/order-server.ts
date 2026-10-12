@@ -1,8 +1,11 @@
 /**
  * Server-side validation + pricing for POST /api/orders. Nothing the browser
  * sends is trusted beyond the customer's choices:
- *   - unit prices come from `src/lib/data.ts` (the catalog's own source),
- *     discount and delivery fee are decided here, the total is recomputed;
+ *   - unit prices: the price Merkez stored for the product or the chosen size
+ *     (`product_prices`, D5, D20), else the catalog's starting price
+ *     (`src/lib/data.ts`); a product with sizes needs one of its sizes.
+ *     Discount and delivery fee are decided here, the total is recomputed.
+ *     Prices that can't be read answer 503 — never an older or catalog value;
  *   - a delivery order's branch and zone follow from the address
  *     (`resolveContextBranch`), the client's branch / zone fields are ignored;
  *   - date and slot are checked again at order time against the availability
@@ -13,7 +16,8 @@
  *   - delivery minimum 500 TL on products − discount, fee excluded, pickup
  *     exempt (D14, `lib/order-rules.ts`).
  * Errors: 400 = malformed request, 409 = valid request the order can't be
- * fulfilled as asked (the message says why), 503 = delivery fees can't be read.
+ * fulfilled as asked (the message says why), 503 = prices or delivery fees
+ * can't be read.
  */
 
 import { catalogProducts, getProductDetail } from "./data";
@@ -30,6 +34,7 @@ import {
   type ReasonCode,
 } from "./availability";
 import { addDaysISO, istanbulDateISO } from "./time/istanbul";
+import { effectiveUnitPrice, priceRowsForCalculation } from "./pricing/prices";
 import {
   ANKARA_DISTRICTS,
   DELIVERY_TIME_SLOTS,
@@ -39,6 +44,8 @@ import {
 } from "./checkout-utils";
 
 const BRANCH_SLUGS = listBranches().map((b) => b.slug);
+
+export const PRICES_UNAVAILABLE_ERROR = "Ürün fiyatları şu an doğrulanamadı; tutar hesaplanamadı. Lütfen biraz sonra tekrar deneyin.";
 const MAX_QTY = 20;
 
 export type BuildResult =
@@ -68,6 +75,10 @@ export function buildOrderPayload(body: unknown, { now = new Date() }: { now?: D
   const rawItems = Array.isArray(b.items) ? b.items : [];
   if (rawItems.length === 0) return fail("Sepetinizde ürün bulunmuyor.");
 
+  // the prices of this request's read (refreshProductPrices, strict) — never a guess
+  const prices = priceRowsForCalculation();
+  if (!prices) return { ok: false, status: 503, error: PRICES_UNAVAILABLE_ERROR, reason: null };
+
   const items: Record<string, unknown>[] = [];
   const cartLines: { productId: string; productSlug: string; variantId: string | null; quantity: number }[] = [];
   let subtotal = 0;
@@ -85,16 +96,18 @@ export function buildOrderPayload(body: unknown, { now = new Date() }: { now?: D
 
     const detail = getProductDetail(slug);
     const variantId = r.variantId == null ? null : str(r.variantId) || null;
-    let unitPrice = product.priceValue;
     let variantLabel: string | null = null;
 
     if (variantId) {
       const variant = detail?.variants.find((v) => v.id === variantId);
       if (!variant) return fail("Geçersiz ürün seçeneği.");
-      unitPrice = variant.price;
       variantLabel = variant.label;
+    } else if ((detail?.variants.length ?? 0) > 0) {
+      // D20: sizes are priced one by one — there is no price "without a size"
+      return fail("Ürün için bir boyut seçin.");
     }
 
+    let unitPrice = effectiveUnitPrice(product, variantId, prices) ?? Number.NaN;
     if (!Number.isFinite(unitPrice) || unitPrice <= 0) return fail("Ürün fiyatı belirlenemedi.");
     unitPrice = money(unitPrice);
 

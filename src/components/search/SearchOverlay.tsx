@@ -12,6 +12,7 @@ import {
   searchOverlayCategories,
 } from "@/lib/search";
 import { SearchResultItem } from "./SearchResultItem";
+import { applyPrice, type PriceMap } from "@/lib/pricing/prices";
 
 const DEBOUNCE_MS = 250;
 
@@ -73,12 +74,25 @@ export function SearchOverlay({ open, onClose }: { open: boolean; onClose: () =>
     };
   }, [open, handleClose]);
 
+  // current prices (D5): the results are built from the code catalog, so the
+  // prices are asked for when the overlay opens — none is shown before that
+  const [prices, setPrices] = useState<PriceMap | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    const ctrl = new AbortController();
+    fetch("/api/prices", { signal: ctrl.signal })
+      .then((r) => r.json() as Promise<{ prices?: PriceMap }>)
+      .then((data) => setPrices(data.prices ?? {}))
+      .catch(() => {});
+    return () => ctrl.abort();
+  }, [open]);
+
   const results = useMemo(() => search(debounced), [debounced]);
   const hasQuery = debounced.trim().length >= MIN_QUERY_LENGTH;
 
   if (!open) return null;
 
-  const products = results.products.slice(0, AUTOCOMPLETE_PRODUCT_LIMIT);
+  const products = results.products.slice(0, AUTOCOMPLETE_PRODUCT_LIMIT).map((p) => applyPrice(p, prices));
   const cats = results.categories.slice(0, AUTOCOMPLETE_CATEGORY_LIMIT);
 
   return (
@@ -208,7 +222,7 @@ export function SearchOverlay({ open, onClose }: { open: boolean; onClose: () =>
                     <ul className="mt-1.5">
                       {products.map((p) => (
                         <li key={p.id}>
-                          <SearchResultItem product={p} onSelect={handleClose} />
+                          <SearchResultItem product={p} showPrice={prices !== null} onSelect={handleClose} />
                         </li>
                       ))}
                     </ul>

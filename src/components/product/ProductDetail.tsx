@@ -6,7 +6,8 @@ import { useCallback, useMemo, useState } from "react";
 import { Container } from "@/components/shared/Container";
 import { ProductCardGrid } from "@/components/catalog/ProductCardGrid";
 import { addToCart } from "@/lib/cart";
-import { type ProductDetail as ProductDetailType } from "@/lib/data";
+import { formatTL } from "@/lib/cart-utils";
+import { oldPriceShown, type ProductDetail as ProductDetailType } from "@/lib/data";
 import { useDelivery } from "@/lib/delivery/context";
 import { cartHasBranchConflict } from "@/lib/cart-fulfillment";
 import { earliestLabel } from "@/lib/delivery/labels";
@@ -24,7 +25,8 @@ const VARIANT_TITLE: Record<string, string> = {
   none: "",
 };
 
-const tl = (n: number) => `₺${n.toLocaleString("tr-TR")}`;
+// same format as the cart and checkout: "₺1.050", kuruş whenever there is any ("₺525,50")
+const tl = formatTL;
 
 /** Merchandising labels only — delivery timing comes from the engine (see the pill below). */
 function badgesFor(p: ProductDetailType): string[] {
@@ -61,7 +63,11 @@ export function ProductDetail({ product }: { product: ProductDetailType }) {
     () => product.variants.find((v) => v.id === variantId) ?? null,
     [product.variants, variantId],
   );
-  const unitPrice = selectedVariant?.price ?? product.basePrice;
+  // D16: the chosen size's price; before a choice, the card's price (smallest size)
+  const unitPrice = selectedVariant?.price ?? product.cardPrice;
+  // D21: a size's struck-through old price only with that size's price, and only above it (D18)
+  const shownSize = selectedVariant ?? product.variants[0] ?? null;
+  const oldPrice = shownSize?.oldPrice && oldPriceShown(shownSize.oldPrice, unitPrice) ? shownSize.oldPrice : null;
   const total = unitPrice * qty;
 
   const cta = (() => {
@@ -282,7 +288,10 @@ export function ProductDetail({ product }: { product: ProductDetailType }) {
             {product.shortDescription}
           </p>
 
-          <p className="mt-4 font-sans text-[24px] font-semibold text-burgundy">{tl(unitPrice)}</p>
+          <div className="mt-4 flex items-baseline gap-2.5">
+            <p className="font-sans text-[24px] font-semibold text-burgundy">{tl(unitPrice)}</p>
+            {oldPrice && <span className="font-sans text-[15px] text-taupe line-through">{oldPrice}</span>}
+          </div>
           <SampleDataNote className="mt-1" />
 
           <div className="mt-7 space-y-6">

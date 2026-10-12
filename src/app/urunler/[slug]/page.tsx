@@ -1,13 +1,15 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { catalogProducts, getProductDetail } from "@/lib/data";
+import { getProductDetail } from "@/lib/data";
 import { ProductDetail } from "@/components/product/ProductDetail";
+import { applyPriceToDetail } from "@/lib/pricing/prices";
+import { PricesProvider } from "@/lib/pricing/prices-context";
+import { getDisplayPriceMap } from "@/lib/pricing/prices-server";
 
 type Props = { params: Promise<{ slug: string }> };
 
-export function generateStaticParams() {
-  return catalogProducts.map((p) => ({ slug: p.slug }));
-}
+// current prices (SUPABASE_PLAN.md, D5): read per request, never from the build
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
@@ -28,5 +30,10 @@ export default async function ProductDetailPage({ params }: Props) {
   const product = getProductDetail(slug);
   if (!product) notFound();
 
-  return <ProductDetail product={product} />;
+  const prices = await getDisplayPriceMap();
+  return (
+    <PricesProvider prices={prices}>
+      <ProductDetail product={applyPriceToDetail(product, prices)} />
+    </PricesProvider>
+  );
 }

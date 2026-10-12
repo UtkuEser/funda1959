@@ -11,6 +11,7 @@ const NAV = [
   { key: "overview", label: "Genel Bakış" },
   { key: "orders", label: "Siparişler" },
   { key: "stock", label: "Şube Stokları" },
+  { key: "prices", label: "Fiyatlar" },
   { key: "campaigns", label: "Kampanyalar" },
   { key: "instagram", label: "Instagram İçerikleri" },
   { key: "funda-puan", label: "Funda Puan" },

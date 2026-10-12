@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { CatalogView } from "@/components/catalog/CatalogView";
+import { PricesProvider } from "@/lib/pricing/prices-context";
+import { getDisplayPriceMap } from "@/lib/pricing/prices-server";
 
 export const metadata: Metadata = {
   title: "Lezzetlerimiz",
@@ -14,6 +16,13 @@ export const metadata: Metadata = {
   ],
 };
 
-export default function LezzetlerimizPage() {
-  return <CatalogView />;
+// current prices (SUPABASE_PLAN.md, D5): read per request, never from the build
+export const dynamic = "force-dynamic";
+
+export default async function LezzetlerimizPage() {
+  return (
+    <PricesProvider prices={await getDisplayPriceMap()}>
+      <CatalogView />
+    </PricesProvider>
+  );
 }

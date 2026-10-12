@@ -123,6 +123,17 @@ export function patchAllItems(patch: Partial<Omit<CartItem, "id">>): void {
   write(read().map((i) => ({ ...i, ...patch })));
 }
 
+/**
+ * New unit prices for some lines (by line id) — the cart shows the price an
+ * order would be placed at now (SUPABASE_PLAN.md, D5). Writes only if
+ * something changed.
+ */
+export function repriceItems(prices: Record<string, number>): void {
+  const items = read();
+  if (!items.some((i) => prices[i.id] !== undefined && prices[i.id] !== i.unitPrice)) return;
+  write(items.map((i) => (prices[i.id] !== undefined ? { ...i, unitPrice: prices[i.id] } : i)));
+}
+
 export function clearCart(): void {
   write([]);
 }

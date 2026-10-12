@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Container } from "@/components/shared/Container";
 import { ProductCardGrid } from "@/components/catalog/ProductCardGrid";
 import type { SearchResults } from "@/lib/search";
+import { usePricedProducts } from "@/lib/pricing/prices-context";
 
 type SortKey = "relevance" | "bestsellers" | "price-asc" | "price-desc";
 
@@ -26,7 +27,8 @@ export function SearchResultsView({
   const [sort, setSort] = useState<SortKey>("relevance");
 
   const trimmed = query.trim();
-  const baseProducts = results.products;
+  // current prices (D5), so "price" sorting follows what the cards show
+  const baseProducts = usePricedProducts(results.products);
 
   const categoryChips = useMemo(() => {
     const map = new Map<string, string>();
@@ -40,8 +42,8 @@ export function SearchResultsView({
         ? baseProducts
         : baseProducts.filter((p) => p.categorySlug === category);
     out = [...out];
-    if (sort === "price-asc") out.sort((a, b) => a.priceValue - b.priceValue);
-    else if (sort === "price-desc") out.sort((a, b) => b.priceValue - a.priceValue);
+    if (sort === "price-asc") out.sort((a, b) => a.cardPrice - b.cardPrice);
+    else if (sort === "price-desc") out.sort((a, b) => b.cardPrice - a.cardPrice);
     else if (sort === "bestsellers")
       out.sort((a, b) => Number(!!b.isBestSeller) - Number(!!a.isBestSeller));
     return out;

@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { formatTL } from "@/lib/cart-utils";
 import { describeFeeState, type DeliveryFeeState, type ZoneFeeRecord } from "@/lib/delivery/fees";
 
@@ -13,7 +12,9 @@ import { describeFeeState, type DeliveryFeeState, type ZoneFeeRecord } from "@/l
  *
  * "Kaydedildi" is shown only for the row the database returned; anything
  * else says the stored fee did not change. Until then the field is marked as
- * an unsaved change, so a typed amount never looks like the stored one.
+ * an unsaved change, so a typed amount never looks like the stored one. The
+ * verified row goes to the table (`onSaved`), which shows it at once — no
+ * route refresh is needed for the screen to be current.
  */
 
 const amountText = (state: DeliveryFeeState, fee: number | null) =>
@@ -37,13 +38,15 @@ export function DeliveryFeeEditor({
   state,
   fee,
   updatedAt,
+  onSaved,
 }: {
   zoneId: string;
   state: DeliveryFeeState;
   fee: number | null;
   updatedAt: string | null;
+  /** the row the database stored, after it was checked against the request */
+  onSaved?: (row: ZoneFeeRecord) => void;
 }) {
-  const router = useRouter();
   const [nextState, setNextState] = useState<DeliveryFeeState>(state);
   const [amount, setAmount] = useState(amountText(state, fee));
   const [saving, setSaving] = useState(false);
@@ -92,7 +95,7 @@ export function DeliveryFeeEditor({
         kind: "saved",
         text: `Kaydedildi: ${feeText(row.state, row.fee)}${row.updatedBy ? ` · ${row.updatedBy}` : ""}${row.updatedAt ? ` · ${clock(row.updatedAt)}` : ""}`,
       });
-      router.refresh();
+      onSaved?.(row);
     } catch {
       // timeout / connection lost: the request may or may not have reached the database
       setOutcome({

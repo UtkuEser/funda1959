@@ -12,6 +12,8 @@ import { useDelivery } from "@/lib/delivery/context";
 import { reasonMessage, type CatalogAvailabilityVerdict } from "@/lib/availability";
 import { deliveryLabel } from "@/lib/delivery/labels";
 import { DeliveryPill } from "@/components/delivery/DeliveryPill";
+import { pricedSizes } from "@/lib/pricing/prices";
+import { usePriceMap, usePricedProduct } from "@/lib/pricing/prices-context";
 
 /** Frontend-only quantity ceiling — mirrors the cart's own clamp (cart.ts). */
 const MAX_QTY = 20;
@@ -68,13 +70,18 @@ function AvailabilityLine({ v }: { v: CatalogAvailabilityVerdict }) {
 }
 
 export function QuickOrderProductRow({
-  product,
+  product: catalogProduct,
   verdict,
 }: {
   product: CatalogProduct;
   verdict: CatalogAvailabilityVerdict | null;
 }) {
+  // the page's current price (D5) — the row shows and adds that price
+  const product = usePricedProduct(catalogProduct);
+  const map = usePriceMap();
   const mode = useMemo(() => getQuickOrderMode(product), [product]);
+  // each size at its own current price (D20) — chips, price label and cart line
+  const sizes = useMemo(() => (mode.kind === "variant" ? pricedSizes(product.id, mode.variants, map) : []), [mode, product.id, map]);
   const { context, isResolved, openSelector } = useDelivery();
 
   const [qty, setQty] = useState(1);
@@ -86,9 +93,7 @@ export function QuickOrderProductRow({
   );
 
   const selectedVariant =
-    mode.kind === "variant"
-      ? mode.variants.find((v) => v.id === variantId) ?? mode.variants[0]
-      : null;
+    mode.kind === "variant" ? sizes.find((v) => v.id === variantId) ?? sizes[0] : null;
 
   const unitPrice = selectedVariant ? selectedVariant.price : product.priceValue;
   const priceLabel = selectedVariant ? formatTL(unitPrice) : product.displayPrice;
@@ -172,7 +177,7 @@ export function QuickOrderProductRow({
           {/* Inline variant chips */}
           {mode.kind === "variant" && (
             <div className="mt-2.5 flex flex-wrap gap-1.5" role="group" aria-label={mode.label}>
-              {mode.variants.map((v) => {
+              {sizes.map((v) => {
                 const on = v.id === selectedVariant?.id;
                 return (
                   <button

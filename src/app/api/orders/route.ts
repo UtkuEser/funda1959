@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { refreshInventory } from "@/lib/inventory/server-init";
 import { refreshDeliveryFees } from "@/lib/delivery/fees-server";
+import { refreshProductPrices } from "@/lib/pricing/prices-server";
 import { SupabaseRestError } from "@/lib/supabase-server";
-import { buildOrderPayload } from "@/lib/order-server";
+import { PRICES_UNAVAILABLE_ERROR, buildOrderPayload } from "@/lib/order-server";
 import { OrderIntakeClosedError, findOrderByRequestId, isOrderIntakeOpen, placeOrder } from "@/lib/orders";
 import { PersistenceUnavailableError, logPersistenceRefusal } from "@/lib/persistence";
 
@@ -15,11 +16,13 @@ const INTAKE_CLOSED_ERROR = "Online sipariş alımı henüz açılmadı.";
 const STOCK_UNREADABLE_ERROR = "Stok bilgisi şu an doğrulanamadı; siparişiniz alınmadı. Lütfen biraz sonra tekrar deneyin.";
 
 /**
- * `raise exception` texts of create_order (0008) that mean "the rules changed
- * between validation and insert" — e.g. Merkez changed the zone's fee in that
- * moment. The order was not written; the customer re-checks the amount.
+ * `raise exception` texts of create_order (0008, 0009) that mean "the rules
+ * changed between validation and insert" — e.g. Merkez changed the zone's fee
+ * or a product's price in that moment. The order was not written; the
+ * customer re-checks the amount.
  */
 const RULE_CHANGED: Record<string, string> = {
+  price_mismatch: "Ürün fiyatı az önce güncellendi; siparişiniz alınmadı. Lütfen tutarı yeniden kontrol edin.",
   delivery_fee_mismatch: "Teslimat ücreti az önce güncellendi; siparişiniz alınmadı. Lütfen tutarı yeniden kontrol edin.",
   delivery_fee_not_set: "Bu bölge için teslimat ücreti belirlenmedi; adrese teslim şu an yapılamıyor. Mağazadan teslim alabilirsiniz.",
   below_minimum: "Adrese teslim için minimum sipariş tutarına ulaşılmadı.",
@@ -66,12 +69,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: STOCK_UNREADABLE_ERROR }, { status: 503 });
   }
 
+  // product prices, fresh (D5): an order is never priced from an older or a catalog value
+  try {
+    await refreshProductPrices({ strict: true });
+  } catch {
+    return NextResponse.json({ ok: false, error: PRICES_UNAVAILABLE_ERROR }, { status: 503 });
+  }
+
   // delivery fees, fresh (D15). A failed read leaves them "unavailable": delivery
   // answers 503 below, pickup keeps working.
   await refreshDeliveryFees();
 
   // 400 malformed / 409 not deliverable as asked (date, slot, stock, zone, fee,
-  // minimum) / 503 fees unreadable
+  // minimum) / 503 prices or fees unreadable
   const built = buildOrderPayload(body);
   if (!built.ok) {
     return NextResponse.json({ ok: false, error: built.error, reason: built.reason ?? null }, { status: built.status });

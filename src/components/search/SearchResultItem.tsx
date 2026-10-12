@@ -5,9 +5,12 @@ import type { CatalogProduct } from "@/lib/data";
 /** Compact autocomplete row — image, name, category, price. */
 export function SearchResultItem({
   product,
+  showPrice = true,
   onSelect,
 }: {
   product: CatalogProduct;
+  /** false until the current prices are known — never a catalog price in their place */
+  showPrice?: boolean;
   onSelect: () => void;
 }) {
   return (
@@ -31,9 +34,11 @@ export function SearchResultItem({
         <p className="truncate font-sans text-[14px] font-medium text-espresso">{product.name}</p>
         <p className="font-sans text-[12px] text-taupe">{product.categoryName}</p>
       </div>
-      <span className="shrink-0 font-sans text-[13px] font-semibold text-burgundy">
-        {product.displayPrice}
-      </span>
+      {showPrice && (
+        <span className="shrink-0 font-sans text-[13px] font-semibold text-burgundy">
+          {product.displayPrice}
+        </span>
+      )}
     </Link>
   );
 }

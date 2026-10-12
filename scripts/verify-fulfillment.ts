@@ -10,6 +10,7 @@ import { placeOrder, getPublicOrder } from "@/lib/orders";
 import { istanbulDateISO, istanbulInstant } from "@/lib/time/istanbul";
 import { requireTestEnvironmentForWrites } from "./test-environment-guard";
 import { installMemoryFeeStore } from "./test-fee-store";
+import { installMemoryPriceStore } from "./test-price-store";
 
 // deterministic "morning" clock: 11:00 in Istanbul today, whatever the machine's zone
 const NOW = istanbulInstant(istanbulDateISO(), "11:00");
@@ -25,6 +26,8 @@ async function main() {
   await requireTestEnvironmentForWrites("verify-fulfillment");
   // test fixtures, not approved prices (D15); İncek-Çankaya güney stays unset
   const fees = installMemoryFeeStore();
+  // catalog prices (nothing stored) — orders are priced only from a successful price read
+  await installMemoryPriceStore().ready;
   await fees.set("zone-incek-golbasi", "paid", 70);
   await fees.set("zone-gop-cankaya", "paid", 60);
   await fees.set("zone-panora-kizilay", "paid", 55);

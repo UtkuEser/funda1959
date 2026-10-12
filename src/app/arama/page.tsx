@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { search } from "@/lib/search";
 import { SearchResultsView } from "@/components/search/SearchResultsView";
+import { PricesProvider } from "@/lib/pricing/prices-context";
+import { getDisplayPriceMap } from "@/lib/pricing/prices-server";
 
 export const metadata: Metadata = {
   title: "Arama",
@@ -16,5 +18,9 @@ export default async function SearchPage({ searchParams }: Props) {
   // `search()` is pure + deterministic, so running it on the server avoids
   // any hydration mismatch. The client view only filters/sorts the result.
   const results = search(q);
-  return <SearchResultsView results={results} query={q} />;
+  return (
+    <PricesProvider prices={await getDisplayPriceMap()}>
+      <SearchResultsView results={results} query={q} />
+    </PricesProvider>
+  );
 }

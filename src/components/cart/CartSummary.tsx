@@ -5,6 +5,7 @@ import type { CartItem } from "@/lib/cart";
 import { hasPickup, subtotal } from "@/lib/cart-utils";
 import { useDelivery } from "@/lib/delivery/context";
 import { useDeliveryFee } from "@/lib/delivery/use-delivery-fee";
+import { useCartPriceSync } from "@/lib/pricing/use-cart-prices";
 import { DeliveryMinimumNotice, useDeliveryMinimum } from "./DeliveryMinimumNotice";
 import { OrderTotals } from "./OrderTotals";
 
@@ -13,13 +14,14 @@ export function CartSummary({ items }: { items: CartItem[] }) {
   const minimum = useDeliveryMinimum(sub);
   const { context, isHydrated } = useDelivery();
   const fee = useDeliveryFee(context.fulfillmentType, context.district, context.neighborhood, isHydrated);
+  const prices = useCartPriceSync(items);
 
   return (
     <div className="rounded-lg border border-sand-light bg-cream-light p-5 md:p-6">
       <h2 className="font-serif text-[20px] font-semibold text-burgundy">Sipariş Özeti</h2>
 
       <div className="mt-5">
-        <OrderTotals subtotal={sub} fee={fee} />
+        <OrderTotals subtotal={sub} fee={fee} pricesUnverified={prices === "failed"} />
       </div>
 
       <DeliveryMinimumNotice shortfall={minimum.shortfall} onPickup={minimum.switchToPickup} />

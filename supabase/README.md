@@ -111,6 +111,28 @@ The zone / neighbourhood list (`src/lib/delivery/zones.ts`) is test data, not an
 approved service area. Until Merkez sets a zone's fee, delivery to that zone is
 refused and pickup keeps working.
 
+`migrations/0009_product_prices.sql` — Aşama 4 (SUPABASE_PLAN.md D5, D20, D21):
+
+- `product_prices` — the prices Merkez set for existing products, one row per
+  `(product_id, variant_key)`; `variant_key ''` is a product's single price,
+  otherwise the size id (`4-6`, `500g`, `12` …). Every size is priced on its
+  own row — no multiplier; changing one size changes no other. The catalog
+  (products, sizes, content, images) stays in code; a price without a row
+  sells at its catalog price, so today's prices (sizes included) are the
+  starting values. Kuruş allowed, `0 < price ≤ 100000`. Last editor + time
+  stored; no history table. **Nothing is seeded.** Struck-through old prices
+  stay in code with the product or size they belong to. RLS on, no policies;
+  written only by the server for a Merkez session (`PATCH /api/admin/prices`),
+  which checks the product and size against the code catalog.
+- `create_order` v5 — an item whose price (single price or the ordered size)
+  is stored must carry that exact price (`price_mismatch`). A retried request
+  still returns the order it created first; stored orders keep their item
+  prices.
+- re-running changes nothing
+
+Until `0009` is applied the app runs on catalog prices (no price can have been
+stored) and the admin "Fiyatlar" screen refuses to save.
+
 ## Applying it
 
 With the Supabase CLI (project linked):
@@ -120,7 +142,7 @@ supabase db push
 ```
 
 Or paste a migration file into **SQL Editor** and run it, in order
-(`0001` → `0002` → `0003` → `0004` → `0005` → `0006` → `0007` → `0008`), **in both
+(`0001` → `0002` → `0003` → `0004` → `0005` → `0006` → `0007` → `0008` → `0009`), **in both
 projects** (`funda1959-test`, `funda1959-production`) — a new migration goes
 to the test project first (SUPABASE_PLAN.md §7.6, "Aşama 2 kurulum kontrolü").
 
@@ -137,7 +159,7 @@ Until the marker row exists, the app sends no request to any application
 table — reads and writes alike.
 
 Check with `GET /api/health` on the deployment (`"database": "ready"`); a
-Merkez Yönetim session also sees which migrations are applied (`0001`–`0008`).
+Merkez Yönetim session also sees which migrations are applied (`0001`–`0009`).
 These checks run only once the marker matches and use `limit=0`, so no
 customer or order row is ever read.
 

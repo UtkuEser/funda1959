@@ -2,6 +2,7 @@ import type { CartItem } from "@/lib/cart";
 import { formatTL, subtotal } from "@/lib/cart-utils";
 import type { DeliveryFeeView } from "@/lib/delivery/use-delivery-fee";
 import { OrderTotals } from "@/components/cart/OrderTotals";
+import { useCartPriceSync } from "@/lib/pricing/use-cart-prices";
 
 export function CheckoutSummary({
   items,
@@ -17,6 +18,8 @@ export function CheckoutSummary({
   submitError: string | null;
   onSubmit: () => void;
 }) {
+  // current unit prices (D5); the payment step prices the order again itself
+  const prices = useCartPriceSync(items);
   const sub = subtotal(items);
   const count = items.reduce((n, i) => n + i.quantity, 0);
 
@@ -46,7 +49,7 @@ export function CheckoutSummary({
 
       <div className="my-4 border-t border-sand-light" />
 
-      <OrderTotals subtotal={sub} fee={fee} />
+      <OrderTotals subtotal={sub} fee={fee} pricesUnverified={prices === "failed"} />
 
       <button
         type="button"

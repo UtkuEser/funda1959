@@ -16,6 +16,7 @@ import { resolveZone } from "@/lib/delivery/zones";
 import { catalogProducts, getProductDetail } from "@/lib/data";
 import { requireTestEnvironmentForWrites } from "./test-environment-guard";
 import { installMemoryFeeStore } from "./test-fee-store";
+import { installMemoryPriceStore } from "./test-price-store";
 
 let failures = 0;
 function check(label: string, cond: boolean, detail = "") {
@@ -38,6 +39,8 @@ async function main() {
   await requireTestEnvironmentForWrites("verify-orders");
   // test fixtures, not approved prices (D15); İncek-Çankaya güney stays unset
   const fees = installMemoryFeeStore();
+  // catalog prices (nothing stored) — orders are priced only from a successful price read
+  await installMemoryPriceStore().ready;
   await fees.set("zone-incek-golbasi", "paid", 70);
   await fees.set("zone-gop-cankaya", "paid", 60);
 
@@ -57,7 +60,7 @@ async function main() {
   check("4 h prep can't make 13:00–14:00 -> 409 PREPARATION_TIME", !tooSoon.ok && tooSoon.status === 409 && tooSoon.reason === "PREPARATION_TIME", reasonOf(tooSoon));
 
   const passiveToday = buildOrderPayload(
-    { customer, items: [{ productSlug: catalogProducts.find((p) => p.id === "p8")!.slug, quantity: 1 }], delivery: { type: "pickup", branchSlug: "gop", date: TODAY, timeSlot: "17:00 – 18:00" } },
+    { customer, items: [{ productSlug: catalogProducts.find((p) => p.id === "p8")!.slug, variantId: "500g", quantity: 1 }], delivery: { type: "pickup", branchSlug: "gop", date: TODAY, timeSlot: "17:00 – 18:00" } },
     { now: NOW },
   );
   check("product passive at GOP today -> 409 NEXT_DAY_ONLY", !passiveToday.ok && passiveToday.status === 409 && passiveToday.reason === "NEXT_DAY_ONLY", reasonOf(passiveToday));

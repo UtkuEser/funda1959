@@ -3,13 +3,14 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useState } from "react";
-import { canQuickAddToCart, type CatalogProduct } from "@/lib/data";
+import { canQuickAddToCart, showsOldPrice, type CatalogProduct } from "@/lib/data";
 import { addToCart } from "@/lib/cart";
 import { planCartLine } from "@/lib/cart-fulfillment";
 import { useDelivery } from "@/lib/delivery/context";
 import { deliveryLabel } from "@/lib/delivery/labels";
 import type { CatalogAvailabilityVerdict } from "@/lib/availability";
 import { DeliveryPill } from "@/components/delivery/DeliveryPill";
+import { usePricedProduct } from "@/lib/pricing/prices-context";
 
 /** Merchandising label (one at most). Delivery timing lives in the delivery pill. */
 function badgesFor(p: CatalogProduct): string[] {
@@ -21,7 +22,7 @@ function badgesFor(p: CatalogProduct): string[] {
 }
 
 export function ProductGridCard({
-  product,
+  product: catalogProduct,
   showBadges = true,
   verdict,
 }: {
@@ -31,6 +32,8 @@ export function ProductGridCard({
   /** delivery verdict at the customer's branch (from useCatalogVerdicts) */
   verdict?: CatalogAvailabilityVerdict | null;
 }) {
+  // the page's current price (D5) — the card shows and adds that price
+  const product = usePricedProduct(catalogProduct);
   const [fav, setFav] = useState(false);
   const [added, setAdded] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -130,7 +133,7 @@ export function ProductGridCard({
             <span className="font-sans text-[15px] font-semibold text-burgundy">
               {product.displayPrice}
             </span>
-            {product.oldPrice && (
+            {showsOldPrice(product) && (
               <span className="font-sans text-[12px] text-taupe line-through">
                 {product.oldPrice}
               </span>

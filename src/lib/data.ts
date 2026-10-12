@@ -48,6 +48,8 @@ export type CatalogMeta = {
 export type CatalogProduct = Product &
   CatalogMeta & {
     displayPrice: string;
+    /** the price a card shows and sorts by: the smallest size's, else the single price (D16) */
+    cardPrice: number;
     slug: string;
     /** category-based demo photo (public path), or null -> gradient fallback */
     image: string | null;
@@ -584,6 +586,129 @@ export const getProductsByCategory = (slug: string) =>
   products.filter(p => p.categorySlug === slug);
 
 /* ---------------------------------------------------------------------------
+ * Product detail model: sizes and their catalog prices (used by the catalog
+ * cards below and by the detail page)
+ * ------------------------------------------------------------------------- */
+
+export type DeliveryType = "address" | "pickup";
+export type VariantKind = "serving" | "weight" | "pack" | "none";
+export type ProductVariant = {
+  id: string;
+  label: string;
+  price: number;
+  /** struck-through old price of this size, where we set one (D18, D21) */
+  oldPrice?: string;
+};
+
+type ProductDetailMeta = {
+  longDescription?: string;
+  images?: string[]; // gradient class fragments used as placeholders
+  maxCakeMessageLength?: number;
+  preparationTimeHours?: number;
+  availableDeliveryTypes?: DeliveryType[];
+  extraOptions?: string[];
+  allergens?: string;
+  ingredients?: string;
+  storageInfo?: string;
+  deliveryInfo?: string;
+  quantityEnabled?: boolean;
+  relatedProductIds?: string[];
+};
+
+export type ProductDetail = CatalogProduct & {
+  variantKind: VariantKind;
+  basePrice: number;
+  variants: ProductVariant[];
+  longDescription: string;
+  images: string[];
+  imageLabels: string[];
+  maxCakeMessageLength: number | null;
+  preparationTimeHours: number;
+  availableDeliveryTypes: DeliveryType[];
+  extraOptions: string[];
+  allergens: string;
+  ingredients: string;
+  storageInfo: string;
+  deliveryInfo: string;
+  quantityEnabled: boolean;
+  relatedProducts: CatalogProduct[];
+};
+
+export const deliveryTimeSlots = [
+  "10:00 – 12:00",
+  "12:00 – 14:00",
+  "14:00 – 16:00",
+  "16:00 – 18:00",
+  "18:00 – 20:00",
+];
+
+/* sizes, smallest first: [id, label] */
+const SERVING: [string, string][] = [["4-6", "4–6 Kişilik"], ["8-10", "8–10 Kişilik"], ["12-15", "12–15 Kişilik"], ["15-20", "15–20 Kişilik"]];
+const WEIGHT: [string, string][] = [["500g", "500 g"], ["1kg", "1 kg"], ["1.5kg", "1.5 kg"]];
+const PACK: [string, string][] = [["6", "6'lı"], ["12", "12'li"], ["24", "24'lü"]];
+const sized = (kinds: [string, string][], prices: number[]): ProductVariant[] =>
+  prices.map((price, i) => ({ id: kinds[i][0], label: kinds[i][1], price }));
+
+/**
+ * Size prices (SUPABASE_PLAN.md, D20): every size has its own price and Merkez
+ * changes them one by one — no multiplier. These are the prices the site
+ * showed while sizes were still derived from a base price × category
+ * multiplier, kept unchanged as the starting values; a stored price
+ * (`product_prices`, key = size id) replaces one size. Smallest size first.
+ */
+const SIZE_PRICES: Record<string, ProductVariant[]> = {
+  p1: sized(SERVING, [780, 1050, 1450]),
+  p2: sized(SERVING, [720, 970, 1330, 1730]),
+  p3: sized(SERVING, [740, 1000, 1370, 1780]),
+  p4: sized(SERVING, [760, 1030, 1410, 1820]),
+  p8: sized(WEIGHT, [230, 420, 610]),
+  p9: sized(WEIGHT, [200, 360, 520]),
+  p10: sized(WEIGHT, [350, 640, 930]),
+  p11: sized(WEIGHT, [310, 560, 810]),
+  // D21: the struck-through ₺580 belongs to the 12'li pack only
+  p13: [
+    { id: "6", label: "6'lı", price: 260 },
+    { id: "12", label: "12'li", price: 520, oldPrice: "₺580" },
+    { id: "24", label: "24'lü", price: 990 },
+  ],
+  p14: sized(PACK, [450, 890, 1690]),
+  p15: sized(SERVING, [1450, 1960, 2680, 3480]),
+  p16: sized(SERVING, [950, 1280, 1760, 2280]),
+};
+
+function variantKindFor(categorySlug: string): VariantKind {
+  if (["yas-pastalar", "ozel-gun"].includes(categorySlug)) return "serving";
+  if (["kuru-pastalar", "serbetli-tatlilar"].includes(categorySlug)) return "weight";
+  if (categorySlug === "cikolatalar") return "pack";
+  return "none";
+}
+
+const productDetailMeta: Record<string, ProductDetailMeta> = {
+  p1: {
+    longDescription:
+      "Yoğun çikolata kreması, taze çilekler ve yumuşak pandispanya ile hazırlanan Funda klasiklerinden. Belçika çikolatası ganajıyla kaplanır; her katmanında taze meyve dilimleri bulunur. Doğum günü ve kutlamaların vazgeçilmezi.",
+    maxCakeMessageLength: 40,
+    preparationTimeHours: 24,
+    availableDeliveryTypes: ["address", "pickup"],
+    extraOptions: ["Mum Ekle", "Doğum Günü Kartı", "Hediye Notu"],
+    allergens: "Gluten, süt ürünü, yumurta ve fındık içerebilir.",
+    ingredients:
+      "Pandispanya (buğday unu, yumurta, şeker), çikolatalı krema, taze çilek, Belçika çikolatası ganajı, krem şanti.",
+    storageInfo:
+      "+2 / +4 °C arasında buzdolabında saklayınız. Hazırlandığı gün tüketilmesi önerilir, en geç 2 gün içinde tüketiniz.",
+    deliveryInfo:
+      "Yaş pasta siparişleri en az 24 saat öncesinden alınır. Adrese teslim ve mağazadan teslim seçenekleri mevcuttur.",
+    quantityEnabled: false,
+    relatedProductIds: ["p2", "p4", "p18", "p16"],
+  },
+};
+
+/** The sizes a product sells in with their catalog prices, smallest first ([] = a single price). */
+export function productSizes(product: Pick<CatalogProduct, "id">): ProductVariant[] {
+  return SIZE_PRICES[product.id] ?? [];
+}
+
+/* ---------------------------------------------------------------------------
  * Product catalog (Lezzetlerimiz listing)
  * ------------------------------------------------------------------------- */
 
@@ -602,7 +727,7 @@ const catalogMeta: Record<string, CatalogMeta> = {
   p10: { priceValue: 640, sameDayDelivery: true, isBestSeller: true, weightOptions: ["500 g", "1 kg"], availableBranches: ALL_BRANCHES },
   p11: { priceValue: 560, sameDayDelivery: true, weightOptions: ["1 kg"], availableBranches: ["gop", "panora"] },
   p12: { priceValue: 120, sameDayDelivery: true, availableBranches: ALL_BRANCHES },
-  p13: { priceValue: 520, oldPrice: "₺580", sameDayDelivery: true, isBestSeller: true, isGift: true, availableBranches: ALL_BRANCHES },
+  p13: { priceValue: 520, sameDayDelivery: true, isBestSeller: true, isGift: true, availableBranches: ALL_BRANCHES },
   p14: { priceValue: 890, isNew: true, isGift: true, availableBranches: ["gop", "panora"] },
   p15: { priceValue: 1450, customizable: true, servingOptions: ["15+ Kişilik"], occasions: ["dugun-nisan", "kisiye-ozel"], features: ["Özel Tasarım", "Kişiselleştirilebilir", "Yazı Eklenebilir"], availableBranches: ["gop", "incek"] },
   p16: { priceValue: 950, isBestSeller: true, customizable: true, isGift: true, servingOptions: ["8–10 Kişilik"], occasions: ["dogum-gunu", "kisiye-ozel"], features: ["Kişiselleştirilebilir", "Yazı Eklenebilir", "Fotoğraflı Pasta"], availableBranches: ALL_BRANCHES },
@@ -616,11 +741,16 @@ export const catalogProducts: CatalogProduct[] = products.map((p) => {
   const meta = catalogMeta[p.id] ?? { priceValue: 0 };
   const idx = categoryImageIndex.get(p.categorySlug) ?? 0;
   categoryImageIndex.set(p.categorySlug, idx + 1);
+  // D16: a card shows the smallest size's price as it is (no "from" wording),
+  // and only that size's old price, if it has one (D21)
+  const smallest = productSizes(p)[0];
   return {
     ...p,
     ...meta,
     slug: slugify(p.name),
-    displayPrice: p.price ?? `₺${meta.priceValue.toLocaleString("tr-TR")}`,
+    cardPrice: smallest?.price ?? meta.priceValue,
+    displayPrice: smallest ? `₺${smallest.price.toLocaleString("tr-TR")}` : p.price ?? `₺${meta.priceValue.toLocaleString("tr-TR")}`,
+    oldPrice: smallest ? smallest.oldPrice : meta.oldPrice,
     image: productImage(p.categorySlug, idx),
   };
 });
@@ -748,122 +878,14 @@ export const catalogListingSlugs: string[] = [
  * Product detail
  * ------------------------------------------------------------------------- */
 
-export type DeliveryType = "address" | "pickup";
-export type VariantKind = "serving" | "weight" | "pack" | "none";
-export type ProductVariant = { id: string; label: string; price: number };
-
-type ProductDetailMeta = {
-  longDescription?: string;
-  images?: string[]; // gradient class fragments used as placeholders
-  variants?: ProductVariant[];
-  maxCakeMessageLength?: number;
-  preparationTimeHours?: number;
-  availableDeliveryTypes?: DeliveryType[];
-  extraOptions?: string[];
-  allergens?: string;
-  ingredients?: string;
-  storageInfo?: string;
-  deliveryInfo?: string;
-  quantityEnabled?: boolean;
-  relatedProductIds?: string[];
-};
-
-export type ProductDetail = CatalogProduct & {
-  variantKind: VariantKind;
-  basePrice: number;
-  variants: ProductVariant[];
-  longDescription: string;
-  images: string[];
-  imageLabels: string[];
-  maxCakeMessageLength: number | null;
-  preparationTimeHours: number;
-  availableDeliveryTypes: DeliveryType[];
-  extraOptions: string[];
-  allergens: string;
-  ingredients: string;
-  storageInfo: string;
-  deliveryInfo: string;
-  quantityEnabled: boolean;
-  relatedProducts: CatalogProduct[];
-};
-
-export const deliveryTimeSlots = [
-  "10:00 – 12:00",
-  "12:00 – 14:00",
-  "14:00 – 16:00",
-  "16:00 – 18:00",
-  "18:00 – 20:00",
-];
-
-const SERVING_BUCKETS = [
-  { id: "4-6", label: "4–6 Kişilik", mult: 1 },
-  { id: "8-10", label: "8–10 Kişilik", mult: 1.35 },
-  { id: "12-15", label: "12–15 Kişilik", mult: 1.85 },
-  { id: "15-20", label: "15–20 Kişilik", mult: 2.4 },
-];
-const WEIGHT_BUCKETS = [
-  { id: "500g", label: "500 g", mult: 0.55 },
-  { id: "1kg", label: "1 kg", mult: 1 },
-  { id: "1.5kg", label: "1.5 kg", mult: 1.45 },
-];
-const PACK_BUCKETS = [
-  { id: "6", label: "6'lı", mult: 0.5 },
-  { id: "12", label: "12'li", mult: 1 },
-  { id: "24", label: "24'lü", mult: 1.9 },
-];
-
-function variantKindFor(categorySlug: string): VariantKind {
-  if (["yas-pastalar", "ozel-gun"].includes(categorySlug)) return "serving";
-  if (["kuru-pastalar", "serbetli-tatlilar"].includes(categorySlug)) return "weight";
-  if (categorySlug === "cikolatalar") return "pack";
-  return "none";
-}
-
-const round10 = (n: number) => Math.round(n / 10) * 10;
-
-const productDetailMeta: Record<string, ProductDetailMeta> = {
-  p1: {
-    longDescription:
-      "Yoğun çikolata kreması, taze çilekler ve yumuşak pandispanya ile hazırlanan Funda klasiklerinden. Belçika çikolatası ganajıyla kaplanır; her katmanında taze meyve dilimleri bulunur. Doğum günü ve kutlamaların vazgeçilmezi.",
-    variants: [
-      { id: "4-6", label: "4–6 Kişilik", price: 780 },
-      { id: "8-10", label: "8–10 Kişilik", price: 1050 },
-      { id: "12-15", label: "12–15 Kişilik", price: 1450 },
-    ],
-    maxCakeMessageLength: 40,
-    preparationTimeHours: 24,
-    availableDeliveryTypes: ["address", "pickup"],
-    extraOptions: ["Mum Ekle", "Doğum Günü Kartı", "Hediye Notu"],
-    allergens: "Gluten, süt ürünü, yumurta ve fındık içerebilir.",
-    ingredients:
-      "Pandispanya (buğday unu, yumurta, şeker), çikolatalı krema, taze çilek, Belçika çikolatası ganajı, krem şanti.",
-    storageInfo:
-      "+2 / +4 °C arasında buzdolabında saklayınız. Hazırlandığı gün tüketilmesi önerilir, en geç 2 gün içinde tüketiniz.",
-    deliveryInfo:
-      "Yaş pasta siparişleri en az 24 saat öncesinden alınır. Adrese teslim ve mağazadan teslim seçenekleri mevcuttur.",
-    quantityEnabled: false,
-    relatedProductIds: ["p2", "p4", "p18", "p16"],
-  },
-};
-
 export function getProductDetail(slug: string): ProductDetail | undefined {
   const base = getCatalogProductBySlug(slug);
   if (!base) return undefined;
 
   const meta = productDetailMeta[base.id] ?? {};
-  const kind = variantKindFor(base.categorySlug);
+  const variants = productSizes(base);
+  const kind = variants.length > 0 ? variantKindFor(base.categorySlug) : "none";
   const basePrice = base.priceValue;
-
-  let variants = meta.variants ?? [];
-  if (variants.length === 0 && kind !== "none") {
-    const buckets =
-      kind === "serving" ? SERVING_BUCKETS : kind === "weight" ? WEIGHT_BUCKETS : PACK_BUCKETS;
-    variants = buckets.map((b) => ({
-      id: b.id,
-      label: b.label,
-      price: round10(basePrice * b.mult),
-    }));
-  }
 
   const relatedIds =
     meta.relatedProductIds ??
@@ -898,6 +920,32 @@ export function getProductDetail(slug: string): ProductDetail | undefined {
     quantityEnabled: meta.quantityEnabled ?? (kind === "weight" || kind === "pack"),
     relatedProducts,
   };
+}
+
+/** "₺1.450" -> 1450 */
+const tlAmount = (label: string) => Number(label.replace(/[^\d,]/g, "").replace(",", "."));
+
+/**
+ * D18: a struck-through old price shows only where we set one — for a
+ * product, or for one of its sizes (D21) — never generated by a price change,
+ * and only while it is above the price shown next to it, so a raised price
+ * never looks like a discount.
+ */
+export function oldPriceShown(oldPrice: string | null | undefined, price: number): boolean {
+  return Boolean(oldPrice) && tlAmount(oldPrice ?? "") > price;
+}
+
+/** The card's old price (the product's, or its smallest size's) is shown. */
+export function showsOldPrice(product: Pick<CatalogProduct, "oldPrice" | "cardPrice">): boolean {
+  return oldPriceShown(product.oldPrice, product.cardPrice);
+}
+
+/**
+ * Whether the product sells in sizes (serving / weight / pack) — its detail
+ * page lists them, each with its own price (`SIZE_PRICES`, D20).
+ */
+export function productHasVariants(product: Pick<CatalogProduct, "id" | "categorySlug">): boolean {
+  return productSizes(product).length > 0;
 }
 
 /**

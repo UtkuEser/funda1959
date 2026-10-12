@@ -9,7 +9,7 @@
  * Pure given its inputs (`now` is injectable). No network, no storage.
  */
 
-import { catalogProducts, getProductDetail, type CatalogProduct } from "../data";
+import { catalogProducts, type CatalogProduct } from "../data";
 import {
   getBranch,
   isBranchOpenOn,
@@ -19,6 +19,7 @@ import {
 } from "../branch";
 import { resolveZone } from "../delivery/zones";
 import { deliveryFeeFor } from "../delivery/fees";
+import { effectivePriceValue, effectiveUnitPrice, priceRowsForDisplay } from "../pricing/prices";
 import { getSlotRepository, slotLabel, type DeliverySlotDefinition } from "../delivery/slots";
 import { getBranchProduct, branchUnitPrice, type BranchProduct } from "../inventory";
 import { addDaysISO, istanbulDateISO, istanbulInstant, weekdayOfISO } from "../time/istanbul";
@@ -48,11 +49,9 @@ function resolveProduct(idOrSlug: string, slug?: string): CatalogProduct | null 
   );
 }
 
+/** shown price of a product / size (display reading of the price store; orders price on their own) */
 function unitPriceFor(product: CatalogProduct, variantId: string | null | undefined): number {
-  if (!variantId) return product.priceValue;
-  const detail = getProductDetail(product.slug);
-  const v = detail?.variants.find((x) => x.id === variantId);
-  return v?.price ?? product.priceValue;
+  return effectiveUnitPrice(product, variantId, priceRowsForDisplay()) ?? effectivePriceValue(product, priceRowsForDisplay());
 }
 
 /* -------------------------------------------------------------------------- */

@@ -3,6 +3,8 @@ import { catalogProducts } from "@/lib/data";
 import { CelebrationQuiz } from "@/components/landing/CelebrationQuiz";
 import { celebrationPool } from "@/lib/celebration-finder";
 import { FeaturedProductStrip } from "@/components/landing/FeaturedProductStrip";
+import { PricesProvider } from "@/lib/pricing/prices-context";
+import { getDisplayPriceMap } from "@/lib/pricing/prices-server";
 import { EditorialSteps } from "@/components/landing/EditorialSteps";
 import { EditorialSplit } from "@/components/landing/EditorialSplit";
 import { BurgundyCTA } from "@/components/landing/BurgundyCTA";
@@ -42,9 +44,12 @@ const celebrationProducts = [
 
 const quizPool = celebrationPool(catalogProducts);
 
-export default function OzelGunPage() {
+// current prices (SUPABASE_PLAN.md, D5): read per request, never from the build
+export const dynamic = "force-dynamic";
+
+export default async function OzelGunPage() {
   return (
-    <>
+    <PricesProvider prices={await getDisplayPriceMap()}>
       {/* CelebrationQuiz is this page's hero and primary discovery mechanism */}
       <CelebrationQuiz products={quizPool} />
 
@@ -108,6 +113,6 @@ export default function OzelGunPage() {
           </>
         }
       />
-    </>
+    </PricesProvider>
   );
 }

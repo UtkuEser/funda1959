@@ -4,13 +4,22 @@ import "@/lib/orders/server-init";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { listBranches, getBranch, isBranchOpenAt, type Weekday } from "@/lib/branch";
-import { ISTANBUL_TZ, istanbulDateISO, weekdayOfISO } from "@/lib/time/istanbul";
+import { istanbulDateISO, weekdayOfISO } from "@/lib/time/istanbul";
 import { slotLabel, slotsForBranchDate } from "@/lib/delivery/slots";
 import { getDeliveryZoneRepository } from "@/lib/delivery/zones";
-import { describeFeeState, readDeliveryFeeRecords, type ZoneFeeRecord } from "@/lib/delivery/fees";
+import { readDeliveryFeeRecords, type ZoneFeeRecord } from "@/lib/delivery/fees";
 import { refreshDeliveryFees } from "@/lib/delivery/fees-server";
 import { MIN_DELIVERY_ORDER_TL } from "@/lib/order-rules";
-import { DeliveryFeeEditor } from "@/components/admin/DeliveryFeeEditor";
+import { ZoneFeesTable, type ZoneFeeRow } from "@/components/admin/ZoneFeesTable";
+import { catalogProducts, productSizes } from "@/lib/data";
+import {
+  catalogPriceSuffix,
+  productPriceTableMissing,
+  readProductPriceRecords,
+  type ProductPriceRecord,
+} from "@/lib/pricing/prices";
+import { refreshProductPrices } from "@/lib/pricing/prices-server";
+import { ProductPricesTable, type ProductPriceRow } from "@/components/admin/ProductPricesTable";
 import { getOrderRepository, type OrderPage, type StoredOrder } from "@/lib/orders";
 import { orderStatusLabel } from "@/lib/order-status";
 import { OrderStatusActions } from "@/components/admin/OrderStatusActions";
@@ -37,18 +46,13 @@ import {
   PageIntro,
 } from "@/components/admin/ui";
 import { requireAdminScope, repoScope, type AdminScope } from "@/lib/admin/access";
+import { dayTime } from "@/lib/admin/format";
 import { isSectionAllowed } from "@/lib/admin/section-access";
 
 export const dynamic = "force-dynamic";
 
 // every date and time on the panel is Europe/Istanbul, whatever the server's zone
 const todayISO = () => istanbulDateISO();
-const dayTime = (iso: string) => {
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime())
-    ? ""
-    : d.toLocaleString("tr-TR", { timeZone: ISTANBUL_TZ, day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
-};
 const isISODate = (v: string | undefined): v is string => Boolean(v && /^\d{4}-\d{2}-\d{2}$/.test(v));
 
 type Props = {
@@ -100,6 +104,7 @@ export default async function AdminPage({ searchParams }: Props) {
       {section === "campaigns" && <CampaignsSection scope={scope} />}
       {section === "instagram" && <InstagramContentSection />}
       {section === "funda-puan" && <FundaPointsSection scope={scope} />}
+      {section === "prices" && <PricesSection />}
       {section === "zones" && <ZonesSection scope={scope} />}
       {section === "slots" && <SlotsSection branchId={scopedBranchId} date={date} />}
       {section === "branches" && <BranchesSection date={date} />}
@@ -506,8 +511,18 @@ async function ZonesSection({ scope }: { scope: AdminScope }) {
   } catch {
     records = null;
   }
-  const feeOf = (zoneId: string) => records?.find((r) => r.zoneId === zoneId) ?? null;
   const canEdit = scope.user.role === "SUPER_ADMIN" && records !== null;
+  // the table is a client component fed plain rows: a save updates its row from
+  // the database's answer, and the page stays small to navigate to
+  const zoneRows: ZoneFeeRow[] = zones.map((z) => ({
+    id: z.id,
+    name: z.name,
+    branchName: getBranch(z.branchId)?.name.replace("Funda 1959 ", "") ?? z.branchId,
+    district: z.district,
+    neighborhoods: z.neighborhoods,
+    active: z.active,
+    fee: records?.find((r) => r.zoneId === z.id) ?? null,
+  }));
 
   return (
     <>
@@ -522,58 +537,56 @@ async function ZonesSection({ scope }: { scope: AdminScope }) {
           Teslimat bilgisi şu an alınamıyor. Ücretler gösterilmiyor ve değiştirilemiyor; adrese teslim siparişleri bu sırada alınmaz.
         </p>
       )}
-      <Panel>
-        <TableWrap>
-          <Table>
-            <thead>
-              <tr>
-                <Th>Bölge</Th>
-                <Th>Şube</Th>
-                <Th>İlçe</Th>
-                <Th>Mahalleler</Th>
-                <Th align="right">Teslimat Ücreti</Th>
-                <Th>Son Değişiklik</Th>
-                <Th>Durum</Th>
-                {canEdit && <Th>Düzenle</Th>}
-              </tr>
-            </thead>
-            <tbody>
-              {zones.length === 0 && <EmptyRow cols={canEdit ? 8 : 7}>Tanımlı bölge yok.</EmptyRow>}
-              {zones.map((z) => {
-                const shown = z.neighborhoods.slice(0, 2).join(", ");
-                const extra = z.neighborhoods.length - 2;
-                const f = feeOf(z.id);
-                const state = f?.state ?? "unset";
-                return (
-                  <Row key={z.id}>
-                    <Td className="font-medium">{z.name}</Td>
-                    <Td>{getBranch(z.branchId)?.name.replace("Funda 1959 ", "")}</Td>
-                    <Td>{z.district}</Td>
-                    <Td>
-                      <span title={z.neighborhoods.join(", ")}>
-                        {shown}
-                        {extra > 0 && <span className="text-neutral-400"> +{extra}</span>}
-                      </span>
-                    </Td>
-                    <Td align="right" className="tabular-nums">
-                      {records === null ? "—" : state === "paid" && f?.fee !== null && f?.fee !== undefined ? formatTL(f.fee) : <Badge strong={state === "free"}>{describeFeeState(state)}</Badge>}
-                    </Td>
-                    <Td className="text-[12px] text-neutral-500">
-                      {f?.updatedBy ? `${f.updatedBy} · ${f.updatedAt ? dayTime(f.updatedAt) : ""}` : "—"}
-                    </Td>
-                    <Td><Badge strong={z.active}>{z.active ? "Aktif" : "Pasif"}</Badge></Td>
-                    {canEdit && (
-                      <Td>
-                        <DeliveryFeeEditor zoneId={z.id} state={state} fee={f?.fee ?? null} updatedAt={f?.updatedAt ?? null} />
-                      </Td>
-                    )}
-                  </Row>
-                );
-              })}
-            </tbody>
-          </Table>
-        </TableWrap>
-      </Panel>
+      <ZoneFeesTable rows={zoneRows} readable={records !== null} canEdit={canEdit} />
+    </>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+
+/** D5: Merkez changes the prices of existing products — nothing else about them. */
+async function PricesSection() {
+  let records: ProductPriceRecord[] | null = null;
+  try {
+    await refreshProductPrices({ strict: true });
+    records = readProductPriceRecords();
+  } catch {
+    records = null;
+  }
+  const tableMissing = records !== null && productPriceTableMissing();
+  const canEdit = records !== null && !tableMissing;
+  const stored = new Map((records ?? []).map((r) => [`${r.productId}|${r.variantKey}`, r]));
+  // plain rows for the client table (see ZonesSection): one per price — the
+  // single price, or each size of a product with sizes (D20)
+  const priceRows = catalogProducts.flatMap((p): ProductPriceRow[] => {
+    const sizes = productSizes(p);
+    if (sizes.length === 0) {
+      return [{ productId: p.id, variantKey: "", name: p.name, size: null, category: p.categoryName, unit: catalogPriceSuffix(p), catalogPrice: p.priceValue, oldPrice: p.oldPrice ?? null, stored: stored.get(`${p.id}|`) ?? null }];
+    }
+    return sizes.map((v) => ({ productId: p.id, variantKey: v.id, name: p.name, size: v.label, category: p.categoryName, unit: "", catalogPrice: v.price, oldPrice: v.oldPrice ?? null, stored: stored.get(`${p.id}|${v.id}`) ?? null }));
+  });
+
+  return (
+    <>
+      <PageIntro>
+        Mevcut ürünlerin fiyatları. Ürün ekleme, silme, görsel ve içerik bu ekrandan değişmez; şube stokları (aktif/pasif) ayrı
+        yönetilir. Kaydedilen fiyat katalogda, ürün sayfasında, aramada, hızlı siparişte, sepette ve ödeme hesabında hemen geçerli olur;
+        verilmiş siparişlerin fiyatları değişmez. Fiyatı kaydedilmemiş ürün veya boyut katalog fiyatıyla satılır.{" "}
+        <strong>Boyutlu ürünlerde her boyutun fiyatı ayrı girilir; bir boyutu değiştirmek diğerlerini değiştirmez.</strong> Kartta
+        en küçük boyutun fiyatı görünür. Üstü çizili eski fiyat yalnızca belirlenmiş ürün veya boyutta ve güncel fiyattan yüksekken
+        görünür; fiyat değişince kendiliğinden oluşmaz.
+      </PageIntro>
+      {records === null && (
+        <p role="alert" className="mb-4 rounded-md border border-neutral-300 bg-neutral-50 px-3 py-2 text-[12.5px] text-neutral-800">
+          Fiyat bilgisi şu an alınamıyor. Fiyatlar değiştirilemiyor; ödeme hesabı ve sipariş bu sırada alınmaz.
+        </p>
+      )}
+      {tableMissing && (
+        <p role="alert" className="mb-4 rounded-md border border-neutral-300 bg-neutral-50 px-3 py-2 text-[12.5px] text-neutral-800">
+          Fiyat tablosu henüz kurulmadı (migration 0009). Bütün ürünler katalog fiyatıyla satılıyor; fiyat değiştirilemez.
+        </p>
+      )}
+      <ProductPricesTable rows={priceRows} readable={records !== null} canEdit={canEdit} />
     </>
   );
 }

@@ -1,5 +1,6 @@
 import { refreshInventory } from "@/lib/inventory/server-init";
 import { refreshDeliveryFees } from "@/lib/delivery/fees-server";
+import { refreshProductPrices } from "@/lib/pricing/prices-server";
 import { NextResponse } from "next/server";
 import {
   getProductAvailability,
@@ -45,6 +46,8 @@ export async function POST(request: Request) {
   // delivery fees (D15): a failed read marks them unavailable — delivery then answers
   // DELIVERY_INFO_UNAVAILABLE instead of using older values; pickup is unaffected
   await refreshDeliveryFees({ maxAgeMs: 2000 });
+  // shown unit prices (display reading: an unreadable store keeps the last good read)
+  await refreshProductPrices({ maxAgeMs: 2000 });
   let body: Body;
   try {
     body = (await request.json()) as Body;
