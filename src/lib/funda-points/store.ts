@@ -74,6 +74,7 @@ type ListRow = {
     last_activity: string;
   }[];
 };
+type ProfileRow = { auth_user_id: string; full_name: string; email: string; phone: string };
 
 const toLot = (l: LotRow): FundaPointLot => ({
   id: l.id,
@@ -142,6 +143,8 @@ export type FundaPointsStore = {
     overview: FundaPointsOverview;
     rows: FundaPointsAdminRow[];
   }>;
+  /** Merkez search over every member, with or without a points account. Reads only. */
+  adminSearch(q: { search: string; limit: number }): Promise<FundaPointsAdminRow[]>;
   adminDetail(userId: string): Promise<FundaPointsAdminDetail | null>;
   adjust(
     input: AdjustPointsInput,
@@ -150,6 +153,29 @@ export type FundaPointsStore = {
 };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const toAdminRow = (x: ListRow["rows"][number]): FundaPointsAdminRow => ({
+  userId: x.user_id,
+  fullName: x.full_name,
+  email: x.email,
+  phone: x.phone,
+  available: x.available,
+  debt: x.debt,
+  earned: x.earned,
+  spent: x.spent,
+  lastActivity: x.last_activity,
+});
+
+/**
+ * Search text as an ILIKE fragment: `%`, `_` and `\` match themselves. `*` is
+ * PostgREST's wildcard and can't be escaped there, so it is dropped.
+ */
+function likeTerm(search: string): string {
+  return search.replace(/\*/g, "").trim().slice(0, 100).replace(/[\\%_]/g, "\\$&");
+}
+
+/** `*term*` as a quoted PostgREST value (commas, parentheses are safe inside). */
+const quotedPattern = (like: string) => `"*${like.replace(/[\\"]/g, "\\$&")}*"`;
 
 function toDetail(r: DetailRow): FundaPointsAdminDetail {
   return { ...toSummary(r, true), userId: r.user_id, fullName: r.full_name, email: r.email, phone: r.phone };
@@ -174,18 +200,42 @@ export const supabaseFundaPointsStore: FundaPointsStore = {
         spent: Number(r?.overview?.spent ?? 0),
         membersWithPoints: Number(r?.overview?.members_with_points ?? 0),
       },
-      rows: (r?.rows ?? []).map((x) => ({
-        userId: x.user_id,
-        fullName: x.full_name,
-        email: x.email,
-        phone: x.phone,
-        available: x.available,
-        debt: x.debt,
-        earned: x.earned,
-        spent: x.spent,
-        lastActivity: x.last_activity,
-      })),
+      rows: (r?.rows ?? []).map(toAdminRow),
     };
+  },
+
+  async adminSearch({ search, limit }) {
+    // list_funda_point_accounts only knows members with a points account, so
+    // a member who never had a point is looked up in customer_profiles too.
+    // Both are reads: nothing is created until a correction is saved.
+    const like = likeTerm(search);
+    if (!like) return [];
+    const [accounts, profiles] = await Promise.all([
+      rpc<ListRow>("list_funda_point_accounts", { p_search: like, p_limit: limit, p_offset: 0 }),
+      supabaseRest<ProfileRow[]>(
+        `/customer_profiles?select=auth_user_id,full_name,email,phone&or=${encodeURIComponent(
+          `(${["full_name", "email", "phone"].map((c) => `${c}.ilike.${quotedPattern(like)}`).join(",")})`,
+        )}&order=full_name.asc&limit=${limit}`,
+      ),
+    ]);
+    const rows = (accounts?.rows ?? []).map(toAdminRow);
+    const seen = new Set(rows.map((r) => r.userId));
+    for (const p of profiles ?? []) {
+      if (seen.has(p.auth_user_id)) continue;
+      seen.add(p.auth_user_id);
+      rows.push({
+        userId: p.auth_user_id,
+        fullName: p.full_name,
+        email: p.email,
+        phone: p.phone,
+        available: 0,
+        debt: 0,
+        earned: 0,
+        spent: 0,
+        lastActivity: null,
+      });
+    }
+    return rows.slice(0, limit);
   },
 
   async adminDetail(userId) {
@@ -223,6 +273,9 @@ export const noFundaPointsStore: FundaPointsStore = {
   },
   async adminList() {
     return { total: 0, overview: { available: 0, debt: 0, earned: 0, spent: 0, membersWithPoints: 0 }, rows: [] };
+  },
+  async adminSearch() {
+    return [];
   },
   async adminDetail() {
     return null;

@@ -73,7 +73,8 @@ export type FundaPointsAdminRow = {
   debt: number;
   earned: number;
   spent: number;
-  lastActivity: string;
+  /** null: a member found by search who has no point activity yet */
+  lastActivity: string | null;
 };
 
 export type FundaPointsOverview = {

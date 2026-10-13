@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { FundaPointsAdminDetail, FundaPointsAdminRow } from "@/lib/funda-points";
 import { FUNDA_POINT_TRANSACTION_LABEL_TR } from "@/lib/funda-points";
 import { Panel, Table, TableWrap, Th, Td, Row, EmptyRow, Badge } from "@/components/admin/ui";
@@ -19,7 +19,8 @@ const FILTERS: { key: FilterKey; label: string }[] = [
 const TR_MONTHS_SHORT = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"];
 
 /** Istanbul wall time, whatever the browser's zone */
-function formatDateTime(iso: string, withTime = true): string {
+function formatDateTime(iso: string | null, withTime = true): string {
+  if (!iso) return "—";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "—";
   const parts = new Intl.DateTimeFormat("en-GB", {
@@ -39,6 +40,7 @@ function formatDateTime(iso: string, withTime = true): string {
 const fmt = (n: number) => n.toLocaleString("tr-TR");
 const signed = (n: number) => `${n > 0 ? "+" : ""}${fmt(n)}`;
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+const SEARCH_MIN = 2;
 
 function newRequestId(): string {
   return typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
@@ -48,13 +50,20 @@ function newRequestId(): string {
 
 /**
  * Merkez Funda Puan screen — members from the database ledger (0011). No
- * demo customers: with no point activity yet it says so. Corrections need a
- * reason; the server signs them with the session's admin and applies a
- * repeated submit (same request id) once.
+ * demo customers: with no point activity yet it says so. The search asks the
+ * server, so a member with no points yet is found too and can get a first
+ * correction. Corrections need a reason; the server signs them with the
+ * session's admin and applies a repeated submit (same request id) once.
  */
 export function AdminFundaPoints({ initialRows, total }: { initialRows: FundaPointsAdminRow[]; total: number }) {
   const [rows, setRows] = useState<FundaPointsAdminRow[]>(initialRows);
   const [search, setSearch] = useState("");
+  // server results for the current search; null = no search, the list above
+  const [searchRows, setSearchRows] = useState<FundaPointsAdminRow[] | null>(null);
+  const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latestSearch = useRef("");
   const [filter, setFilter] = useState<FilterKey>("all");
   const [sortKey, setSortKey] = useState<SortKey>("lastActivity");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
@@ -72,7 +81,43 @@ export function AdminFundaPoints({ initialRows, total }: { initialRows: FundaPoi
   const [requestId, setRequestId] = useState<string>("");
   const [feedback, setFeedback] = useState<string | null>(null);
 
-  const openRow = rows.find((r) => r.userId === openUserId) ?? null;
+  const openRow = (searchRows ?? []).find((r) => r.userId === openUserId) ?? rows.find((r) => r.userId === openUserId) ?? null;
+
+  const runSearch = async (q: string) => {
+    latestSearch.current = q;
+    setSearching(true);
+    setSearchError(null);
+    try {
+      const res = await fetch(`/api/admin/funda-points?search=${encodeURIComponent(q)}`, { cache: "no-store" });
+      const data = (await res.json()) as { ok?: boolean; rows?: FundaPointsAdminRow[]; error?: string };
+      if (latestSearch.current !== q) return; // a newer search is on its way
+      if (res.ok && data.ok && data.rows) setSearchRows(data.rows);
+      else {
+        setSearchRows([]);
+        setSearchError(data.error ?? "Arama yapılamadı.");
+      }
+    } catch {
+      if (latestSearch.current !== q) return;
+      setSearchRows([]);
+      setSearchError("Arama yapılamadı.");
+    } finally {
+      if (latestSearch.current === q) setSearching(false);
+    }
+  };
+
+  const onSearchChange = (value: string) => {
+    setSearch(value);
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    const q = value.trim();
+    if (q.length < SEARCH_MIN) {
+      latestSearch.current = "";
+      setSearchRows(null);
+      setSearching(false);
+      setSearchError(null);
+      return;
+    }
+    searchTimer.current = setTimeout(() => void runSearch(q), 300);
+  };
 
   const applySort = (key: SortKey) => {
     if (sortKey === key) setSortDir((d) => (d === "desc" ? "asc" : "desc"));
@@ -85,8 +130,9 @@ export function AdminFundaPoints({ initialRows, total }: { initialRows: FundaPoi
   const visibleRows = useMemo(() => {
     // eslint-disable-next-line react-hooks/purity
     const now = Date.now();
-    const q = search.trim().toLocaleLowerCase("tr");
-    let list = rows.filter(
+    // a server search already matched; a 1-letter query only narrows the list
+    const q = searchRows ? "" : search.trim().toLocaleLowerCase("tr");
+    let list = (searchRows ?? rows).filter(
       (r) =>
         !q ||
         r.fullName.toLocaleLowerCase("tr").includes(q) ||
@@ -95,26 +141,28 @@ export function AdminFundaPoints({ initialRows, total }: { initialRows: FundaPoi
     );
     if (filter === "hasPoints") list = list.filter((r) => r.available > 0);
     if (filter === "debt") list = list.filter((r) => r.debt > 0);
-    if (filter === "recent30d") list = list.filter((r) => now - new Date(r.lastActivity).getTime() <= THIRTY_DAYS_MS);
+    if (filter === "recent30d")
+      list = list.filter((r) => r.lastActivity !== null && now - new Date(r.lastActivity).getTime() <= THIRTY_DAYS_MS);
     const dir = sortDir === "asc" ? 1 : -1;
     return [...list].sort((a, b) =>
-      sortKey === "lastActivity" ? dir * a.lastActivity.localeCompare(b.lastActivity) : dir * (a[sortKey] - b[sortKey]),
+      sortKey === "lastActivity"
+        ? dir * (a.lastActivity ?? "").localeCompare(b.lastActivity ?? "")
+        : dir * (a[sortKey] - b[sortKey]),
     );
-  }, [rows, search, filter, sortKey, sortDir]);
+  }, [rows, searchRows, search, filter, sortKey, sortDir]);
 
   const syncRow = (d: FundaPointsAdminDetail) => {
-    setRows((prev) =>
-      prev.map((r) =>
-        r.userId === d.userId
-          ? {
-              ...r,
-              available: d.available,
-              debt: d.debt,
-              lastActivity: d.transactions[0]?.createdAt ?? r.lastActivity,
-            }
-          : r,
-      ),
-    );
+    const update = (r: FundaPointsAdminRow): FundaPointsAdminRow =>
+      r.userId === d.userId
+        ? { ...r, available: d.available, debt: d.debt, lastActivity: d.transactions[0]?.createdAt ?? r.lastActivity }
+        : r;
+    setRows((prev) => {
+      if (prev.some((r) => r.userId === d.userId)) return prev.map(update);
+      // first activity of a member found by search: keep them in the list
+      const found = searchRows?.find((r) => r.userId === d.userId);
+      return found && d.transactions.length > 0 ? [update(found), ...prev] : prev;
+    });
+    setSearchRows((prev) => (prev ? prev.map(update) : prev));
   };
 
   const openDetail = async (userId: string) => {
@@ -180,6 +228,8 @@ export function AdminFundaPoints({ initialRows, total }: { initialRows: FundaPoi
         setAdjustReason("");
         setRequestId(newRequestId());
         setFeedback("Puan düzeltmesi kaydedildi.");
+        // totals (earned / spent) come from the server
+        if (searchRows && latestSearch.current) void runSearch(latestSearch.current);
       } else {
         // same request id kept: a retry after a lost answer can't apply it twice
         setAdjustError(data.error ?? "Kaydedilemedi.");
@@ -202,8 +252,9 @@ export function AdminFundaPoints({ initialRows, total }: { initialRows: FundaPoi
         <input
           type="text"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => onSearchChange(e.target.value)}
           placeholder="Üye ara (ad, telefon, e-posta)…"
+          aria-label="Üye ara"
           className="h-9 w-full max-w-xs rounded border border-neutral-300 bg-white px-3 text-[13px] text-neutral-900 focus:border-neutral-900 focus:outline-none"
         />
         <div className="flex flex-wrap gap-1.5">
@@ -227,7 +278,18 @@ export function AdminFundaPoints({ initialRows, total }: { initialRows: FundaPoi
           {feedback}
         </p>
       )}
-      {total > rows.length && (
+      {searching && <p className="mb-3 text-[12px] text-neutral-500">Aranıyor…</p>}
+      {searchError && (
+        <p role="alert" className="mb-3 text-[12px] text-neutral-700">
+          {searchError}
+        </p>
+      )}
+      {searchRows && !searching && !searchError && (
+        <p className="mb-3 text-[12px] text-neutral-500">
+          Arama tüm kayıtlı üyelerde yapıldı; puanı olmayan üyeye de Detay&apos;dan ilk düzeltme yapılabilir.
+        </p>
+      )}
+      {!searchRows && total > rows.length && (
         <p className="mb-3 text-[12px] text-neutral-500">
           İlk {rows.length} üye gösteriliyor (toplam {fmt(total)}); aramak için üstteki alanı kullanın.
         </p>
@@ -262,13 +324,15 @@ export function AdminFundaPoints({ initialRows, total }: { initialRows: FundaPoi
               </tr>
             </thead>
             <tbody>
-              {rows.length === 0 && (
+              {!searchRows && rows.length === 0 && (
                 <EmptyRow cols={9}>
                   Henüz Funda Puan hareketi olan üye yok. Puanlar, ödeme entegrasyonu açıldıktan sonra ödemesi onaylanan üye
-                  siparişlerinden kazanılır.
+                  siparişlerinden kazanılır. Puanı olmayan bir üyeye düzeltme yapmak için üyeyi üstteki alandan arayın.
                 </EmptyRow>
               )}
-              {rows.length > 0 && visibleRows.length === 0 && <EmptyRow cols={9}>Eşleşen üye yok.</EmptyRow>}
+              {(searchRows ? !searching : rows.length > 0) && visibleRows.length === 0 && (
+                <EmptyRow cols={9}>Eşleşen üye yok.</EmptyRow>
+              )}
               {visibleRows.map((r) => (
                 <Row key={r.userId}>
                   <Td className="font-medium">{r.fullName || "—"}</Td>

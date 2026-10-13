@@ -6,6 +6,7 @@ import {
   adjustFundaPointsAsAdmin,
   FundaPointsAccessError,
   getFundaPointsAdminDetail,
+  searchFundaPointsMembers,
 } from "@/lib/funda-points/service";
 import type { AdjustPointsError } from "@/lib/funda-points";
 
@@ -13,6 +14,8 @@ export const dynamic = "force-dynamic";
 
 /**
  * Funda Puan — Merkez only (SUPER_ADMIN, resolved from the signed session).
+ * GET ?search= — members by name / e-mail / phone (2–100 characters), also
+ *   those with no points yet; reads only.
  * GET ?userId= — a member's balance, lots and history.
  * POST { userId, direction, points, reason, requestId } — correction, signed
  * by the session's admin with a reason; a repeated requestId is applied once.
@@ -34,7 +37,22 @@ const ADJUST_MESSAGE: Record<AdjustPointsError, { status: number; error: string 
 export async function GET(request: Request) {
   const scope = await resolveAdminScope();
   if (!scope) return NextResponse.json({ error: "Oturum açmanız gerekiyor." }, { status: 401 });
-  const userId = new URL(request.url).searchParams.get("userId") ?? "";
+  const params = new URL(request.url).searchParams;
+  const search = params.get("search");
+  if (search !== null) {
+    const q = search.trim();
+    if (q.length < 2 || q.length > 100) return NextResponse.json({ error: "Arama 2–100 karakter olmalı." }, { status: 400 });
+    try {
+      const rows = await searchFundaPointsMembers(scope.user.role, q);
+      return NextResponse.json({ ok: true, rows });
+    } catch (err) {
+      if (err instanceof FundaPointsAccessError) return NextResponse.json(FORBIDDEN, { status: 403 });
+      if (err instanceof FundaPointsNotReadyError) return NextResponse.json(NOT_READY, { status: 503 });
+      console.error("[api/admin/funda-points] search failed", { error: (err as Error).message });
+      return NextResponse.json({ error: "Arama yapılamadı." }, { status: 502 });
+    }
+  }
+  const userId = params.get("userId") ?? "";
   if (!userId) return NextResponse.json({ error: "userId gerekli." }, { status: 400 });
   try {
     const detail = await getFundaPointsAdminDetail(scope.user.role, userId);

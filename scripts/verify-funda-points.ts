@@ -27,6 +27,7 @@ import {
   getCheckoutPoints,
   getFundaPointsAdminPage,
   getMemberPointsSummary,
+  searchFundaPointsMembers,
 } from "@/lib/funda-points/service";
 import type { AdminScope } from "@/lib/admin/access";
 import { DataEnvironmentError } from "@/lib/supabase-server";
@@ -47,6 +48,7 @@ const NOW = at("2026-10-12T11:00:00");
 const TODAY = "2026-10-12";
 const customer = { fullName: "Puan Test Üye", phone: "0555 123 45 67", email: "puan@example.com" };
 const MEMBER = "22222222-2222-4222-8222-222222222222";
+const OTHER = "33333333-3333-4333-8333-333333333333";
 const incek = { district: "Gölbaşı", neighborhood: "İncek", addressLine: "TONA Residence B blok 12" };
 const macaron = (quantity: number) => ({ productSlug: "cikolatali-macaron", quantity });
 const pickup = (extra: Record<string, unknown> = {}) => ({
@@ -124,7 +126,7 @@ async function partOrders() {
 
 /* ---- part 3: mock Supabase ---- */
 const MOCK = "https://mock-project.supabase.test";
-const calls: { path: string; body: Record<string, unknown> | null }[] = [];
+const calls: { path: string; method: string; search: string; body: Record<string, unknown> | null }[] = [];
 let marker: "test" | "production" = "test";
 let notReady = false;
 let adjustError: string | null = null;
@@ -134,7 +136,7 @@ async function mockFetch(input: string | URL | Request, init?: RequestInit): Pro
   const url = new URL(typeof input === "string" ? input : input instanceof URL ? input.href : input.url);
   if (url.origin !== MOCK) throw new Error(`verify-funda-points: unexpected request to ${url.origin}`);
   const body = typeof init?.body === "string" ? (JSON.parse(init.body) as Record<string, unknown>) : null;
-  calls.push({ path: url.pathname, body });
+  calls.push({ path: url.pathname, method: init?.method ?? "GET", search: url.search, body });
   if (url.pathname === "/rest/v1/app_environment") return json(200, [{ name: marker }]);
   if (notReady) return json(404, { code: "PGRST202", message: "Could not find the function" });
   const detail = { user_id: body?.p_user_id, full_name: "Puan Test", email: "p@example.com", phone: "0555", available: 30, debt: 0, lots: [], transactions: [] };
@@ -142,7 +144,18 @@ async function mockFetch(input: string | URL | Request, init?: RequestInit): Pro
     case "/rest/v1/rpc/get_funda_points_summary":
       return json(200, { available: 120, debt: 0, lots: [{ id: "l1", source: "earn", points: 120, remaining: 120, earned_at: "2026-10-01T10:00:00Z", expires_at: "2027-10-01T10:00:00Z", order_number: "FND-1" }], transactions: [] });
     case "/rest/v1/rpc/list_funda_point_accounts":
-      return json(200, { total: 0, overview: { available: 0, debt: 0, earned: 0, spent: 0, members_with_points: 0 }, rows: [] });
+      return json(200, {
+        total: body?.p_search ? 1 : 0,
+        overview: { available: 0, debt: 0, earned: 0, spent: 0, members_with_points: 0 },
+        rows: body?.p_search
+          ? [{ user_id: OTHER, full_name: "Puanlı Üye", email: "puanli@example.com", phone: "0555", available: 40, debt: 0, earned: 40, spent: 0, last_activity: "2026-10-01T10:00:00Z" }]
+          : [],
+      });
+    case "/rest/v1/customer_profiles":
+      return json(200, [
+        { auth_user_id: OTHER, full_name: "Puanlı Üye", email: "puanli@example.com", phone: "0555" },
+        { auth_user_id: MEMBER, full_name: "Puan Test Üye", email: "puan@example.com", phone: "0555 123 45 67" },
+      ]);
     case "/rest/v1/rpc/get_funda_points_admin_detail":
       return json(200, detail);
     case "/rest/v1/rpc/adjust_funda_points":
@@ -208,6 +221,28 @@ async function partStore() {
   check("branch account: the points list is refused", threw);
   const page = await getFundaPointsAdminPage("SUPER_ADMIN");
   check("Merkez list: empty database -> empty list (no demo customers)", page.total === 0 && page.rows.length === 0);
+
+  n = calls.length;
+  const found = await searchFundaPointsMembers("SUPER_ADMIN", "puan@example.com");
+  const fc = since(n);
+  const fresh = found.find((r) => r.userId === MEMBER);
+  check("Merkez search: a member with no points account is found (0 points, no activity)", !!fresh && fresh.available === 0 && fresh.earned === 0 && fresh.lastActivity === null);
+  check("…a member with an account keeps the balance from the ledger, listed once", found.filter((r) => r.userId === OTHER).length === 1 && found.find((r) => r.userId === OTHER)?.available === 40);
+  check("…reads only: the list RPC + one GET on customer_profiles, nothing written", fc.length === 2 && fc.every((c) => c.path.endsWith("list_funda_point_accounts") || (c.path.endsWith("customer_profiles") && c.method === "GET")));
+  n = calls.length;
+  await searchFundaPointsMembers("SUPER_ADMIN", 'a_b%,c)"*');
+  const ec = since(n);
+  const rpcSearch = ec.find((c) => c.path.endsWith("list_funda_point_accounts"))?.body?.p_search;
+  const orFilter = new URLSearchParams(ec.find((c) => c.path.endsWith("customer_profiles"))?.search ?? "").get("or") ?? "";
+  check("…search text is escaped: LIKE wildcards literal, PostgREST value quoted", rpcSearch === 'a\\_b\\%,c)"' && orFilter.includes('email.ilike."*a\\\\_b\\\\%,c)\\"*"'), `${String(rpcSearch)} | ${orFilter}`);
+  threw = false;
+  n = calls.length;
+  try {
+    await searchFundaPointsMembers("BRANCH_MANAGER", "puan@example.com");
+  } catch (err) {
+    threw = err instanceof FundaPointsAccessError;
+  }
+  check("branch account: member search refused before any request", threw && since(n).length === 0);
 
   notReady = true;
   threw = false;

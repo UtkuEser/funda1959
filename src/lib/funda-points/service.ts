@@ -68,6 +68,16 @@ export async function getFundaPointsAdminPage(
   return getFundaPointsStore().adminList({ search: q.search ?? null, limit: q.limit ?? 200, offset: q.offset ?? 0 });
 }
 
+/**
+ * Merkez search by name, e-mail or phone over every member — including one
+ * with no points account yet, so a first correction can be made. Read only:
+ * the account is created by the correction itself (adjust_funda_points).
+ */
+export async function searchFundaPointsMembers(role: AdminRole, search: string): Promise<FundaPointsAdminRow[]> {
+  assertSuperAdmin(role);
+  return getFundaPointsStore().adminSearch({ search, limit: 50 });
+}
+
 export async function getFundaPointsAdminDetail(role: AdminRole, userId: string): Promise<FundaPointsAdminDetail | null> {
   assertSuperAdmin(role);
   return getFundaPointsStore().adminDetail(userId);
