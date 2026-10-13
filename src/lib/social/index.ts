@@ -1,3 +1,3 @@
 export * from "./instagram-types";
-export * from "./instagram-repository";
-export * from "./config";
+export * from "./instagram";
+export { INSTAGRAM_CONTENT } from "./instagram-content";

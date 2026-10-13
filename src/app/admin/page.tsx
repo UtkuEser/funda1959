@@ -28,13 +28,10 @@ import { getBranchStockView } from "@/lib/inventory/stock-view";
 import { BranchStockManager } from "@/components/admin/BranchStockManager";
 import { getCampaignRepository } from "@/lib/campaigns";
 import { AdminCampaigns } from "@/components/admin/AdminCampaigns";
-import { getInstagramContentRepository } from "@/lib/social";
-import { AdminInstagramContent } from "@/components/admin/AdminInstagramContent";
 import { getFundaPointsAdminPage } from "@/lib/funda-points/service";
 import { FundaPointsNotReadyError } from "@/lib/funda-points/store";
 import { isFundaPointsActive } from "@/lib/funda-points";
 import { AdminFundaPoints } from "@/components/admin/AdminFundaPoints";
-import { resolvePublicAsset } from "@/lib/public-asset";
 import {
   Panel,
   Table,
@@ -104,7 +101,6 @@ export default async function AdminPage({ searchParams }: Props) {
         <StockSection scope={scope} branchId={scopedBranchId} readFailed={!inventoryReadOk} />
       )}
       {section === "campaigns" && <CampaignsSection scope={scope} />}
-      {section === "instagram" && <InstagramContentSection />}
       {section === "funda-puan" && <FundaPointsSection scope={scope} />}
       {section === "prices" && <PricesSection />}
       {section === "zones" && <ZonesSection scope={scope} />}
@@ -444,25 +440,6 @@ async function CampaignsSection({ scope }: { scope: AdminScope }) {
         {!canManage && " Bu görünüm salt-okunur."}
       </PageIntro>
       <AdminCampaigns initialCampaigns={campaigns} canManage={canManage} branches={branches} />
-    </>
-  );
-}
-
-/* -------------------------------------------------------------------------- */
-
-function InstagramContentSection() {
-  // Reachable only for SUPER_ADMIN — see the section-access guard in AdminPage above.
-  const items = getInstagramContentRepository()
-    .list()
-    .map((i) => ({ ...i, posterPreview: resolvePublicAsset(i.posterImage) }));
-
-  return (
-    <>
-      <PageIntro>
-        Homepage&apos;deki &quot;Funda&apos;dan Kareler&quot; bölümünü besler. Yayında olan ilk 4 içerik,
-        sıraya göre gösterilir.
-      </PageIntro>
-      <AdminInstagramContent initialItems={items} />
     </>
   );
 }

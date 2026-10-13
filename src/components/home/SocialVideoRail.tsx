@@ -2,16 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
-
-export type SocialVideoItem = {
-  id: string;
-  title: string;
-  poster: string;
-  /** CSS object-position for the 9:16 poster crop */
-  posterPosition: string;
-  /** null until the video file exists — no player is rendered without one */
-  video: string | null;
-};
+import type { InstagramCard } from "@/lib/social/instagram-types";
 
 function PlayIcon() {
   return (
@@ -29,12 +20,15 @@ function Arrow({ dir }: { dir: "prev" | "next" }) {
   );
 }
 
+const CHIP = "absolute left-3 top-3 rounded-full bg-cream-light/90 px-2.5 py-1 font-sans text-[11px] font-semibold text-warm-brown";
+
 /**
- * Five 9:16 cards: a row on desktop, a snap-scrolling rail below it (one card
- * at a time on phones, 2–3 on tablets). Only one video plays at a time, muted,
- * and only after the visitor presses play.
+ * Up to five 9:16 cards: a row on desktop, a snap-scrolling rail below it (one
+ * card at a time on phones, 2–3 on tablets). A card with a video plays it
+ * (one at a time, muted, only after the visitor presses play) and links to
+ * Instagram from a chip; a card without one is a link to the post.
  */
-export function SocialVideoRail({ items }: { items: SocialVideoItem[] }) {
+export function SocialVideoRail({ items }: { items: InstagramCard[] }) {
   const [playing, setPlaying] = useState<string | null>(null);
   const railRef = useRef<HTMLUListElement>(null);
   const [edges, setEdges] = useState({ start: true, end: false });
@@ -98,7 +92,6 @@ export function SocialVideoRail({ items }: { items: SocialVideoItem[] }) {
                       fill
                       sizes="(min-width: 1024px) 240px, (min-width: 768px) 32vw, 72vw"
                       className="object-cover"
-                      style={{ objectPosition: item.posterPosition }}
                     />
                     <div aria-hidden className="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-espresso/55 to-transparent" />
                     {item.video ? (
@@ -113,8 +106,27 @@ export function SocialVideoRail({ items }: { items: SocialVideoItem[] }) {
                         </span>
                       </button>
                     ) : (
-                      <span className="absolute left-3 top-3 rounded-full bg-cream-light/90 px-2.5 py-1 font-sans text-[11px] font-semibold text-warm-brown">
-                        Video yakında
+                      <a
+                        href={item.instagramUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="absolute inset-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-cream-light"
+                        aria-label={`${item.title} — Instagram'da aç (yeni sekme)`}
+                      />
+                    )}
+                    {item.video ? (
+                      <a
+                        href={item.instagramUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={`${CHIP} z-10 hover:bg-cream-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-burgundy/40`}
+                        aria-label={`${item.title} — Instagram'da aç (yeni sekme)`}
+                      >
+                        Instagram
+                      </a>
+                    ) : (
+                      <span aria-hidden className={`${CHIP} pointer-events-none`}>
+                        Instagram
                       </span>
                     )}
                     <p className="pointer-events-none absolute inset-x-3.5 bottom-3.5 font-sans text-[13.5px] font-medium leading-snug text-cream-light">

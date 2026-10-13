@@ -27,14 +27,13 @@ if (typeof window !== "undefined") {
 
 export { expectedDataEnvironment, readDataEnvironmentMarker, type DataEnvironment, type MarkerState };
 
-export type PersistentDomain = "inventory" | "orders" | "campaigns" | "instagram" | "funda-points" | "delivery-fees" | "prices";
+export type PersistentDomain = "inventory" | "orders" | "campaigns" | "funda-points" | "delivery-fees" | "prices";
 
 /** Domains whose data already has a Supabase table + store in this codebase. */
 const DATABASE_BACKED: Record<PersistentDomain, boolean> = {
   inventory: true, // branch_product_status (0003)
   orders: true, // create_order RPC (0001)
   campaigns: true, // campaigns (0002, 0005)
-  instagram: false, // planned (SUPABASE_PLAN.md, Aşama 7)
   "funda-points": true, // funda_point_* ledger (0011)
   "delivery-fees": true, // delivery_zone_fees (0008)
   prices: true, // product_prices (0009)
@@ -45,7 +44,6 @@ const USER_MESSAGE: Record<PersistentDomain, string> = {
   inventory: "Kayıt servisi şu an kullanılamıyor; değişiklik kaydedilmedi.",
   orders: "Siparişiniz şu an alınamıyor. Lütfen daha sonra tekrar deneyin.",
   campaigns: "Kampanya kaydedilemedi: kayıt servisi şu an kullanılamıyor.",
-  instagram: "İçerik kaydedilemedi: kayıt servisi şu an kullanılamıyor.",
   "funda-points": "Puan hareketi kaydedilemedi: kayıt servisi şu an kullanılamıyor.",
   "delivery-fees": "Teslimat ücreti kaydedilemedi: kayıt servisi şu an kullanılamıyor.",
   prices: "Fiyat kaydedilemedi: kayıt servisi şu an kullanılamıyor.",
