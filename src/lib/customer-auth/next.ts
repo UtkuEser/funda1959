@@ -12,6 +12,7 @@ import { redirect } from "next/navigation";
 import { NextResponse } from "next/server";
 import type { CheckoutMember } from "../account-service";
 import { getCustomerRepository } from "../customers/repository";
+import { getCheckoutPoints } from "../funda-points/service";
 import type { CookieJar } from "./cookies";
 import { loadMember, type MemberState, type OpResult } from "./operations";
 import { authEnvironment, readCustomerSession } from "./server";
@@ -83,12 +84,20 @@ export async function requireMemberPage(path: string): Promise<MemberPage> {
 export async function getCheckoutMember(): Promise<CheckoutMember | null> {
   const state = await getMemberState();
   if (state.kind !== "member") return null;
+  let addresses: CheckoutMember["addresses"] = [];
   try {
-    return { profile: state.profile, addresses: await getCustomerRepository().listAddresses(state.userId) };
+    addresses = await getCustomerRepository().listAddresses(state.userId);
   } catch (err) {
     console.error("[account] checkout: saved addresses could not be read", { error: (err as Error).message });
-    return { profile: state.profile, addresses: [] };
   }
+  // Funda Puan: nothing is read or offered while points are off (D41)
+  let points: CheckoutMember["points"] = null;
+  try {
+    points = await getCheckoutPoints(state.userId);
+  } catch (err) {
+    console.error("[account] checkout: points could not be read", { error: (err as Error).message });
+  }
+  return { profile: state.profile, addresses, points };
 }
 
 /** Same-origin check for the account routes' state-changing requests (login CSRF etc.). */

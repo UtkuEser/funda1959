@@ -12,9 +12,10 @@
  * and is marked `is_demo = true` here, whatever the payload says. Production
  * order intake is closed (§6.1), so demo orders only reach the test project.
  *
- * No Funda Puan is earned here, in any store: every order is a demo order
- * (D13), and earning for paid orders is wired with the database ledger in
- * Aşama 6 — not switched on by this file.
+ * No Funda Puan is earned here, in any store: points are earned in the
+ * database when a payment is confirmed (complete_order_payment, 0011) and a
+ * demo order is never paid (D13). Points an order uses are reserved by
+ * create_order itself; a demo order can't carry any.
  */
 
 import type { OrderSummary } from "../order";
@@ -26,6 +27,7 @@ import {
   supabaseRest,
 } from "../supabase-server";
 import { assertPersistentWrite } from "../persistence";
+import { isFundaPointsActive } from "../funda-points/config";
 import {
   memoryOrders,
   orderToSummary,
@@ -49,6 +51,7 @@ type PayloadItem = {
 
 type OrderPayload = {
   client_request_id?: unknown;
+  points_redeemed?: unknown;
   customer_user_id?: unknown;
   customer?: { full_name?: unknown; phone?: unknown; email?: unknown };
   delivery?: {
@@ -103,11 +106,20 @@ export async function placeOrder(payload: unknown): Promise<OrderSummary> {
   const target = await assertPersistentWrite("orders");
 
   if (target === "database") {
-    return createOrderViaSupabase(demoPayload);
+    const summary = await createOrderViaSupabase(demoPayload);
+    // D37: nothing left to pay -> completed on the server (gated; unreachable while points are off)
+    const pl = demoPayload as Record<string, unknown>;
+    if (isFundaPointsActive() && Number(pl.total) === 0 && Number(pl.points_redeemed ?? 0) > 0) {
+      const { completePointsOnlyOrder } = await import("./payment");
+      await completePointsOnlyOrder(summary.orderNumber);
+    }
+    return summary;
   }
 
   // ---- local demo / mock path (developer machine without Supabase) -------
   const p = demoPayload as OrderPayload;
+  // no ledger in memory: a demo order never carries points (D13)
+  if (n(p.points_redeemed) > 0) throw new Error("points_not_allowed_for_demo");
   const d = p.delivery ?? {};
   const type = s(d.type) === "pickup" ? "pickup" : "delivery";
   const branchId = s(d.branch_slug) || null;

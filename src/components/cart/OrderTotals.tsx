@@ -23,12 +23,15 @@ export function OrderTotals({
   fee,
   compact = false,
   pricesUnverified = false,
+  pointsRedeemed = 0,
 }: {
   subtotal: number;
   fee: DeliveryFeeView;
   compact?: boolean;
   /** the current product prices could not be confirmed (useCartPriceSync "failed") */
   pricesUnverified?: boolean;
+  /** Funda Puan the member chose to use on the products (1 puan = 1 TL); 0 = no line */
+  pointsRedeemed?: number;
 }) {
   const amount = feeAmount(fee);
   const muted = (t: string) => <span className="text-[13px] text-taupe">{t}</span>;
@@ -51,6 +54,7 @@ export function OrderTotals({
         <Row compact={compact} label="Ürün Toplamı" value={formatTL(subtotal)} />
         <Row compact={compact} label="Teslimat Ücreti" value={feeValue} />
         <Row compact={compact} label="İndirim" value="₺0" />
+        {pointsRedeemed > 0 && <Row compact={compact} label="Funda Puan" value={`− ${formatTL(pointsRedeemed)}`} />}
       </dl>
 
       <div className={`${compact ? "my-3" : "my-4"} border-t border-sand-light`} />
@@ -58,7 +62,7 @@ export function OrderTotals({
       <div className="flex items-baseline justify-between">
         <span className={`font-sans ${compact ? "text-[14px]" : "text-[15px]"} font-semibold text-espresso`}>Toplam</span>
         <span className={`font-sans ${compact ? "text-[17px]" : "text-[19px]"} font-semibold text-burgundy`}>
-          {amount === null ? muted(fee.status === "loading" ? "Hesaplanıyor…" : "—") : formatTL(roundMoney(subtotal + amount))}
+          {amount === null ? muted(fee.status === "loading" ? "Hesaplanıyor…" : "—") : formatTL(roundMoney(subtotal - pointsRedeemed + amount))}
         </span>
       </div>
 

@@ -8,6 +8,8 @@ import { OrderIntakeClosedError, findOrderByRequestId, isOrderIntakeOpen, placeO
 import { PersistenceUnavailableError, logPersistenceRefusal } from "@/lib/persistence";
 import { routeCookieJar } from "@/lib/customer-auth/next";
 import { resolveOrderMember } from "@/lib/customer-auth/operations";
+import { isFundaPointsActive } from "@/lib/funda-points";
+import { getCheckoutPoints } from "@/lib/funda-points/service";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +28,10 @@ const STOCK_UNREADABLE_ERROR = "Stok bilgisi şu an doğrulanamadı; siparişini
 const RULE_CHANGED: Record<string, string> = {
   price_mismatch: "Ürün fiyatı az önce güncellendi; siparişiniz alınmadı. Lütfen tutarı yeniden kontrol edin.",
   invalid_customer_account: "Üyelik bilgileriniz doğrulanamadı; siparişiniz alınmadı. Lütfen sayfayı yenileyip tekrar deneyin.",
+  insufficient_points: "Funda Puan bakiyeniz az önce değişti; siparişiniz alınmadı. Lütfen tutarı yeniden kontrol edin.",
+  points_exceed_products: "Funda Puan yalnızca ürün tutarına kadar kullanılabilir; siparişiniz alınmadı.",
+  points_require_member: "Funda Puan yalnızca üye girişiyle kullanılabilir; siparişiniz alınmadı.",
+  points_not_allowed_for_demo: "Funda Puan kullanımı henüz açılmadı; siparişiniz alınmadı.",
   delivery_fee_mismatch: "Teslimat ücreti az önce güncellendi; siparişiniz alınmadı. Lütfen tutarı yeniden kontrol edin.",
   delivery_fee_not_set: "Bu bölge için teslimat ücreti belirlenmedi; adrese teslim şu an yapılamıyor. Mağazadan teslim alabilirsiniz.",
   below_minimum: "Adrese teslim için minimum sipariş tutarına ulaşılmadı.",
@@ -97,9 +103,21 @@ export async function POST(request: Request) {
 
   // 400 malformed / 409 not deliverable as asked (date, slot, stock, zone, fee,
   // minimum) / 503 prices or fees unreadable
-  const built = buildOrderPayload(body, { customerUserId: member.userId });
+  // Funda Puan (D41): the balance is read only when points are on and a member asks to use some
+  const wantsPoints = Number((body as { pointsToRedeem?: unknown })?.pointsToRedeem ?? 0) > 0;
+  let points: { active: boolean; available: number | null } = { active: isFundaPointsActive(), available: null };
+  if (points.active && wantsPoints && member.userId) {
+    try {
+      points = { active: true, available: (await getCheckoutPoints(member.userId))?.available ?? null };
+    } catch (err) {
+      console.error("[api/orders] refused: points balance could not be read", { error: (err as Error).message });
+      return NextResponse.json({ ok: false, error: "Funda Puan bakiyeniz şu an doğrulanamadı; siparişiniz alınmadı." }, { status: 503 });
+    }
+  }
+
+  const built = buildOrderPayload(body, { customerUserId: member.userId, points });
   if (!built.ok) {
-    return NextResponse.json({ ok: false, error: built.error, reason: built.reason ?? null }, { status: built.status });
+    return NextResponse.json({ ok: false, error: built.error, reason: built.reason ?? null, code: built.code ?? null }, { status: built.status });
   }
 
   try {

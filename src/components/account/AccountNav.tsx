@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { LogoutButton } from "./LogoutButton";
 
-export type AccountNavKey = "dashboard" | "orders" | "addresses" | "profile";
+export type AccountNavKey = "dashboard" | "orders" | "points" | "addresses" | "profile";
 
 const ITEMS: { key: AccountNavKey; label: string; href: string }[] = [
   { key: "dashboard", label: "Hesabım", href: "/hesabim" },
   { key: "orders", label: "Siparişlerim", href: "/hesabim/siparislerim" },
+  { key: "points", label: "Funda Puan", href: "/hesabim/puanlarim" },
   { key: "addresses", label: "Adreslerim", href: "/hesabim/adreslerim" },
   { key: "profile", label: "Profil Bilgilerim", href: "/hesabim/profil" },
 ];

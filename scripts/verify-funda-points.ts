@@ -1,182 +1,247 @@
-/* eslint-disable no-console */
 /**
- * Manual domain check — run with:  npx tsx scripts/verify-funda-points.ts
- * Not part of the build. Exercises the Funda Puan core end to end: earning,
- * online-only eligibility, idempotency, redemption, refund reversal, admin
- * adjustment, and the SUPER_ADMIN access boundary.
+ * Funda Puan — app-side check (Aşama 6). Run with:
+ *   npx tsx scripts/verify-funda-points.ts
+ * Not part of the build. NO real Supabase: parts 1–2 run in memory, part 3
+ * answers every request from an in-process mock (any other host fails).
+ *
+ * The ledger rules themselves (lots, 1-year expiry, FEFO, reservation,
+ * release, refund, reversal, debt, idempotency) live in SQL and are tested
+ * by supabase/tests/0011_funda_points_test.sql. This script checks what the
+ * app adds around them: the arithmetic shown on screens, the off switch,
+ * the order's server-side point checks, and that every database call takes
+ * the member / admin from the server — never from the request.
  */
-
-import type { StoredOrder } from "@/lib/orders/repository";
-import { requireTestEnvironmentForWrites } from "./test-environment-guard";
+import { buildOrderPayload, quoteFromPayload } from "@/lib/order-server";
 import {
-  awardPointsForOrder,
-  reversePointsForOrder,
-  adjustPoints,
-  redeemPoints,
   calculateEarnedPoints,
   getEligibleFundaPointAmount,
-  getPointAccount,
-  resolveCustomerId,
-  listPointAccountsForAdmin,
-  FundaPointsAccessError,
+  isFundaPointsActive,
+  isOnlineSalesChannel,
+  maxRedeemablePoints,
+  FUNDA_POINTS_RULES,
 } from "@/lib/funda-points";
+import { getFundaPointsStore, FundaPointsNotReadyError } from "@/lib/funda-points/store";
+import {
+  adjustFundaPointsAsAdmin,
+  FundaPointsAccessError,
+  getCheckoutPoints,
+  getFundaPointsAdminPage,
+  getMemberPointsSummary,
+} from "@/lib/funda-points/service";
+import type { AdminScope } from "@/lib/admin/access";
+import { DataEnvironmentError } from "@/lib/supabase-server";
+import { requireTestEnvironmentForWrites } from "./test-environment-guard";
+import { installMemoryFeeStore } from "./test-fee-store";
+import { installMemoryPriceStore } from "./test-price-store";
 
 let failures = 0;
-function check(label: string, cond: boolean) {
-  console.log(`${cond ? "  ok  " : " FAIL "} ${label}`);
-  if (!cond) failures += 1;
+let passes = 0;
+function check(label: string, cond: boolean, detail = "") {
+  console.log(`${cond ? "  ok  " : " FAIL "} ${label}${cond || !detail ? "" : `  -> ${detail}`}`);
+  if (cond) passes += 1;
+  else failures += 1;
 }
 
-let seq = 0;
-function nextPhone(): string {
-  seq += 1;
-  return `0555 000 ${String(seq).padStart(4, "0")}`;
+const at = (iso: string) => new Date(`${iso}+03:00`);
+const NOW = at("2026-10-12T11:00:00");
+const TODAY = "2026-10-12";
+const customer = { fullName: "Puan Test Üye", phone: "0555 123 45 67", email: "puan@example.com" };
+const MEMBER = "22222222-2222-4222-8222-222222222222";
+const incek = { district: "Gölbaşı", neighborhood: "İncek", addressLine: "TONA Residence B blok 12" };
+const macaron = (quantity: number) => ({ productSlug: "cikolatali-macaron", quantity });
+const pickup = (extra: Record<string, unknown> = {}) => ({
+  customer,
+  items: [macaron(2)],
+  delivery: { type: "pickup", branchSlug: "gop", date: TODAY, timeSlot: "16:00 – 17:00" },
+  ...extra,
+});
+const ON = (available: number | null) => ({ active: true, available });
+
+async function partRules() {
+  console.log("\n── 1. rules (D9, D33, D36) ──");
+  check("1 puan = 1 TL", FUNDA_POINTS_RULES.pointValueTL === 1);
+  check("earning and spending are switched OFF until the payment integration", isFundaPointsActive() === false);
+  const base = getEligibleFundaPointAmount({ subtotal: 1000, discount: 0, pointsRedeemed: 200 });
+  check("1.000 TL products, 200 points used -> 800 TL earns", base === 800);
+  check("…80 points (the agreed example)", calculateEarnedPoints(base) === 80);
+  check("discount comes off first: 1.000 − 200 discount -> 80", calculateEarnedPoints(getEligibleFundaPointAmount({ subtotal: 1000, discount: 200 })) === 80);
+  check("floor: 785 TL -> 78", calculateEarnedPoints(785) === 78);
+  check("kuruş exact: 598,80 TL -> 59", calculateEarnedPoints(598.8) === 59);
+  check("kuruş exact: 0,1 + 0,2 style amounts don't drift (299,99 -> 29)", calculateEarnedPoints(299.99) === 29);
+  check("never negative", getEligibleFundaPointAmount({ subtotal: 100, discount: 0, pointsRedeemed: 150 }) === 0 && calculateEarnedPoints(0) === 0);
+  check("redeem cap: whole product amount (598,80 -> 598 points)", maxRedeemablePoints({ subtotal: 598.8, discount: 0 }, 10_000) === 598);
+  check("redeem cap: the balance (40)", maxRedeemablePoints({ subtotal: 598.8, discount: 0 }, 40) === 40);
+  check("redeem cap: after discount (500 − 100 -> 400)", maxRedeemablePoints({ subtotal: 500, discount: 100 }, 10_000) === 400);
+  check("store sales never earn / spend", isOnlineSalesChannel("store") === false && isOnlineSalesChannel("web") && isOnlineSalesChannel("mobile"));
 }
 
-function makeOrder(overrides: Partial<StoredOrder> & { phone?: string }): StoredOrder {
-  seq += 1;
-  const orderNumber = overrides.orderNumber ?? `FND-TEST-${String(seq).padStart(4, "0")}`;
-  const phone = overrides.phone ?? nextPhone();
-  return {
-    id: overrides.id ?? `ord_${orderNumber}`,
-    orderNumber,
-    branchId: "gop",
-    deliveryZoneId: null,
-    fulfillmentType: "delivery",
-    salesChannel: overrides.salesChannel,
-    customer: overrides.customer ?? { fullName: "Test Müşteri", phone, email: "test@example.com" },
-    address: null,
-    items: [],
-    deliveryDate: "2026-09-15",
-    deliverySlot: "12:00-14:00",
-    subtotal: overrides.subtotal ?? 1000,
-    deliveryFee: overrides.deliveryFee ?? 50,
-    discount: overrides.discount ?? 0,
-    total: overrides.total ?? 1000,
-    paymentStatus: "paid",
-    // a paid order is a real one — a demo order can never be paid (0006)
-    isDemo: false,
-    orderStatus: "new",
-    cancellation: null,
-    statusHistory: [],
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
-}
+async function partOrders() {
+  console.log("\n── 2. order: server-side point checks (memory stores) ──");
+  const fees = installMemoryFeeStore();
+  await installMemoryPriceStore().ready;
+  await fees.set("zone-incek-golbasi", "paid", 70);
 
-function main() {
-  console.log("\n── earn rate math ──");
-  check("₺1000 eligible -> 100 puan", calculateEarnedPoints(1000) === 100);
-  check("₺800 (discount sonrası) eligible -> 80 puan", calculateEarnedPoints(800) === 80);
-  check("₺785 eligible -> floors to 78 puan", calculateEarnedPoints(785) === 78);
-
-  console.log("\n── eligible amount excludes delivery fee ──");
-  const eligibleNoDiscount = getEligibleFundaPointAmount({ subtotal: 1000, discount: 0 });
-  const eligibleWithDiscount = getEligibleFundaPointAmount({ subtotal: 1000, discount: 200 });
-  check("no discount -> eligible 1000 (delivery fee never enters the calc)", eligibleNoDiscount === 1000);
-  check("₺200 discount -> eligible 800", eligibleWithDiscount === 800);
-  check("discount-derived eligible -> 80 puan", calculateEarnedPoints(eligibleWithDiscount) === 80);
-
-  console.log("\n── sales channel eligibility ──");
-  const storeOrder = makeOrder({ salesChannel: "store", subtotal: 1000 });
-  const storeResult = awardPointsForOrder(storeOrder);
-  check("store order does not earn points", storeResult.awarded === false && storeResult.reason === "OFFLINE_CHANNEL");
-
-  const webOrder = makeOrder({ salesChannel: "web", subtotal: 1000 });
-  const webResult = awardPointsForOrder(webOrder);
-  check("web order earns points", webResult.awarded === true);
-  check("web order earns 100 points", webResult.awarded === true && webResult.transaction.points === 100);
-
-  const mobileOrder = makeOrder({ salesChannel: "mobile", subtotal: 500 });
-  const mobileResult = awardPointsForOrder(mobileOrder);
-  check("mobile order earns points", mobileResult.awarded === true);
-
-  console.log("\n── demo orders never earn (D13) ──");
-  const demoOrder = { ...makeOrder({ salesChannel: "web", subtotal: 1000 }), isDemo: true, paymentStatus: "pending" as const };
-  const demoResult = awardPointsForOrder(demoOrder);
-  check("web demo order does not earn points", demoResult.awarded === false && demoResult.reason === "DEMO_ORDER");
-  check("…and opens no account for its customer", getPointAccount(resolveCustomerId(demoOrder.customer)!) === null);
-  check("…not even on a second attempt", awardPointsForOrder(demoOrder).awarded === false);
-
-  console.log("\n── idempotency ──");
-  const dupeResult = awardPointsForOrder(webOrder);
-  check(
-    "re-awarding the same order does not duplicate",
-    dupeResult.awarded === false && dupeResult.reason === "ALREADY_AWARDED",
-  );
-  const accountAfterDupe = getPointAccount(resolveCustomerId(webOrder.customer)!);
-  check("balance unaffected by the duplicate attempt", accountAfterDupe?.balance === 100);
-
-  console.log("\n── redeem ──");
-  const redeemCustomerId = resolveCustomerId(webOrder.customer)!;
-  const redeemOk = redeemPoints({ customerId: redeemCustomerId, points: 40, salesChannel: "web" });
-  check("redeem lowers the balance", redeemOk.ok === true);
-  const afterRedeem = getPointAccount(redeemCustomerId);
-  check("balance is 100 - 40 = 60 after redeem", afterRedeem?.balance === 60);
-
-  const overRedeem = redeemPoints({ customerId: redeemCustomerId, points: 1000, salesChannel: "web" });
-  check("redeeming past the balance is refused", overRedeem.ok === false && overRedeem.reason === "INSUFFICIENT_BALANCE");
-
-  const storeRedeem = redeemPoints({ customerId: redeemCustomerId, points: 10, salesChannel: "store" });
-  check("store-channel redemption is refused", storeRedeem.ok === false && storeRedeem.reason === "OFFLINE_CHANNEL");
-
-  console.log("\n── refund reversal ──");
-  const reversalOrder = makeOrder({ salesChannel: "web", subtotal: 1200 });
-  awardPointsForOrder(reversalOrder);
-  const reversalCustomerId = resolveCustomerId(reversalOrder.customer)!;
-  const beforeReversal = getPointAccount(reversalCustomerId);
-  const reversal = reversePointsForOrder(reversalOrder.id);
-  const afterReversal = getPointAccount(reversalCustomerId);
-  check("reversal succeeds", reversal.reversed === true);
-  check(
-    "reversal removes exactly what was earned",
-    !!beforeReversal && !!afterReversal && afterReversal.balance === beforeReversal.balance - 120,
-  );
-  const secondReversal = reversePointsForOrder(reversalOrder.id);
-  check("re-reversing the same order is a no-op", secondReversal.reversed === false && secondReversal.reason === "ALREADY_REVERSED");
-
-  console.log("\n── admin adjustment ──");
-  const adjustCustomerId = resolveCustomerId(webOrder.customer)!;
-  const beforeAdjust = getPointAccount(adjustCustomerId)!.balance;
-  const adjustment = adjustPoints({
-    customerId: adjustCustomerId,
-    direction: "add",
-    points: 25,
-    description: "Merkez müşteri hizmetleri düzeltmesi",
+  const plain = buildOrderPayload(pickup(), { now: NOW, customerUserId: MEMBER });
+  check("no points asked -> points_redeemed 0, total = products", plain.ok && plain.payload.points_redeemed === 0 && plain.payload.total === 90);
+  const off = buildOrderPayload(pickup({ pointsToRedeem: 50 }), { now: NOW, customerUserId: MEMBER });
+  check("points OFF: a request for points -> 409 POINTS_DISABLED (no balance read needed)", !off.ok && off.status === 409 && off.code === "POINTS_DISABLED");
+  for (const bad of [-5, 1.5, "abc", 2_000_000]) {
+    const r = buildOrderPayload(pickup({ pointsToRedeem: bad }), { now: NOW, customerUserId: MEMBER, points: ON(1000) });
+    check(`invalid points value ${JSON.stringify(bad)} -> 400`, !r.ok && r.status === 400);
+  }
+  const guest = buildOrderPayload(pickup({ pointsToRedeem: 10 }), { now: NOW, customerUserId: null, points: ON(1000) });
+  check("ON: a guest can't use points -> 409", !guest.ok && guest.code === "POINTS_MEMBER_ONLY");
+  const all = buildOrderPayload(pickup({ pointsToRedeem: 90 }), { now: NOW, customerUserId: MEMBER, points: ON(1000) });
+  check("ON: whole product amount paid with points -> total 0", all.ok && all.payload.points_redeemed === 90 && all.payload.total === 0);
+  const over = buildOrderPayload(pickup({ pointsToRedeem: 91 }), { now: NOW, customerUserId: MEMBER, points: ON(1000) });
+  check("ON: more than the products -> 409", !over.ok && over.code === "POINTS_EXCEED_PRODUCTS");
+  const poor = buildOrderPayload(pickup({ pointsToRedeem: 50 }), { now: NOW, customerUserId: MEMBER, points: ON(40) });
+  check("ON: more than the balance -> 409", !poor.ok && poor.code === "POINTS_INSUFFICIENT");
+  const unread = buildOrderPayload(pickup({ pointsToRedeem: 10 }), { now: NOW, customerUserId: MEMBER, points: ON(null) });
+  check("ON: balance not read -> refused, never assumed", !unread.ok && unread.code === "POINTS_INSUFFICIENT");
+  const browserBalance = buildOrderPayload(pickup({ pointsToRedeem: 50, available: 9999, pointsEarned: 500 }), {
+    now: NOW,
+    customerUserId: MEMBER,
+    points: ON(40),
   });
-  check("admin adjustment creates a ledger transaction", adjustment.ok === true && adjustment.transaction.type === "ADMIN_ADJUSTMENT");
-  const afterAdjust = getPointAccount(adjustCustomerId)!.balance;
-  check("admin adjustment applies the delta", afterAdjust === beforeAdjust + 25);
+  check("ON: a balance or earning sent by the browser is ignored", !browserBalance.ok && browserBalance.code === "POINTS_INSUFFICIENT");
 
-  const overSubtract = adjustPoints({
-    customerId: adjustCustomerId,
-    direction: "subtract",
-    points: 100_000,
-    description: "test",
-  });
-  check("admin adjustment cannot push balance negative", overSubtract.ok === false && overSubtract.reason === "INSUFFICIENT_BALANCE");
+  // D35: the 500 TL delivery minimum is on products − discount BEFORE points
+  const delivery = (quantity: number, pointsToRedeem: number) =>
+    buildOrderPayload(
+      { customer, items: [macaron(quantity)], delivery: { type: "delivery", date: TODAY, timeSlot: "16:00 – 17:00", address: incek }, pointsToRedeem },
+      { now: NOW, customerUserId: MEMBER, points: ON(1000) },
+    );
+  const d1 = delivery(12, 100); // 540 TL products, 100 points -> 440 TL paid for products
+  check("minimum before points: 540 TL products with 100 points passes", d1.ok, d1.ok ? "" : d1.error);
+  check("…total = 540 − 100 + 70 fee = 510 (the fee is never paid with points)", d1.ok && d1.payload.total === 510 && d1.payload.delivery_fee === 70);
+  check("…quote shows the points line", d1.ok && quoteFromPayload(d1.payload, d1.deliveryFeeState).pointsRedeemed === 100);
+  const d2 = delivery(11, 0); // 495 TL
+  check("minimum unchanged: 495 TL delivery still refused", !d2.ok && d2.reason === "BELOW_MINIMUM");
+  const d3 = delivery(12, 540); // products fully paid, fee still due
+  check("whole products with points on delivery -> only the fee is left (70)", d3.ok && d3.payload.total === 70);
+}
 
-  console.log("\n── SUPER_ADMIN access boundary ──");
-  let managerThrew = false;
+/* ---- part 3: mock Supabase ---- */
+const MOCK = "https://mock-project.supabase.test";
+const calls: { path: string; body: Record<string, unknown> | null }[] = [];
+let marker: "test" | "production" = "test";
+let notReady = false;
+let adjustError: string | null = null;
+
+const json = (status: number, data: unknown) => new Response(JSON.stringify(data), { status, headers: { "content-type": "application/json" } });
+async function mockFetch(input: string | URL | Request, init?: RequestInit): Promise<Response> {
+  const url = new URL(typeof input === "string" ? input : input instanceof URL ? input.href : input.url);
+  if (url.origin !== MOCK) throw new Error(`verify-funda-points: unexpected request to ${url.origin}`);
+  const body = typeof init?.body === "string" ? (JSON.parse(init.body) as Record<string, unknown>) : null;
+  calls.push({ path: url.pathname, body });
+  if (url.pathname === "/rest/v1/app_environment") return json(200, [{ name: marker }]);
+  if (notReady) return json(404, { code: "PGRST202", message: "Could not find the function" });
+  const detail = { user_id: body?.p_user_id, full_name: "Puan Test", email: "p@example.com", phone: "0555", available: 30, debt: 0, lots: [], transactions: [] };
+  switch (url.pathname) {
+    case "/rest/v1/rpc/get_funda_points_summary":
+      return json(200, { available: 120, debt: 0, lots: [{ id: "l1", source: "earn", points: 120, remaining: 120, earned_at: "2026-10-01T10:00:00Z", expires_at: "2027-10-01T10:00:00Z", order_number: "FND-1" }], transactions: [] });
+    case "/rest/v1/rpc/list_funda_point_accounts":
+      return json(200, { total: 0, overview: { available: 0, debt: 0, earned: 0, spent: 0, members_with_points: 0 }, rows: [] });
+    case "/rest/v1/rpc/get_funda_points_admin_detail":
+      return json(200, detail);
+    case "/rest/v1/rpc/adjust_funda_points":
+      return adjustError ? json(400, { code: "P0001", message: adjustError }) : json(200, detail);
+  }
+  return json(404, { message: `mock: no route ${url.pathname}` });
+}
+
+const merkez: AdminScope = { user: { name: "Merkez Yönetim", role: "SUPER_ADMIN" }, authorizedBranchIds: null, activeBranchId: null };
+const gop: AdminScope = { user: { name: "GOP", role: "BRANCH_MANAGER" }, authorizedBranchIds: ["gop"], activeBranchId: "gop" };
+const g = globalThis as unknown as Record<string, unknown>;
+const since = (n: number) => calls.slice(n).filter((c) => c.path !== "/rest/v1/app_environment");
+
+async function partStore() {
+  console.log("\n── 3. database calls (mock Supabase) ──");
+  delete process.env.SUPABASE_URL;
+  check("no Supabase: no ledger, writes refused", getFundaPointsStore().kind === "none" && (await getFundaPointsStore().adjust({ userId: MEMBER, direction: "add", points: 1, reason: "abc", requestId: "r" }, { account: "merkez", name: "M" })).ok === false);
+
+  process.env.SUPABASE_URL = MOCK;
+  process.env.SUPABASE_SERVICE_ROLE_KEY = "mock-service-role";
+  delete process.env.VERCEL_ENV;
+  globalThis.fetch = mockFetch as typeof fetch;
+  delete g.__fundaEnvMarker;
+
+  let n = calls.length;
+  const s = await getMemberPointsSummary(MEMBER);
+  const sc = since(n);
+  check("member summary: one RPC with the session's id", sc.length === 1 && sc[0].path.endsWith("get_funda_points_summary") && sc[0].body?.p_user_id === MEMBER);
+  check("member summary: lots with expiry mapped", s.available === 120 && s.lots[0].expiresAt === "2027-10-01T10:00:00Z");
+  n = calls.length;
+  const junk = await getMemberPointsSummary("not-a-uuid");
+  check("member summary: a malformed id sends nothing", junk.available === 0 && since(n).length === 0);
+  n = calls.length;
+  check("checkout: points OFF -> nothing offered, no balance read", (await getCheckoutPoints(MEMBER)) === null && since(n).length === 0);
+
+  n = calls.length;
+  const adj = await adjustFundaPointsAsAdmin(merkez, { userId: MEMBER, direction: "add", points: 25, reason: "Müşteri hizmetleri düzeltmesi", requestId: "req-1" });
+  const ac = since(n)[0];
+  check("Merkez correction: RPC adjust_funda_points", adj.ok && ac?.path.endsWith("adjust_funda_points"));
+  check("…signed by the session's admin (merkez / Merkez Yönetim), with reason and request id", ac?.body?.p_actor_account === "merkez" && ac.body.p_actor_name === "Merkez Yönetim" && ac.body.p_reason === "Müşteri hizmetleri düzeltmesi" && ac.body.p_request_id === "req-1");
+  adjustError = "insufficient_points";
+  const poor = await adjustFundaPointsAsAdmin(merkez, { userId: MEMBER, direction: "subtract", points: 999, reason: "Fazla", requestId: "req-2" });
+  check("Merkez correction: insufficient balance mapped", !poor.ok && poor.error === "INSUFFICIENT_POINTS");
+  adjustError = "reason_required";
+  const noReason = await adjustFundaPointsAsAdmin(merkez, { userId: MEMBER, direction: "add", points: 1, reason: "x", requestId: "req-3" });
+  check("Merkez correction: missing reason mapped", !noReason.ok && noReason.error === "REASON_REQUIRED");
+  adjustError = null;
+
+  n = calls.length;
+  let threw = false;
   try {
-    listPointAccountsForAdmin("BRANCH_MANAGER");
+    await adjustFundaPointsAsAdmin(gop, { userId: MEMBER, direction: "add", points: 5, reason: "Şube", requestId: "req-4" });
   } catch (err) {
-    managerThrew = err instanceof FundaPointsAccessError;
+    threw = err instanceof FundaPointsAccessError;
   }
-  check("manager:gop cannot read Funda Puan data", managerThrew);
-
-  let superOk = false;
+  check("branch account: correction refused before any request", threw && since(n).length === 0);
+  threw = false;
   try {
-    const rows = listPointAccountsForAdmin("SUPER_ADMIN");
-    superOk = Array.isArray(rows) && rows.length > 0;
-  } catch {
-    superOk = false;
+    await getFundaPointsAdminPage("BRANCH_MANAGER");
+  } catch (err) {
+    threw = err instanceof FundaPointsAccessError;
   }
-  check("super admin can read Funda Puan data", superOk);
+  check("branch account: the points list is refused", threw);
+  const page = await getFundaPointsAdminPage("SUPER_ADMIN");
+  check("Merkez list: empty database -> empty list (no demo customers)", page.total === 0 && page.rows.length === 0);
 
-  console.log(`\n${failures === 0 ? "All checks passed." : `${failures} check(s) FAILED.`}\n`);
+  notReady = true;
+  threw = false;
+  try {
+    await getMemberPointsSummary(MEMBER);
+  } catch (err) {
+    threw = err instanceof FundaPointsNotReadyError;
+  }
+  check("0011 not applied -> 'not ready', never a made-up balance", threw);
+  notReady = false;
+
+  marker = "production";
+  delete g.__fundaEnvMarker;
+  n = calls.length;
+  threw = false;
+  try {
+    await getMemberPointsSummary(MEMBER);
+  } catch (err) {
+    threw = err instanceof DataEnvironmentError;
+  }
+  check("wrong project (marker production, local expects test) -> refused, no RPC", threw && since(n).length === 0);
+  marker = "test";
+}
+
+async function main() {
+  await requireTestEnvironmentForWrites("verify-funda-points");
+  await partRules();
+  await partOrders();
+  await partStore();
+  console.log(`\n${failures === 0 ? "All checks passed." : `${failures} check(s) FAILED.`} (${passes}/${passes + failures})\n`);
   process.exit(failures === 0 ? 0 : 1);
 }
 
-// in-memory today; guarded anyway so a later database-backed ledger can't be written from here outside test
-void requireTestEnvironmentForWrites("verify-funda-points").then(main);
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

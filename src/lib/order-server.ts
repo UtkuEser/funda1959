@@ -16,7 +16,12 @@
  *   - delivery minimum 500 TL on products − discount, fee excluded, pickup
  *     exempt (D14, `lib/order-rules.ts`);
  *   - the member an order belongs to comes from the route's verified session
- *     (`customerUserId`), never from the request body (D24).
+ *     (`customerUserId`), never from the request body (D24);
+ *   - Funda Puan (D33–D36): refused while points are off; otherwise members
+ *     only, whole points, products only (never the fee), at most the product
+ *     amount after discount and the balance the route read. The 500 TL
+ *     minimum is checked BEFORE points. The database reserves the points
+ *     with the order and checks all of this again.
  * Errors: 400 = malformed request, 409 = valid request the order can't be
  * fulfilled as asked (the message says why), 503 = prices or delivery fees
  * can't be read.
@@ -37,6 +42,7 @@ import {
 } from "./availability";
 import { addDaysISO, istanbulDateISO } from "./time/istanbul";
 import { effectiveUnitPrice, priceRowsForCalculation } from "./pricing/prices";
+import { maxRedeemablePoints } from "./funda-points/rules";
 import {
   ANKARA_DISTRICTS,
   DELIVERY_TIME_SLOTS,
@@ -52,7 +58,12 @@ const MAX_QTY = 20;
 
 export type BuildResult =
   | { ok: true; payload: Record<string, unknown>; deliveryFeeState: "paid" | "free" | null }
-  | { ok: false; status: 400 | 409 | 503; error: string; reason?: ReasonCode | null };
+  | { ok: false; status: 400 | 409 | 503; error: string; reason?: ReasonCode | null; code?: string };
+
+/** Funda Puan as the route sees it: switched on, and the member's spendable balance (null = not read). */
+export type OrderPointsContext = { active: boolean; available: number | null };
+
+export const POINTS_DISABLED_ERROR = "Funda Puan kullanımı henüz açılmadı.";
 
 const fail = (error: string): BuildResult => ({ ok: false, status: 400, error });
 const unavailable = (error: string, reason: ReasonCode | null = null): BuildResult => ({ ok: false, status: 409, error, reason });
@@ -67,10 +78,27 @@ const money = roundMoney;
  */
 export function buildOrderPayload(
   body: unknown,
-  { now = new Date(), customerUserId = null }: { now?: Date; customerUserId?: string | null } = {},
+  {
+    now = new Date(),
+    customerUserId = null,
+    points = { active: false, available: null },
+  }: { now?: Date; customerUserId?: string | null; points?: OrderPointsContext } = {},
 ): BuildResult {
   if (!body || typeof body !== "object") return fail("Geçersiz istek.");
   const b = body as Record<string, unknown>;
+
+  /* ---- Funda Puan request (D33–D36, D41) ---- */
+  const rawPoints = b.pointsToRedeem;
+  const pointsRequested = rawPoints === undefined || rawPoints === null || rawPoints === 0 ? 0 : Number(rawPoints);
+  if (!Number.isInteger(pointsRequested) || pointsRequested < 0 || pointsRequested > 1_000_000) {
+    return fail("Funda Puan değeri geçersiz.");
+  }
+  if (pointsRequested > 0) {
+    if (!points.active) return { ok: false, status: 409, error: POINTS_DISABLED_ERROR, code: "POINTS_DISABLED" };
+    if (!customerUserId) {
+      return { ok: false, status: 409, error: "Funda Puan yalnızca üye girişiyle kullanılabilir.", code: "POINTS_MEMBER_ONLY" };
+    }
+  }
 
   /* ---- customer ---- */
   const c = (b.customer ?? {}) as Record<string, unknown>;
@@ -232,7 +260,23 @@ export function buildOrderPayload(
 
   // D15: the zone's fee from the fee store (0 only when explicitly free)
   const deliveryFee = type === "delivery" ? money(resolved.deliveryFee) : 0;
-  const total = money(subtotal - discount + deliveryFee);
+
+  // D36: points pay products only, up to the whole product amount, within the balance
+  if (pointsRequested > 0) {
+    const byProducts = maxRedeemablePoints({ subtotal, discount }, Number.MAX_SAFE_INTEGER);
+    if (pointsRequested > byProducts) {
+      return {
+        ok: false,
+        status: 409,
+        error: `Bu siparişte en fazla ${byProducts} Funda Puan kullanılabilir (ürün tutarı; teslimat ücreti puanla ödenmez).`,
+        code: "POINTS_EXCEED_PRODUCTS",
+      };
+    }
+    if (points.available === null || pointsRequested > points.available) {
+      return { ok: false, status: 409, error: "Funda Puan bakiyeniz bu tutar için yeterli değil.", code: "POINTS_INSUFFICIENT" };
+    }
+  }
+  const total = money(subtotal - discount - pointsRequested + deliveryFee);
 
   const clientRequestId = str(b.clientRequestId).slice(0, 64) || null;
 
@@ -255,6 +299,7 @@ export function buildOrderPayload(
       subtotal,
       delivery_fee: deliveryFee,
       discount,
+      points_redeemed: pointsRequested,
       total,
       order_note: str(b.orderNote).trim() || null,
     },
@@ -286,6 +331,7 @@ export function quoteFromPayload(payload: Record<string, unknown>, deliveryFeeSt
     subtotal: payload.subtotal as number,
     deliveryFee: payload.delivery_fee as number,
     discount: payload.discount as number,
+    pointsRedeemed: (payload.points_redeemed as number | undefined) ?? 0,
     total: payload.total as number,
   };
 }

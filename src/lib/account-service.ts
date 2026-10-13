@@ -72,7 +72,12 @@ export type AccountData = {
 };
 
 /** What checkout gets for a signed-in member (D24): contact prefill + saved addresses. */
-export type CheckoutMember = { profile: AccountProfile; addresses: AccountAddress[] };
+export type CheckoutMember = {
+  profile: AccountProfile;
+  addresses: AccountAddress[];
+  /** Funda Puan the member can use — null while points are switched off (D41) */
+  points: { active: true; available: number } | null;
+};
 
 /* -------------------------------------------------------------------------- */
 /* Writes — the server checks the session and saves only the member's rows    */

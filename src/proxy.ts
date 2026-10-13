@@ -21,5 +21,6 @@ export const config = {
     "/sifre-yenile",
     "/api/account/:path*",
     "/api/orders",
+    "/api/orders/quote",
   ],
 };

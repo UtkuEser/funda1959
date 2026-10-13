@@ -35,7 +35,7 @@ const DATABASE_BACKED: Record<PersistentDomain, boolean> = {
   orders: true, // create_order RPC (0001)
   campaigns: true, // campaigns (0002, 0005)
   instagram: false, // planned (SUPABASE_PLAN.md, Aşama 7)
-  "funda-points": false, // planned (Aşama 6)
+  "funda-points": true, // funda_point_* ledger (0011)
   "delivery-fees": true, // delivery_zone_fees (0008)
   prices: true, // product_prices (0009)
 };

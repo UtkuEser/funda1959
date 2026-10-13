@@ -30,7 +30,9 @@ import { getCampaignRepository } from "@/lib/campaigns";
 import { AdminCampaigns } from "@/components/admin/AdminCampaigns";
 import { getInstagramContentRepository } from "@/lib/social";
 import { AdminInstagramContent } from "@/components/admin/AdminInstagramContent";
-import { getFundaPointsOverview, listPointAccountsForAdmin } from "@/lib/funda-points";
+import { getFundaPointsAdminPage } from "@/lib/funda-points/service";
+import { FundaPointsNotReadyError } from "@/lib/funda-points/store";
+import { isFundaPointsActive } from "@/lib/funda-points";
 import { AdminFundaPoints } from "@/components/admin/AdminFundaPoints";
 import { resolvePublicAsset } from "@/lib/public-asset";
 import {
@@ -467,30 +469,58 @@ function InstagramContentSection() {
 
 /* -------------------------------------------------------------------------- */
 
-function FundaPointsSection({ scope }: { scope: AdminScope }) {
+async function FundaPointsSection({ scope }: { scope: AdminScope }) {
   // Reachable only for SUPER_ADMIN — see the section-access guard in AdminPage above.
-  // `getFundaPointsOverview`/`listPointAccountsForAdmin` still assert the role
-  // themselves (their own domain boundary — see lib/funda-points), so this
-  // isn't the only thing standing between a manager and this data.
-  const overview = getFundaPointsOverview(scope.user.role);
-  const accounts = listPointAccountsForAdmin(scope.user.role);
+  // getFundaPointsAdminPage asserts the role itself (lib/funda-points/service), and
+  // the database refuses any correction not signed by "merkez".
+  let page: Awaited<ReturnType<typeof getFundaPointsAdminPage>>;
+  try {
+    page = await getFundaPointsAdminPage(scope.user.role, { limit: 200 });
+  } catch (err) {
+    const notReady = err instanceof FundaPointsNotReadyError;
+    if (!notReady) console.error("[admin] Funda Puan could not be read", { error: (err as Error).message });
+    return (
+      <>
+        <PageIntro>Online alışverişlerden kazanılan ve yalnızca online siparişlerde kullanılabilen üye puanları.</PageIntro>
+        <Panel>
+          <p className="p-4 text-[13px] text-neutral-600">
+            {notReady
+              ? "Funda Puan tabloları bu projede henüz kurulmadı (migration 0011)."
+              : "Funda Puan bilgileri şu an okunamadı. Lütfen biraz sonra tekrar deneyin."}
+          </p>
+        </Panel>
+      </>
+    );
+  }
+  const { overview, rows, total } = page;
 
   return (
     <>
       <PageIntro>
-        Online alışverişlerden kazanılan ve yalnızca online siparişlerde kullanılabilen müşteri
-        puanları.
+        Online alışverişlerden kazanılan ve yalnızca online siparişlerde kullanılabilen üye puanları: ödeme onaylanınca
+        ürün tutarının %10&apos;u, her kazanım 1 yıl geçerli, 1 puan = 1 TL.
       </PageIntro>
+      {!isFundaPointsActive() && (
+        <p className="mb-4 rounded border border-neutral-300 bg-neutral-50 px-3 py-2 text-[12.5px] text-neutral-700">
+          Puan kazanımı ve kullanımı ödeme entegrasyonu tamamlanana kadar kapalı. Merkez düzeltmeleri kaydedilir; üyeler
+          bakiyelerini Hesabım&apos;da görür.
+        </p>
+      )}
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Metric label="Toplam Puan Bakiyesi" value={overview.totalBalance.toLocaleString("tr-TR")} />
-        <Metric label="Toplam Kazanılan" value={overview.totalEarned.toLocaleString("tr-TR")} />
-        <Metric label="Toplam Kullanılan" value={overview.totalSpent.toLocaleString("tr-TR")} />
-        <Metric label="Puanlı Müşteri Sayısı" value={overview.customersWithPoints} />
+        <Metric label="Kullanılabilir Puan" value={overview.available.toLocaleString("tr-TR")} />
+        <Metric label="Toplam Kazanılan" value={overview.earned.toLocaleString("tr-TR")} />
+        <Metric label="Toplam Kullanılan" value={overview.spent.toLocaleString("tr-TR")} />
+        <Metric label="Puanı Olan Üye" value={overview.membersWithPoints} />
       </div>
+      {overview.debt > 0 && (
+        <p className="mt-2 text-[12px] text-neutral-500">
+          İptallerden doğan puan borcu: {overview.debt.toLocaleString("tr-TR")} (sonraki kazanımlardan düşülür).
+        </p>
+      )}
 
       <div className="mt-6">
-        <AdminFundaPoints initialAccounts={accounts} />
+        <AdminFundaPoints initialRows={rows} total={total} />
       </div>
     </>
   );

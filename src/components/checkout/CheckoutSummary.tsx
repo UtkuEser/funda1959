@@ -10,6 +10,8 @@ export function CheckoutSummary({
   submitting,
   submitError,
   onSubmit,
+  pointsRedeemed = 0,
+  pointsControl = null,
 }: {
   items: CartItem[];
   /** the server's fee for the address / pickup chosen on this page */
@@ -17,6 +19,10 @@ export function CheckoutSummary({
   submitting: boolean;
   submitError: string | null;
   onSubmit: () => void;
+  /** Funda Puan chosen for this order (only while points are on) */
+  pointsRedeemed?: number;
+  /** the points control — rendered only while points are on (D41) */
+  pointsControl?: React.ReactNode;
 }) {
   // current unit prices (D5); the payment step prices the order again itself
   const prices = useCartPriceSync(items);
@@ -49,7 +55,9 @@ export function CheckoutSummary({
 
       <div className="my-4 border-t border-sand-light" />
 
-      <OrderTotals subtotal={sub} fee={fee} pricesUnverified={prices === "failed"} />
+      {pointsControl && <div className="mb-4">{pointsControl}</div>}
+
+      <OrderTotals subtotal={sub} fee={fee} pricesUnverified={prices === "failed"} pointsRedeemed={pointsRedeemed} />
 
       <button
         type="button"

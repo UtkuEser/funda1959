@@ -4,8 +4,9 @@
  *
  * Minimum order (SUPABASE_PLAN.md, D14): delivery orders only, 500 TL on
  * products − discount; the delivery fee does not count; pickup is exempt.
- * The same 500 is checked again inside `create_order` (migration 0008) —
- * change both together. How Funda Puan affects the minimum is open (A13).
+ * The same 500 is checked again inside `create_order` (migrations 0008–0011)
+ * — change both together. Funda Puan doesn't change it: the minimum is
+ * checked on products − discount BEFORE points (D35).
  */
 
 export const MIN_DELIVERY_ORDER_TL = 500;

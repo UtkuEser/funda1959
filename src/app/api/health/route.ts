@@ -41,6 +41,12 @@ const TABLE_PROBES: { table: string; select: string; migration: string }[] = [
   { table: "customer_profiles", select: "auth_user_id,full_name,phone,email,terms_version,terms_accepted_at", migration: "0010" },
   { table: "customer_addresses", select: "id,auth_user_id,is_default", migration: "0010" },
   { table: "orders", select: "customer_user_id", migration: "0010" },
+  { table: "orders", select: "points_redeemed,points_earned,points_status,payment_reference,paid_at", migration: "0011" },
+  { table: "funda_point_accounts", select: "auth_user_id,debt", migration: "0011" },
+  { table: "funda_point_lots", select: "id,remaining,expires_at", migration: "0011" },
+  { table: "funda_point_transactions", select: "id,type,points,business_key", migration: "0011" },
+  { table: "funda_point_lot_movements", select: "id,transaction_id,lot_id", migration: "0011" },
+  { table: "funda_point_reservations", select: "order_id,status,hold_until", migration: "0011" },
 ];
 
 export async function GET() {

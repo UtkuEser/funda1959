@@ -116,6 +116,12 @@ export type CreateOrderRequest = {
   };
   items: CreateOrderRequestItem[];
   orderNote?: string;
+  /**
+   * Funda Puan the member wants to use (whole points, 1 = 1 TL, products
+   * only). Advisory: the server checks the session, the product amount and
+   * the balance, and refuses any while points are switched off (D41).
+   */
+  pointsToRedeem?: number;
 };
 
 export type CreateOrderResult =
@@ -137,6 +143,9 @@ export type OrderQuote = {
   subtotal: number;
   deliveryFee: number;
   discount: number;
+  /** Funda Puan applied to the products (1 puan = 1 TL); 0 while points are off */
+  pointsRedeemed: number;
+  /** what is paid: products − discount − points + delivery fee */
   total: number;
 };
 

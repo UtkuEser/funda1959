@@ -10,7 +10,6 @@ import { buildOrderPayload, quoteFromPayload } from "@/lib/order-server";
 import { findOrderByRequestId, memoryOrders, placeOrder, type NewOrderInput, type StatusChangeRequest } from "@/lib/orders";
 import { deliveryMinimumShortfall } from "@/lib/order-rules";
 import { formatTL } from "@/lib/cart-utils";
-import { getFundaPointsRepository } from "@/lib/funda-points";
 import { getBranch } from "@/lib/branch";
 import { resolveZone } from "@/lib/delivery/zones";
 import { catalogProducts, getProductDetail } from "@/lib/data";
@@ -142,10 +141,16 @@ async function main() {
   const stored = await memoryOrders.get(first.orderNumber);
   check("stored: branch incek, zone from the address, demo, pending", stored?.branchId === "incek" && stored?.deliveryZoneId === zone?.id && stored?.isDemo === true && stored?.paymentStatus === "pending");
   check("stored total = the quote's total (fee included)", stored?.total === dq.total && stored?.deliveryFee === dq.deliveryFee);
-  check(
-    "demo order wrote no Funda Puan transaction (memory store)",
-    stored !== null && getFundaPointsRepository().findTransactionByBusinessKey(`${stored.id}:PURCHASE_EARN`) === null,
-  );
+  check("demo order carries no Funda Puan (points_redeemed 0, no ledger in memory)", (requestPayload as Record<string, unknown>).points_redeemed === 0);
+  const withPoints = buildOrderPayload({ customer, items: [macaron()], delivery: { type: "pickup", branchSlug: "gop", date: TODAY, timeSlot: "16:00 – 17:00" }, pointsToRedeem: 50 }, { now: NOW, customerUserId: "11111111-1111-4111-8111-111111111111" });
+  check("points requested while Funda Puan is off -> 409 POINTS_DISABLED", !withPoints.ok && withPoints.status === 409 && withPoints.code === "POINTS_DISABLED");
+  let memoryRefused = false;
+  try {
+    await placeOrder({ ...requestPayload, client_request_id: "verify-orders-points", points_redeemed: 10 });
+  } catch (err) {
+    memoryRefused = (err as Error).message === "points_not_allowed_for_demo";
+  }
+  check("memory store refuses a demo order carrying points", memoryRefused);
 
   console.log("\n── delivery minimum (D14): products − discount, fee excluded, pickup exempt ──");
   check("rule: 499.99 is short by 0.01", deliveryMinimumShortfall("delivery", 499.99) === 0.01);

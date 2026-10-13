@@ -3,6 +3,10 @@ import { refreshInventory } from "@/lib/inventory/server-init";
 import { refreshDeliveryFees } from "@/lib/delivery/fees-server";
 import { refreshProductPrices } from "@/lib/pricing/prices-server";
 import { PRICES_UNAVAILABLE_ERROR, buildOrderPayload, quoteFromPayload } from "@/lib/order-server";
+import { isFundaPointsActive } from "@/lib/funda-points";
+import { getCheckoutPoints } from "@/lib/funda-points/service";
+import { routeCookieJar } from "@/lib/customer-auth/next";
+import { resolveOrderMember } from "@/lib/customer-auth/operations";
 
 export const dynamic = "force-dynamic";
 
@@ -44,9 +48,29 @@ export async function POST(request: Request) {
   // fresh delivery fees, like an order (D15); unreadable -> delivery answers 503
   await refreshDeliveryFees();
 
-  const built = buildOrderPayload(body);
+  // Funda Puan: same checks as the order. While points are off a request for
+  // points is refused by buildOrderPayload without reading anything (D41).
+  const wantsPoints = Number((body as { pointsToRedeem?: unknown })?.pointsToRedeem ?? 0) > 0;
+  let customerUserId: string | null = null;
+  let points: { active: boolean; available: number | null } = { active: isFundaPointsActive(), available: null };
+  if (points.active && wantsPoints) {
+    const member = await resolveOrderMember(await routeCookieJar());
+    if (!member.ok) {
+      return NextResponse.json({ ok: false, error: "Oturumunuz şu an doğrulanamadı; tutar hesaplanamadı." }, { status: 503 });
+    }
+    customerUserId = member.userId;
+    if (customerUserId) {
+      try {
+        points = { active: true, available: (await getCheckoutPoints(customerUserId))?.available ?? null };
+      } catch {
+        return NextResponse.json({ ok: false, error: "Funda Puan bakiyeniz şu an doğrulanamadı." }, { status: 503 });
+      }
+    }
+  }
+
+  const built = buildOrderPayload(body, { customerUserId, points });
   if (!built.ok) {
-    return NextResponse.json({ ok: false, error: built.error, reason: built.reason ?? null }, { status: built.status });
+    return NextResponse.json({ ok: false, error: built.error, reason: built.reason ?? null, code: built.code ?? null }, { status: built.status });
   }
   return NextResponse.json({ ok: true, quote: quoteFromPayload(built.payload, built.deliveryFeeState) });
 }

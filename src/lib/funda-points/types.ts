@@ -1,107 +1,111 @@
 /**
- * Funda Puan domain types.
- *
- * Ledger-based: a customer's balance is never written directly — it is
- * always the result of appending a `FundaPointTransaction`. See
- * `repository.ts` (the append + recompute path) and `service.ts` (the
- * business rules that decide when/how much to append).
+ * Funda Puan types — the database ledger (0011) as the app sees it.
+ * Client-safe.
  */
 
-import type { SalesChannel } from "../order";
-
-export type { SalesChannel };
-
 export type FundaPointTransactionType =
-  | "PURCHASE_EARN"
+  | "EARN"
   | "REDEEM"
-  | "REFUND_REVERSAL"
-  | "ADMIN_ADJUSTMENT"
-  | "EXPIRED";
+  | "REDEEM_RELEASE"
+  | "REFUND"
+  | "REVERSAL"
+  | "EXPIRE"
+  | "ADMIN_ADD"
+  | "ADMIN_SUBTRACT";
 
-/** Turkish labels for the admin UI — never show the raw enum to a user. */
+/** Turkish labels — never show the raw type to anyone. */
 export const FUNDA_POINT_TRANSACTION_LABEL_TR: Record<FundaPointTransactionType, string> = {
-  PURCHASE_EARN: "Online alışveriş kazanımı",
-  REDEEM: "Funda Puan kullanımı",
-  REFUND_REVERSAL: "İade nedeniyle geri alındı",
-  ADMIN_ADJUSTMENT: "Merkez düzeltmesi",
-  EXPIRED: "Süresi doldu",
+  EARN: "Online alışveriş kazanımı",
+  REDEEM: "Siparişte kullanıldı",
+  REDEEM_RELEASE: "Ödeme tamamlanmadı — iade edildi",
+  REFUND: "Sipariş iptali — iade edildi",
+  REVERSAL: "Sipariş iptali — kazanım geri alındı",
+  EXPIRE: "Süresi doldu",
+  ADMIN_ADD: "Merkez düzeltmesi (ekleme)",
+  ADMIN_SUBTRACT: "Merkez düzeltmesi (düşüş)",
 };
 
-export type FundaPointAccount = {
-  customerId: string;
-  /** denormalized display copy — no separate customer directory exists yet */
-  customerName: string;
-  customerPhone: string;
-  customerEmail: string;
-  balance: number;
-  lifetimeEarned: number;
-  lifetimeSpent: number;
-  createdAt: string;
-  updatedAt: string;
+/** A spendable lot: what is left of one earning, and when it expires. */
+export type FundaPointLot = {
+  id: string;
+  source: "earn" | "admin";
+  points: number;
+  remaining: number;
+  earnedAt: string;
+  expiresAt: string;
+  orderNumber: string | null;
 };
 
 export type FundaPointTransaction = {
   id: string;
-  customerId: string;
   type: FundaPointTransactionType;
-  /** signed: positive credits the balance, negative debits it */
+  /** signed: positive credits, negative debits */
   points: number;
-  balanceAfter: number;
-  orderId?: string | null;
-  orderNumber?: string | null;
-  /** idempotency key, e.g. "<orderId>:PURCHASE_EARN" — unique per repository */
-  businessKey?: string | null;
-  description?: string | null;
+  /** a refund / release whose lot had already expired: these points did not come back */
+  expiredPoints: number;
+  orderNumber: string | null;
+  availableAfter: number;
+  debtAfter: number;
   createdAt: string;
+  /** admin views only */
+  reason?: string | null;
+  actorName?: string | null;
 };
 
-export type NewFundaPointTransactionInput = {
-  customerId: string;
-  type: FundaPointTransactionType;
-  points: number;
-  orderId?: string | null;
-  orderNumber?: string | null;
-  businessKey?: string | null;
-  description?: string | null;
-  /** used only to create the account on its first transaction */
-  customer?: { name: string; phone: string; email: string };
+/** A member's own points (Hesabım) — never the admin's name or reason. */
+export type FundaPointsSummary = {
+  /** spendable now (never below zero) */
+  available: number;
+  /** points owed after a cancelled order's earning had been spent (D39) */
+  debt: number;
+  /** spendable lots, soonest expiry first */
+  lots: FundaPointLot[];
+  /** newest first */
+  transactions: FundaPointTransaction[];
 };
 
-export type AwardPointsResult =
-  | { awarded: true; transaction: FundaPointTransaction }
-  | {
-      awarded: false;
-      reason: "DEMO_ORDER" | "OFFLINE_CHANNEL" | "NO_CUSTOMER" | "ZERO_POINTS" | "ALREADY_AWARDED";
-      transaction?: FundaPointTransaction;
-    };
+export type FundaPointsAdminRow = {
+  userId: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  available: number;
+  debt: number;
+  earned: number;
+  spent: number;
+  lastActivity: string;
+};
 
-export type ReversePointsResult =
-  | { reversed: true; transaction: FundaPointTransaction }
-  | { reversed: false; reason: "NO_EARN_FOUND" | "ALREADY_REVERSED" };
+export type FundaPointsOverview = {
+  available: number;
+  debt: number;
+  earned: number;
+  spent: number;
+  membersWithPoints: number;
+};
 
+export type FundaPointsAdminDetail = FundaPointsSummary & {
+  userId: string;
+  fullName: string;
+  email: string;
+  phone: string;
+};
+
+/** Merkez correction (D40): signed by the session's admin, with a reason. */
 export type AdjustPointsInput = {
-  customerId: string;
+  userId: string;
   direction: "add" | "subtract";
   points: number;
-  description: string;
+  reason: string;
+  /** idempotency key — a repeated submit is applied once */
+  requestId: string;
 };
 
-export type AdjustPointsResult =
-  | { ok: true; transaction: FundaPointTransaction }
-  | { ok: false; reason: "INVALID_POINTS" | "INSUFFICIENT_BALANCE" | "ACCOUNT_NOT_FOUND" };
-
-export type RedeemPointsInput = {
-  customerId: string;
-  points: number;
-  salesChannel: SalesChannel;
-  orderId?: string | null;
-  orderNumber?: string | null;
-  description?: string | null;
-};
-
-export type RedeemPointsResult =
-  | { ok: true; transaction: FundaPointTransaction }
-  | {
-      ok: false;
-      reason: "OFFLINE_CHANNEL" | "INVALID_POINTS" | "INSUFFICIENT_BALANCE" | "ACCOUNT_NOT_FOUND";
-    };
+export type AdjustPointsError =
+  | "INVALID"
+  | "REASON_REQUIRED"
+  | "INSUFFICIENT_POINTS"
+  | "MEMBER_NOT_FOUND"
+  | "FORBIDDEN"
+  | "UNAVAILABLE"
+  | "NOT_READY";

@@ -18,6 +18,8 @@ import {
 import type { CreateOrderRequest } from "@/lib/order";
 import type { AccountAddress, CheckoutMember } from "@/lib/account-service";
 import { isServiceArea } from "@/lib/customers/validation";
+import { maxRedeemablePoints } from "@/lib/funda-points";
+import { FundaPointsRedeem } from "./FundaPointsRedeem";
 import { setCheckoutHandoff } from "@/lib/checkout-handoff";
 import { resolveZone } from "@/lib/delivery/zones";
 import { useDelivery } from "@/lib/delivery/context";
@@ -126,6 +128,9 @@ export function CheckoutPage({ member = null }: { member?: CheckoutMember | null
   const [state, setState] = useState<FormState>(() => initialState([], member));
   // the saved address the delivery fields currently hold (null once the customer edits them)
   const [savedAddressId, setSavedAddressId] = useState<string | null>(null);
+  // Funda Puan to use — only when the server offered points (on + member, D41)
+  const pointsInfo = member?.points ?? null;
+  const [pointsWanted, setPointsWanted] = useState(0);
   const [seeded, setSeeded] = useState(false);
   const [contactErrors, setContactErrors] = useState<ContactErrors>({});
   const [deliveryErrors, setDeliveryErrors] = useState<DeliveryErrors>({});
@@ -403,6 +408,10 @@ export function CheckoutPage({ member = null }: { member?: CheckoutMember | null
   const feeBlocked = addressGiven && (fee.status === "loading" || fee.status === "refused");
   const submitError = minimumError ?? (addressGiven && fee.status === "loading" ? "Teslimat ücreti hesaplanıyor…" : null);
 
+  // never more than the products (after discount) and the balance; the server checks again
+  const pointsMax = pointsInfo ? maxRedeemablePoints({ subtotal: subtotal(items), discount: 0 }, pointsInfo.available) : 0;
+  const pointsToRedeem = Math.min(pointsWanted, pointsMax);
+
   const proceedToPayment = () => {
     if (submitting || minimumError || feeBlocked) return;
 
@@ -464,6 +473,7 @@ export function CheckoutPage({ member = null }: { member?: CheckoutMember | null
         note: ci.customization.note || undefined,
       })),
       orderNote: state.orderNote.trim() || undefined,
+      ...(pointsInfo && pointsToRedeem > 0 ? { pointsToRedeem } : {}),
     };
 
     const addressText =
@@ -588,6 +598,12 @@ export function CheckoutPage({ member = null }: { member?: CheckoutMember | null
               submitting={submitting}
               submitError={submitError}
               onSubmit={proceedToPayment}
+              pointsRedeemed={pointsToRedeem}
+              pointsControl={
+                pointsInfo ? (
+                  <FundaPointsRedeem available={pointsInfo.available} max={pointsMax} value={pointsToRedeem} onChange={setPointsWanted} />
+                ) : null
+              }
             />
           </div>
         </div>

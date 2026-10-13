@@ -71,6 +71,7 @@ export function PaymentSummary({ items, quote }: { items: CartItem[]; quote: Quo
           }
         />
         <Row label="İndirim" value={q ? formatTL(q.discount) : pending} />
+        {q && q.pointsRedeemed > 0 && <Row label="Funda Puan" value={`− ${formatTL(q.pointsRedeemed)}`} />}
       </dl>
 
       <div className="my-4 border-t border-sand-light" />
