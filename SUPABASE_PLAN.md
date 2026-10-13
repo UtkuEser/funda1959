@@ -1,6 +1,6 @@
 # Funda 1959 — Supabase'e Geçiş Planı
 
-> **Durum:** Planlama dokümanı + Aşama 0 uygulaması. Ortam/yönetim kararları (D1–D4) ve iş kararları (D5–D11) işlendi. Aşama 0 kodu ve `0006` hazır (2026-10-10). `funda1959-test` kuruldu (`0001`–`0006` + `test` işareti); `supabase-test` dalı (`e897090`) Vercel Preview'da. **Aşama 1 Preview'da doğrulandı (2026-10-10).** **Aşama 2 tamamlandı (2026-10-10): `0007` `funda1959-test`'e uygulandı; local + gerçek test Supabase ve Preview doğrulaması geçti (`2c75944`).** **Aşama 3 tamamlandı (2026-10-10, `63331f7`; Preview doğrulandı).** **Aşama 4: `0009` `funda1959-test`'e uygulandı, gerçek test Supabase kontrolleri geçti; kod `supabase-test` dalına pushlandı (`04d7f43` fiyat yönetimi, `5c73517` ürün başına tek satır + açılır boyut düzenleme). Preview'da yalnızca Macaron fiyat eşleşmesi ve açılır boyut ekranı doğrulandı; diğer Preview kontrolleri yapılmadı (2026-10-12).** **Aşama 5 (müşteri üyeliği): `c6f1292` `supabase-test`'e pushlandı ve Preview'da Ready; `0010` `funda1959-test`'te; kullanıcının local ve Preview testleri ile local otomatik kontroller (38/38) geçti; temel akışlar local ve Preview'da doğrulandı, kalan kontroller ertelendi (2026-10-12). Google ve Funda Puan kapalı; özel SMTP sonraya bırakıldı.** **Aşama 6 (Funda Puan): `0011` ve `0011_funda_points_test.sql` `funda1959-test`'te kullanıcı tarafından çalıştırıldı, ikisi de başarılı (2026-10-13). Local uygulama + gerçek test projesinde health, admin düzeltmesi, müşteri görüntüleme, GOP engeli, kapalı kullanım ve API üzerinden eşzamanlı düşüş doğrulandı (1. tur 28/28, 2. tur 22/22). İki oturumlu rezervasyon eşzamanlılığı gerçek test projesinde SQL Editor'da geçti (B 17,7 sn bekledi, `insufficient_points`; tek rezervasyon, kalan 20, borç 0; temizlik `TEMİZ`). Kod, `0011` ve testler `51c0028` ile `supabase-test`'e pushlandı; Merkez araması düzeltmesi `5e8b814` (puan hesabı olmayan üye de bulunur; local tarayıcı testi 34/34). Preview kontrolleri yapılmadı. Kazanım ve kullanım kapalı (D41).** Production projesi kurulmadı; `main` (`60355bf`) ve Production değişmedi.
+> **Durum:** Planlama dokümanı + Aşama 0 uygulaması. Ortam/yönetim kararları (D1–D4) ve iş kararları (D5–D11) işlendi. Aşama 0 kodu ve `0006` hazır (2026-10-10). `funda1959-test` kuruldu (`0001`–`0006` + `test` işareti); `supabase-test` dalı (`e897090`) Vercel Preview'da. **Aşama 1 Preview'da doğrulandı (2026-10-10).** **Aşama 2 tamamlandı (2026-10-10): `0007` `funda1959-test`'e uygulandı; local + gerçek test Supabase ve Preview doğrulaması geçti (`2c75944`).** **Aşama 3 tamamlandı (2026-10-10, `63331f7`; Preview doğrulandı).** **Aşama 4: `0009` `funda1959-test`'e uygulandı, gerçek test Supabase kontrolleri geçti; kod `supabase-test` dalına pushlandı (`04d7f43` fiyat yönetimi, `5c73517` ürün başına tek satır + açılır boyut düzenleme). Preview'da yalnızca Macaron fiyat eşleşmesi ve açılır boyut ekranı doğrulandı; diğer Preview kontrolleri yapılmadı (2026-10-12).** **Aşama 5 (müşteri üyeliği): `c6f1292` `supabase-test`'e pushlandı ve Preview'da Ready; `0010` `funda1959-test`'te; kullanıcının local ve Preview testleri ile local otomatik kontroller (38/38) geçti; temel akışlar local ve Preview'da doğrulandı, kalan kontroller ertelendi (2026-10-12). Google ve Funda Puan kapalı; özel SMTP sonraya bırakıldı.** **Aşama 6 (Funda Puan): `0011` ve `0011_funda_points_test.sql` `funda1959-test`'te kullanıcı tarafından çalıştırıldı, ikisi de başarılı (2026-10-13). Local uygulama + gerçek test projesinde health, admin düzeltmesi, müşteri görüntüleme, GOP engeli, kapalı kullanım ve API üzerinden eşzamanlı düşüş doğrulandı (1. tur 28/28, 2. tur 22/22). İki oturumlu rezervasyon eşzamanlılığı gerçek test projesinde SQL Editor'da geçti (B 17,7 sn bekledi, `insufficient_points`; tek rezervasyon, kalan 20, borç 0; temizlik `TEMİZ`). Kod, `0011` ve testler `51c0028` ile `supabase-test`'e pushlandı; Merkez araması düzeltmesi `5e8b814` (puan hesabı olmayan üye de bulunur; local tarayıcı testi 34/34). **Kapalı altyapı hazırlığı tamamlandı (2026-10-14):** Preview'da üye arama ve ilk Merkez düzeltmesi kullanıcı tarafından doğrulandı (+25 müşteri ekranına yansıdı, −25 sonrası bakiye 0, iki hareket). Diğer Preview kontrolleri açık. Kazanım ve kullanım kapalı (D41).** **Aşama 7 (Instagram): Supabase'e bağlanmadı (D42, 2026-10-14); içerik tek dosyadan elle yönetilir ve deploy ile yayınlanır. Kod `e066056` ile `supabase-test`'e pushlandı; liste boş olduğu için ana sayfada bölüm gizli; Preview kontrolü kullanıcıda.** Production projesi kurulmadı; `main` (`60355bf`) ve Production değişmedi.
 > **Çalışma klasörü:** `funda1959-supabase-test` — GitHub `supabase-test` dalının ZIP'i (`.git` yok; önceki yerel klasör silindi). Plan ilk olarak `funda1959-git` — son commit `60355bf` + commit edilmemiş değişiklikler — üzerinde hazırlandı (bkz. §8).
 > **Kapsam:** Site ve admin paneli aynı Next.js projesinde kalır; ayrıştırma kapsam dışıdır.
 > **Son güncelleme:** 2026-10-13
@@ -68,6 +68,7 @@
 | **D39** (A8, 2026-10-12) | **İptalde kazanılan puan geri alınır.** Daha önce harcanmışsa bakiye eksiye düşebilir; sonraki kazanımlar bu borcu kapatır. Kullanılabilir bakiye sıfırın altına düşmez. | Geri alma önce o siparişin partisinden, sonra son kullanma sırasıyla diğerlerinden; kalan kısım `funda_point_accounts.debt`. Her yeni kazanım ve iade önce borcu kapatır. |
 | **D40** (2026-10-12) | **Admin:** uydurma müşteriler kaldırılır, gerçek veri yoksa boş durum gösterilir. Merkez düzeltmeleri **gerekçe ve işlemi yapan admin** ile kaydedilir; şube hesapları yetki kazanmaz. Ana sayfadaki "Funda Puan %10" posteri **mevcut haliyle kalır**. | `adjust_funda_points` (yalnızca `merkez`), tekrar korumalı istek kimliği; poster ve kampanya içeriğine dokunulmadı. |
 | **D41** (2026-10-12) | **Gerçek ödeme entegrasyonu tamamlanana kadar kazanım ve kullanım sunucu tarafında kapalı**; kullanıcıya çalışan bir özellik gibi sunulmaz. Demo siparişler puan kazanamaz ve harcayamaz. | `isFundaPointsActive()` = `false` (kod anahtarı, ortam değişkeni değil). Kapalıyken: puan isteyen sipariş/teklif 409, checkout'ta puan alanı yok, Hesabım "henüz etkin değil" der. Veritabanı demo siparişte puanı ayrıca reddeder. |
+| **D42** (A16, 2026-10-14) | **Instagram bölümü Supabase'e bağlanmaz.** İçerik (poster, isteğe bağlı video, gerçek gönderi/reel bağlantısı) proje içinde tek dosyada (`src/lib/social/instagram-content.ts`) elle yönetilir; dosyalar `public/social/reels/` altında; değişiklik deploy ile yayınlanır. Admin'de Instagram düzenleme ekranı yok. `0012` Instagram migration'ı, Storage ve dosya yükleme yapılmaz. | Ana sayfada en fazla 5 kart, mevcut 9:16 tasarım. Video isteğe bağlı: videosuz kart Instagram gönderisine bağlantıdır. Geçerli yayında içerik yoksa bölüm gizlenir; örnek/yer tutucu kayıt yayınlanmaz. Kullanım §8.4. |
 
 **Henüz kararlaştırılmayanlar:** kampanya tarihleri ve koşulları, ve §9'daki diğer konular **onaylanmış sayılmaz**.
 
@@ -106,7 +107,8 @@
 - **Sıradaki:**
   - Aşama 4 (fiyat yönetimi): fiyat kararları D16–D21 işlendi; her boyutun fiyatı ayrı düzenlenebilir (47 fiyat), p13 kartı ₺260. `0009` `funda1959-test`'e uygulandı; local ve gerçek test Supabase kontrolleri geçti (2026-10-12, §7.6). Kod pushlandı (`04d7f43`, `5c73517`); Preview'da yalnızca Macaron fiyat eşleşmesi ve açılır boyut ekranı doğrulandı. Kalan Preview kontrolleri bekliyor (§7.6 "Aşama 4 kurulum kontrolü", adım 4),
   - Aşama 5 (müşteri üyeliği): temel akışlar local ve Preview'da doğrulandı, kalan kontroller ertelendi ve açık (§7.6 "Aşama 5 durumu"); D30 kabul edildi.  Google engeli kararı bekliyor (A25),
-  - Aşama 6 (Funda Puan): kararlar D31–D41; `0011` ve SQL testi `funda1959-test`'te kullanıcı tarafından çalıştırıldı ve geçti (2026-10-13); local + gerçek test projesi kontrolleri ve iki oturumlu rezervasyon eşzamanlılığı geçti (§7.6 "Aşama 6 kurulum kontrolü"). Kod `51c0028` ile `supabase-test`'e pushlandı; Preview'da bulunan arama hatası (puan hesabı olmayan üye bulunamıyordu) `5e8b814` ile düzeltildi (local tarayıcı testi 34/34). Sırada Preview kontrolleri. Kazanım/kullanım ödeme entegrasyonuna (Aşama 9) kadar kapalı,
+  - Aşama 6 (Funda Puan): kararlar D31–D41; `0011` ve SQL testi `funda1959-test`'te kullanıcı tarafından çalıştırıldı ve geçti (2026-10-13); local + gerçek test projesi kontrolleri ve iki oturumlu rezervasyon eşzamanlılığı geçti (§7.6 "Aşama 6 kurulum kontrolü"). Kod `51c0028` ile `supabase-test`'e pushlandı; Preview'da bulunan arama hatası (puan hesabı olmayan üye bulunamıyordu) `5e8b814` ile düzeltildi (local tarayıcı testi 34/34). **Kapalı altyapı hazırlığı tamamlandı (2026-10-14);** Preview'da arama ve ilk düzeltme kullanıcı tarafından doğrulandı, kalan Preview kontrolleri açık (§7.6 adım 7). Kazanım/kullanım ödeme entegrasyonuna (Aşama 9) kadar kapalı,
+  - Aşama 7 (Instagram): D42 — Supabase'e bağlanmadı; içerik `src/lib/social/instagram-content.ts` dosyasından elle yönetilir, deploy ile yayınlanır (§8.4). Kod `e066056` ile `supabase-test`'e pushlandı; Preview kontrolü kullanıcıda,
   - Production kurulumu (§7.6, adım 14) ayrı onayla; sipariş alımı kapalı kalır (§6.1).
 - **Kalan bilinen sorunlar [K]:**
   - Teslimat ücreti ve minimum (Aşama 3): ücret `delivery_zone_fees`'ten (D15), minimum 500 TL adrese teslimde (D14); `0008` test projesinde (2026-10-10), production'da yok. Bölge/mahalle listeleri ve test projesindeki ücretler test amaçlı, onaylı fiyat değil (A4).
@@ -135,7 +137,7 @@ Supabase sütunu: **Hazır** = kod ve migration var, ortam kurulumu bekleniyor �
 | **Rezervasyonlar** (10 dk) | `lib/reservations/index.ts` (bellek) **[K]** | `api/reservations`, `PaymentPage`, motor, admin **[K]** | Gerekmiyor (D11 değerlendirmesi) | Örnek başına bellek; sahte "kapasiteniz ayrıldı" **[K]** | **Aşama 0:** kaldırılır. |
 | **Siparişler ve kalemleri** | Doğrulama + fiyat: `lib/order-server.ts`. Kayıt: `lib/orders/engine.ts` → Supabase varsa RPC `create_order` (0001), yoksa `MockOrderRepository` **[K]** | `api/orders`, `PaymentPage` (yalnızca dev demo butonu), `/siparis-basarili`, `/siparis-takip`, `/admin` siparişler/genel bakış (**yalnızca bellekteki depo**) **[K]** | Kısmen | Canlıda bellek: kayboluyor **[G]**. Bellek yolunda demo sipariş **"paid"** **[K]** | **Aşama 0:** demo → `pending` + açık `is_demo` (`0006`); production sipariş alımı sunucuda kapalı. Aşama 2: DB'den liste/durum, RPC düzeltmeleri, sipariş anında yeniden doğrulama. |
 | **Kampanyalar** | `lib/campaigns/*`; Supabase deposu hazır; seed `mock.ts` (5 poster) **[K]** | Ana sayfa, admin kampanya ekranı, `api/admin/campaigns` **[K]** | **Hazır** (`0002` + `0005`) | Canlıda bellek | Kurulum. Kampanya **tarihleri ve koşulları kararlaştırılmadı**; kampanyalar bugün yalnızca içerik, indirim mantığı yok **[K]**. |
-| **Instagram içerikleri** | `lib/social/*` (bellek); `public/social/reels/*` dosyaları yok **[K]** | Ana sayfa, admin, `api/admin/instagram` **[K]** | Eksik | Bellek | Aşama 7 (içerik kaynağı açık). |
+| **Instagram içerikleri** | `src/lib/social/instagram-content.ts` (kodda, elle); dosyalar `public/social/reels/` | Ana sayfa | — | Kodda | **D42:** veritabanına taşınmaz; deploy ile güncellenir (§8.4). Admin ekranı ve `api/admin/instagram` kaldırıldı. |
 | **Müşteri hesapları ve adresleri** | Giriş/kayıt stub: `lib/auth.ts`; hesap verisi mock: `lib/account-service.ts`. `customers`/`addresses` (0001) yalnızca sipariş anı kaydı **[K]** | `/giris`, `/uye-ol`, `/sifremi-unuttum`, `/hesabim/*` **[K]** | Eksik | Ekranlar önizleme | Supabase Auth ile üyelik (D7, Aşama 5); misafir sipariş korunur. |
 | **Funda Puan** | `0011` defteri (partiler, hareketler, rezervasyonlar; **`funda1959-test`'e uygulandı, 2026-10-13; production yok**). Uygulama: `lib/funda-points/{config,rules,types,store,service}.ts`; bellek defteri ve uydurma müşteriler kaldırıldı **[K]** | Admin Funda Puan ekranı, `api/admin/funda-points`, Hesabım `/hesabim/puanlarim`, checkout (kapalı) **[K]** | Hazır (`0011`) | Yok (bellek kalmadı) | Kazanım ve kullanım ödeme entegrasyonuna kadar kapalı (D41); §8.3 |
 | **İletişim talepleri** | `app/iletisim/page.tsx`: form `action="#"`, alanlar `name`, `email`, `phone`, `subject`, `message`; backend yok **[K]** | — | Eksik | Form hiçbir yere gitmiyor | Aşama 8. |
@@ -258,7 +260,6 @@ Fonksiyonlar (hepsi yalnızca `service_role`; iç yardımcılar API'ye kapalı):
 
 | Tablo | Alanlar | Kurallar |
 |---|---|---|
-| `instagram_contents` (Aşama 7) | `id uuid`, `title`, `video_path`, `poster_path`, `instagram_url`, `is_published`, `sort_order`, zaman damgaları | Yalnızca Merkez yazar. |
 | `contact_requests` (Aşama 8) | `id uuid`, `full_name`, `email`, `phone`, `subject`, `message` **[K form alanları]**, `branch_slug null`, `status check in ('new','in_progress','closed')`, `client_request_id unique`, `created_at`, `handled_by`, `handled_at` | Yazma yalnızca sunucudan (form API). |
 
 ### 2.4 Yapılmayacaklar (kararlar gereği)
@@ -309,7 +310,7 @@ Fonksiyonlar (hepsi yalnızca `service_role`; iç yardımcılar API'ye kapalı):
 | Sipariş takibi | `/siparis-basarili`, `/siparis-takip` | — (sunucu sayfası) | `getPublicOrder` → RPC `get_order_public` **[K]** | `orders` |
 | Admin siparişler | `/admin?section=orders`, `overview` | Sayfa sunucuda; durum için `PATCH /api/admin/orders` (yeni) | `lib/orders/repository.ts` → `SupabaseOrderRepository` (yeni) | `orders`, `order_items` |
 | Kampanyalar | Ana sayfa `CampaignsSection` + `CampaignShowcase`; admin `AdminCampaigns` | `app/api/admin/campaigns/route.ts` **[K]** | `lib/campaigns/supabase-repository.ts` **[K]** | `campaigns` |
-| Instagram | Ana sayfa; admin `AdminInstagramContent` | `app/api/admin/instagram/route.ts` **[K]** | `lib/social/*` → Supabase deposu (yeni) | `instagram_contents` |
+| Instagram | Ana sayfa (`InstagramContentSection`, `SocialVideoRail`) | — (admin ekranı ve API yok; D42) | `src/lib/social/instagram-content.ts` | — (veritabanı yok) |
 | Müşteri hesabı (D7) | `/giris`, `/uye-ol`, `/sifremi-unuttum`, `/hesabim/*` | Supabase Auth (çerez oturumu) + `/api/account/*` (yeni) | `lib/auth.ts`, `lib/account-service.ts` gövdeleri **[K: TODO'lar]** | `auth.users`, `customer_profiles`, `customer_addresses`, `orders` |
 | Funda Puan (D9) | Hesabım → puan; checkout'ta kullanım; admin Funda Puan | `/api/account/points` (yeni), `app/api/admin/funda-points/route.ts` **[K]** | `lib/funda-points/service.ts` (kurallar) → RPC'ler | `funda_point_*` |
 | İletişim | `/iletisim` | `POST /api/contact` (yeni) | `lib/contact/*` (yeni) | `contact_requests` |
@@ -365,7 +366,7 @@ Fonksiyonlar (hepsi yalnızca `service_role`; iç yardımcılar API'ye kapalı):
 | **Teslimat ücreti ayarı** | ✖ | ✖ | ✖ | ✔ [V] |
 | Sipariş listesi | ✖ | ✖ | ✔ (kendi şube) **[K: `repoScope`]** | ✔ |
 | Sipariş durumu güncelleme, iptal/iade | ✖ | ✖ | ? (kendi şube) | ✔ |
-| Kampanya, Instagram, Şubeler bölümü | ✖ | ✖ | ✖ **[K]** | ✔ **[K]** |
+| Kampanya, Şubeler bölümü (Instagram admin bölümü yok, D42) | ✖ | ✖ | ✖ **[K]** | ✔ **[K]** |
 | İletişim taleplerini görme | ✖ | ✖ | ? | ✔ |
 
 ### 4.4 RLS ve sunucu kontrolleri
@@ -390,7 +391,7 @@ Fonksiyonlar (hepsi yalnızca `service_role`; iç yardımcılar API'ye kapalı):
   - Storage `campaigns` bucket'ı (public okuma; yalnızca Merkez, sunucu üzerinden imzalı yükleme URL'siyle).
   - `next.config.ts` → `images.remotePatterns` ayarı.
   - Bu bir karar konusu (§9).
-- **Instagram video/poster:** dosyalar yok **[K]**; kaynak kararına bağlı (§9). Storage kullanılırsa `social` bucket'ı, aynı kurallarla.
+- **Instagram video/poster (D42):** `public/social/reels/` altında, deploy ile; Storage ve yükleme yok. Videolar `next.config.ts` → `outputFileTracingExcludes` ile sunucu fonksiyon paketine alınmaz (statik dosya olarak sunulur); posterler pakette kalır (ana sayfa varlığını sunucuda kontrol eder).
 - **Kaynak kod ve statik varlıklar veritabanına taşınmaz.**
 
 ---
@@ -451,8 +452,8 @@ Hepsi yalnızca **ekleme** yapar; uygulanmış dosyalar değişmez. İki proje a
 | 3 | `0009_product_prices.sql` | **Aşama 4 — `funda1959-test`'e uygulandı (2026-10-12)**; production'a uygulanmadı | `product_prices` (seed yok) + `create_order` v5 (kayıtlı fiyat kontrolü, `price_mismatch`). Tekrar çalıştırılabilir. Uygulanmadan Aşama 4 kodu katalog fiyatlarıyla çalışır, "Fiyatlar" kaydetmez. |
 | 4 | `0010_customer_accounts.sql` | **Aşama 5 — `funda1959-test`'te çalıştırıldı (kullanıcı, 2026-10-12)**; production'a uygulanmadı (§8.2) | `customer_profiles` (onay sürümü alanları; pazarlama izni yok), `customer_addresses` (en fazla 10, tek varsayılan), `orders.customer_user_id`, `create_order` v6, üye sipariş ve adres RPC'leri |
 | 5 | `0011_funda_points.sql` | **Aşama 6 — `funda1959-test`'e uygulandı (kullanıcı, 2026-10-13); production'a uygulanmadı** (§8.3) | `funda_point_*` tabloları, sipariş puan alanları, `create_order` v7, `update_order_status` v2, ödeme/puan fonksiyonları (§2.3) |
-| 6 | `0012_instagram.sql` | Plan (Aşama 7) | `instagram_contents` |
-| 7 | `0013_contact_requests.sql` | Plan (Aşama 8) | `contact_requests` |
+| — | ~~`0012_instagram.sql`~~ | **Yapılmayacak (D42)** | Instagram veritabanına taşınmaz. |
+| 6 | `0012_contact_requests.sql` | Plan (Aşama 8) | `contact_requests` (numara Instagram'dan boşaldı) |
 
 ### 7.2 Seed planı
 
@@ -465,7 +466,7 @@ Hepsi yalnızca **ekleme** yapar; uygulanmış dosyalar değişmez. İki proje a
 | 5 kampanya posteri | `0005` **[K]**: `seed_key` ile bir kez. Tarihler yer tutucu (2025-01-01 → 2026-12-31); tarih ve koşullar kararlaştırılmadı. |
 | Eski 4 kampanya | `0005` **[K]**: yalnızca dokunulmamışsa pasifleşir, silinmez. |
 | Şube stok durumları | Seed yok; kayıt olmayan ürün koddaki varsayılanı kullanır. |
-| Funda Puan demo (6 uydurma müşteri), Instagram mock | **Hiçbir projeye taşınmaz** (uydurma veri). |
+| Funda Puan demo (6 uydurma müşteri), Instagram mock | **Hiçbir projeye taşınmaz** (uydurma veri). Instagram örnek kayıtları koddan da kaldırıldı (D42). |
 
 ### 7.3 Ortam değişkenleri (yalnızca isimler)
 
@@ -511,14 +512,13 @@ Okuma tarafında bu hatayla:
 | İşaret satırı veya `app_environment` tablosu yok | **503**; log: `ENV_MARKER_MISSING` |
 | Proje cevap vermiyor | **503**; log: `UNREACHABLE` |
 | Vercel'de Supabase tanımlı değil | **503**; log: `NOT_CONFIGURED` |
-| Vercel'de modülün tablosu henüz yok (Instagram, Funda Puan) | **503**; log: `NOT_DATABASE_BACKED` |
+| Vercel'de modülün tablosu henüz yok | **503**; log: `NOT_DATABASE_BACKED` (bugün böyle modül yok; Instagram yazma yolu D42 ile kaldırıldı) |
 | Local makine, Supabase yok | Yerel bellek/dosya deposu (yalnızca geliştirme) |
 
 - **Bağlı yazma yolları:**
   - `api/admin/inventory`
   - `lib/orders/engine.ts` → `api/orders`
   - `api/admin/campaigns`
-  - `api/admin/instagram`
   - `api/admin/funda-points`
   - (Rezervasyon Aşama 0'da kaldırıldı.)
 - **Mesajlar:** kullanıcıya modüle göre sade mesaj gösterilir. Teknik neden yalnızca sunucu loguna yazılır (`[persistence] write refused`; gizli değer yok).
@@ -1026,7 +1026,7 @@ Adımlar hazır ama engel kalkana kadar **uygulanmaz.** Engel kalkınca ayrıca 
 - KVKK ve üyelik metinleri yayımlanmış olmalı (A24). Üyeliğin gerçek müşterilere açılması ayrı bir kod değişikliği ve onaydır (D27); ancak ondan sonra production projesinde "Allow new users to sign up" açılır.
 - Production projesinde 1, 3–9 tekrarlanır; 2. adım kapalı başlar.
 
-**Aşama 6 kurulum kontrolü (Funda Puan; önce yalnızca `funda1959-test`, web ekibi) — 1–6 tamam; 7: commit + push yapıldı, Preview kontrolleri bekliyor**
+**Aşama 6 kurulum kontrolü (Funda Puan; önce yalnızca `funda1959-test`, web ekibi) — 1–6 tamam; 7 kısmen: Preview'da arama ve ilk düzeltme kullanıcı tarafından doğrulandı, diğer Preview kontrolleri açık. Kapalı altyapı hazırlığı tamamlandı (2026-10-14).**
 
 1. ✅ `0011_funda_points.sql` SQL Editor'da test projesinde çalıştırıldı — **kullanıcı tarafından doğrulandı (2026-10-13):** "Success. No rows returned". Production'a uygulanmadı.
 2. ✅ Merkez `/api/health` (local uygulama, gerçek `funda1959-test`, 2026-10-13): `database: ready`, `expectedData: test`; `0001`–`0011` 20 tablo kontrolünün hepsi `ok` (0011: 6/6). `customerAuth`: kayıt açık, e-posta onayı kapalı, yalnız e-posta sağlayıcısı açık.
@@ -1066,10 +1066,11 @@ Adımlar hazır ama engel kalkana kadar **uygulanmaz.** Engel kalkınca ayrıca 
      - Başka üyelerin puan hesapları ve partileri değişmedi; yeni defter satırlarının hepsi (3) test üyesine ait.
 6. ✅ `/hesabim/puanlarim` (test üyesi oturumu): 200, "Funda Puan henüz etkin değil" notu, bakiye 30; admin adı ve gerekçe görünmez; oturumsuz istek girişe yönlenir (307). Puan isteyen teklif (`/api/orders/quote`) 409 (D41). Kazanım ve kullanım kapalı kaldı.
    - 2. tur: bakiye 20, son kullanma tarihi ve "Merkez düzeltmesi" hareketi görünür; admin adı ve gerekçe görünmez; başka bir üye bu puanları görmez. Puanlı teklif ve sipariş 409 `POINTS_DISABLED` (sipariş yazılmadı); checkout'ta puan alanı yok.
-7. Kod commit'i ve Preview — **commit + push yapıldı (2026-10-13), Preview kontrolleri yapılmadı.**
+7. Kod commit'i ve Preview — **commit + push yapıldı (2026-10-13, 2026-10-14); Preview'da arama ve ilk düzeltme doğrulandı, diğer Preview kontrolleri açık.**
    - Aşama 6 kodu, `0011`, SQL testleri ve eşzamanlılık betikleri `51c0028` ile `supabase-test` dalına pushlandı (yalnız bu dal; `main` ve Production değişmedi, migration çalıştırılmadı).
    - Commit öncesi local: `tsc` temiz, `eslint` 0 hata, `next build` başarılı; `verify-funda-points` 44/44, `verify-accounts` 86/86, `verify-orders`, `verify-fulfillment`, `verify-prices` geçti.
-   - Preview'da yapılacaklar (henüz yapılmadı): `/api/health` `0011` 6/6; Merkez Funda Puan ekranı ve gerekçeli düzeltme; GOP 403; `/hesabim/puanlarim` "henüz etkin değil"; puanlı teklif 409 `POINTS_DISABLED`; checkout'ta puan alanı yok.
+   - ✅ **Preview, kullanıcı tarafından doğrulandı (2026-10-14, `b3882c4`):** Merkez → Funda Puan'da mevcut üye e-postasıyla arandı ve bulundu; ilk Merkez düzeltmesi +25 müşteri ekranına (Hesabım → Puanlarım) yansıdı; −25 sonrası bakiye 0 ve iki hareket göründü.
+   - ⏳ **Preview'da açık (yapılmadı, geçmiş sayılmaz):** `/api/health` `0011` 6/6, GOP 403, `/hesabim/puanlarim` "henüz etkin değil" notu, puanlı teklif 409 `POINTS_DISABLED`, checkout'ta puan alanı olmaması.
    - **Preview bulgusu (2026-10-14, kullanıcı): Merkez Funda Puan araması, hiç puan hareketi olmayan mevcut üyeyi e-postasıyla bulmuyordu; ilk düzeltme başlatılamıyordu.**
      - Neden: `list_funda_point_accounts` listeyi `funda_point_accounts`'tan başlatır (hesabı olmayan üye hiç gelmez); ekrandaki arama da yalnızca tarayıcıya yüklenmiş ilk 200 satırı süzüyordu.
      - Düzeltme (`5e8b814`, migration yok): `GET /api/admin/funda-points?search=` (2–100 karakter, en fazla 50 sonuç). Hesabı olanlar bakiyeleriyle mevcut RPC'den, hesabı olmayanlar `customer_profiles`'tan salt okunur sorguyla 0 puanla gelir. Yalnızca Merkez (servis katmanı şubeyi istek göndermeden reddeder). Arama metninde `%`, `_`, virgül, parantez ve tırnak kaçışlanır. Arama ve detay hiçbir şey yazmaz; puan hesabı ilk düzeltme kaydedilince `adjust_funda_points` içinde oluşur. Düzeltme ve tekrar koruması değişmedi.
@@ -1083,7 +1084,7 @@ Adımlar hazır ama engel kalkana kadar **uygulanmaz.** Engel kalkınca ayrıca 
        - oturumsuz arama 401, 1 karakter 400, GOP 403 ve arama kutusu çizilmedi; bu denemeler bir şey yazmadı;
        - temizlik: test üyesi silindi (profil, hesap, hareket, parti: 0).
      - `verify-funda-points` 49/49 (5 yeni arama kontrolü: hesabı olmayan üye bulunur, bakiye defterden, yalnız okuma, kaçış, şube reddi).
-     - Test projesinde o sırada 4 kayıtlı üye vardı, hiçbirinin puan hesabı yoktu. Preview'da mevcut üyeyle +25/−25 kontrolünü kullanıcı arayüzden yapacak — **henüz yapılmadı.**
+     - Test projesinde o sırada 4 kayıtlı üye vardı, hiçbirinin puan hesabı yoktu. Preview'da mevcut üyeyle +25/−25 kontrolü kullanıcı tarafından arayüzden yapıldı ve geçti (2026-10-14, yukarıda).
 8. **Aşama 9'a (ödeme) bırakılanlar:**
    - `isFundaPointsActive()` → `true` (kod değişikliği + ayrı onay);
    - `create_order`'ın demo olmayan sipariş kabulü;
@@ -1104,9 +1105,9 @@ Aşamalar bağımlılık sırasındadır ve **tek tek** uygulanır; her biri ayr
 | **3. Teslimat ücreti + minimum sipariş** | `0008_delivery_zone_fees.sql`; `lib/order-rules.ts` (500 TL); `lib/delivery/fees.ts` + `fees-server.ts` (Supabase / local dosya / sunucusuz ortamda kullanılamaz); motor (`DELIVERY_FEE_NOT_SET`, `DELIVERY_INFO_UNAVAILABLE`); `lib/order-server.ts` (ücret + `BELOW_MINIMUM`, 503); `api/orders` (önceki siparişi istek kimliğiyle önce bulur), `api/orders/quote`, `api/availability`; `PATCH /api/admin/delivery-fees` (yalnızca Merkez); admin "Bölgeler" + `DeliveryFeeEditor`; `formatTL` kuruş; sepet / hızlı sipariş / checkout minimum (`DeliveryMinimumNotice`) ve sunucudan ücret (`POST /api/delivery-fee`, `useDeliveryFee`, `OrderTotals`); checkout'ta kayıtlı adresin ilk açılışta kontrolü; ödeme ekranında demo butonu yalnızca geçerli tutar hesabıyla; PDP ve ödeme özeti ücret durumu; `zones.ts`'ten örnek ücret ve minimumlar kaldırıldı; `/api/health` `0008`; `scripts/test-fee-store.ts`, `verify-orders`, `verify-fulfillment` | 2; D14, D15 | **Tamamlandı (2026-10-10)**: `0008` test projesinde; local + gerçek `funda1959-test` (57/57 sunucu + RPC, 24/24 ekran, 33/33 ücret düzenleyici, 33/33 sepet → checkout → ödeme → sipariş) ve Preview (`63331f7`; `FND-20261010-4866` ₺540 + ₺230 = ₺770, admin'de görünüyor) doğrulandı (§7.6 "Aşama 3 kurulum kontrolü") | Ücreti belirlenmemiş bölgeye adrese teslim alınmaz, ücretsiz kabul edilmez; gel-al çalışır. Açıkça ücretsiz bölge 0 TL. Kuruşlu ücret yuvarlanmadan. Ücret okunamazsa "Teslimat bilgisi şu an alınamıyor". 499,99 reddedilir, 500 kabul edilir; indirimle altına düşen reddedilir; gel-al muaf. Şube ücret yazamaz (403). Tekrarlanan istek ikinci sipariş oluşturmaz; ücret sonradan değişse de eski sipariş korunur. |
 | **4. Fiyat yönetimi** | `0009_product_prices.sql` (tablo + `create_order` v5); `lib/pricing/{prices,prices-server,prices-context,use-cart-prices}`; `lib/order-server.ts` ve motor aynı çözücü; `api/prices` (GET gösterim, POST sepet), `PATCH /api/admin/prices` (yalnızca Merkez); admin "Fiyatlar" (`ProductPricesTable`, `ProductPriceEditor`); fiyat gösteren sayfalar istek anında + `PricesProvider`; kart, hızlı sipariş, arama ve sıralama güncel fiyat; sepet / hızlı sipariş / checkout satır fiyatları sunucudan; `/api/health` `0009`; `scripts/verify-prices.ts`, `test-price-store.ts`. Teslimat Bölgeleri tablosu da istemci bileşeni (`ZoneFeesTable`) | 0 | **`0009` `funda1959-test`'te; local (mock e2e 255/255, tarayıcı 39/39 + 30/30, `verify-prices` 61/61) ve gerçek test Supabase'i (58/58) doğrulandı (2026-10-12)**; kararlar D16–D21 işlendi; **pushlandı (`04d7f43`, `5c73517`)**; Preview'da yalnızca Macaron fiyat eşleşmesi ve açılır boyut ekranı doğrulandı, diğer Preview kontrolleri bekliyor → §7.6 "Aşama 4 kurulum kontrolü" | Merkez fiyatı değiştirir; şube hesabı 403. Yeni fiyat katalogda, PDP'de, aramada, hızlı siparişte, sepette, checkout'ta, ödeme hesabında ve siparişte aynı. Eski siparişlerin kalemleri değişmez. Bilinmeyen ürün/varyant reddedilir. Fiyat okunamazsa sipariş ve ödeme hesabı 503. Kayıt sonrası admin tablosu hemen güncel; başarısız kayıt başarı göstermez. Kart en küçük boyutun fiyatını ("başlayan" ifadesi olmadan), ürün sayfası seçilen boyutun fiyatını gösterir. Her boyut ayrı düzenlenir, diğer boyutlar değişmez (D20). Eski fiyat yalnızca belirlenmiş ürün veya boyutta: Trüf kartı ₺260, 12'li seçilince ₺520 ~~₺580~~ (D21). |
 | **5. Müşteri üyeliği** | Ayrıntı §8.2. `0010`; Supabase Auth sunucuda (`@supabase/ssr` + `@supabase/supabase-js` [V]); e-posta + şifre ve Google (Apple, Facebook kurulunca); `lib/auth.ts`, `lib/account-service.ts`, `/giris`, `/uye-ol`, `/sifremi-unuttum`, yeni `/sifre-yenile` ve `/uyelik-tamamla`, `/hesabim/*`; checkout'ta profil ve kayıtlı adres; `src/proxy.ts`; `SUPABASE_ANON_KEY` | 2; D22–D29; gerçek müşteriye açılış için A24 (metinler) + ayrı onay | **Temel akışlar local ve Preview'da doğrulandı; kalan kontroller ertelendi (2026-10-12)**: `c6f1292` Preview'da Ready; kullanıcının local ve Preview testleri; local otomatik 38/38 (gerçek test projesi). Ertelenen ve açık kalan kontroller §7.6 "Aşama 5 durumu". D30 (diğer oturumlar Supabase davranışı). Google engelli (A25) | Üye olur (metinler yayımlanınca), girer (e-posta veya Google), çıkar, şifresini e-postayla sıfırlar; profil ve en fazla 10 adres yönetir; yalnızca girişliyken verdiği siparişleri görür, başkasınınkini göremez. Misafir sipariş, admin girişleri ve yetkileri değişmez; Funda Puan kapalı. |
-| **6. Funda Puan** | Ayrıntı §8.3. `0011`; `lib/funda-points/*` (defter veritabanında); Hesabım `/hesabim/puanlarim`; admin ekranı veritabanından; checkout puan altyapısı (kapalı); `lib/orders/payment.ts` | 5; D31–D41 | **`51c0028` ile `supabase-test`'e pushlandı; Preview kontrolleri yapılmadı.** `0011` ve SQL testi `funda1959-test`'te kullanıcı tarafından çalıştırıldı, başarılı (2026-10-13); local + gerçek test projesi kontrolleri ve iki oturumlu rezervasyon testi geçti (§7.6). Kazanım ve kullanım kapalı (D41) | Ödeme onayında 1.000 TL − 200 puan → 80 puan; her parti 1 yıl; son kullanma sırasıyla tüketim; aynı bakiye iki kez harcanamaz; iptalde iade (süresi dolmuş hariç) ve geri alma (borç); tekrar korumalı; demo sipariş puan alamaz/harcayamaz; Merkez düzeltmesi gerekçeli; şube yetkisiz. |
-| **7. Instagram** | `0012`; `lib/social/*` DB deposu; (Storage kararına göre yükleme) | 0; içerik kaynağı kararı | Bekliyor | Admin değişikliği yenileme sonrası korunur. |
-| **8. İletişim talepleri** | `0013`; `app/iletisim/page.tsx` → `POST /api/contact`; admin listesi | 0; iletim/KVKK kararı | Bekliyor | Talep kaydedilir; tekrar gönderim çift kayıt üretmez. |
+| **6. Funda Puan** | Ayrıntı §8.3. `0011`; `lib/funda-points/*` (defter veritabanında); Hesabım `/hesabim/puanlarim`; admin ekranı veritabanından; checkout puan altyapısı (kapalı); `lib/orders/payment.ts` | 5; D31–D41 | **Kapalı altyapı hazırlığı tamamlandı (2026-10-14):** `51c0028` + `5e8b814` `supabase-test`'te; Preview'da üye arama ve ilk Merkez düzeltmesi (+25 müşteri ekranında, −25 → 0, iki hareket) kullanıcı tarafından doğrulandı; diğer Preview kontrolleri açık (§7.6 adım 7). `0011` ve SQL testi `funda1959-test`'te kullanıcı tarafından çalıştırıldı, başarılı (2026-10-13); local + gerçek test projesi kontrolleri ve iki oturumlu rezervasyon testi geçti (§7.6). Kazanım ve kullanım kapalı (D41) | Ödeme onayında 1.000 TL − 200 puan → 80 puan; her parti 1 yıl; son kullanma sırasıyla tüketim; aynı bakiye iki kez harcanamaz; iptalde iade (süresi dolmuş hariç) ve geri alma (borç); tekrar korumalı; demo sipariş puan alamaz/harcayamaz; Merkez düzeltmesi gerekçeli; şube yetkisiz. |
+| **7. Instagram** | **D42: veritabanı yok.** Ayrıntı §8.4. `src/lib/social/{instagram-content,instagram,instagram-types}.ts`; ana sayfa `InstagramContentSection`, `SocialVideoRail`; `next.config.ts` (videolar sunucu paketinin dışında); `scripts/verify-instagram-content.ts`; admin Instagram ekranı, `api/admin/instagram`, bellek deposu ve örnek kayıtlar kaldırıldı | D42 | **`e066056` ile `supabase-test`'e pushlandı (2026-10-14).** Local kontroller ve derlenmiş sürümde tarayıcı testi geçti (§8.4); Preview kontrolü yapılmadı (kullanıcıda) | Ana sayfada en fazla 5 kart, 9:16; video isteğe bağlı; videosuz kart Instagram gönderisine bağlanır; geçerli içerik yoksa bölüm gizli; admin menüsünde Instagram yok. |
+| **8. İletişim talepleri** | `0012` (D42 ile boşalan numara); `app/iletisim/page.tsx` → `POST /api/contact`; admin listesi | 0; iletim/KVKK kararı | Bekliyor | Talep kaydedilir; tekrar gönderim çift kayıt üretmez. |
 | **9. Ödeme entegrasyonu** | Sağlayıcı seçilince ayrı plan; `paid` yalnızca sağlayıcı doğrulamasıyla; puan kullanımı ödemeyle birleşir | 2, 3; sağlayıcı kararı | **Atlandı (D8)** | Sonrasında §6.1 kapısı ayrıca onaylanır. |
 
 ### 8.1 Test senaryoları
@@ -1271,9 +1272,11 @@ Gerçek Supabase'ten önce yapılan kontroller:
 
 ### 8.3 Aşama 6: Funda Puan (D9, D31–D41)
 
-Durum (2026-10-13):
+Durum (2026-10-14):
 
-- **Kod `51c0028` ile `supabase-test` dalına pushlandı (2026-10-13); Preview kontrolleri yapılmadı.** `main` ve Production değişmedi.
+- **Kapalı altyapı hazırlığı tamamlandı (2026-10-14).** Kazanım ve kullanım kapalı; açılması Aşama 9'a bağlı (§7.6 adım 8).
+- Kod `51c0028` ile `supabase-test` dalına pushlandı (2026-10-13). `main` ve Production değişmedi.
+- **Preview (kullanıcı tarafından doğrulandı, 2026-10-14):** üye arama ve ilk Merkez düzeltmesi; +25 müşteri ekranına yansıdı, −25 sonrası bakiye 0, iki hareket görünür. Diğer Preview kontrolleri açık (§7.6 adım 7).
 - **Merkez araması düzeltmesi `5e8b814` (2026-10-14, migration yok):** puan hesabı olmayan üye de aranıp ilk düzeltme yapılabiliyor; local + gerçek test projesinde tarayıcı testi 34/34 (§7.6 Aşama 6, adım 7 "Preview bulgusu").
 - `0011_funda_points.sql` ve `0011_funda_points_test.sql` `funda1959-test`'te **kullanıcı tarafından çalıştırıldı**; ikisi de "Success. No rows returned" (2026-10-13). Production'a uygulanmadı.
 - Local uygulama + gerçek test projesi kontrolleri geçti (§7.6 Aşama 6, adım 2, 5, 6). İki oturumlu rezervasyon testi gerçek test projesinde geçti (adım 4: B 17,7 sn bekledi, `insufficient_points`, `GEÇTİ`; temizlik `TEMİZ`).
@@ -1340,14 +1343,63 @@ Durum (2026-10-13):
 - **Gerçek `funda1959-test` (2026-10-13, `0011` uygulandıktan sonra):** `0011` ve SQL testi kullanıcı tarafından çalıştırıldı, başarılı; local uygulama kontrolleri 1. tur 28/28, 2. tur 22/22 (§7.6). Eşzamanlılık betikleri önce PGlite'ta sırayla denendi (kanıt değil), sonra kullanıcı tarafından gerçek projede iki sekmede çalıştırıldı ve geçti (§7.6 adım 4).
 - **Tarayıcı testi (2026-10-14, local + gerçek `funda1959-test`, Playwright):** Merkez araması ve ilk +25/−25 düzeltmesi 34/34 (§7.6 adım 7). Diğer ekranlar (Hesabım puanlarım, checkout) tarayıcıda otomatik denenmedi.
 - **Yapılmayanlar:**
-  - Preview kontrolleri (§7.6 adım 7), mevcut üyeyle Preview'da +25/−25 (kullanıcı yapacak);
+  - Preview'da: `/api/health` `0011` 6/6, GOP 403, `/hesabim/puanlarim` "henüz etkin değil" notu, puanlı teklif 409 `POINTS_DISABLED`, checkout'ta puan alanı olmaması (§7.6 adım 7);
+  - Hesabım → Puanlarım ve checkout'un otomatik tarayıcı testi;
   - kazanım/kullanımın gerçek ödemeyle uçtan uca denenmesi (Aşama 9).
+
+---
+
+### 8.4 Aşama 7: Instagram (D42)
+
+Durum (2026-10-14): **kod `e066056` ile `supabase-test` dalına pushlandı; Preview kontrolü yapılmadı (kullanıcı: boş içerikte ana sayfada bölüm yok, admin'de Instagram menüsü yok).** Veritabanı, migration, Storage ve yükleme yok. İçerik listesi boş; ana sayfada bölüm gizli.
+
+**İçerik nasıl güncellenir**
+
+1. Dosyaları `public/social/reels/` altına koyun:
+   - **poster (zorunlu):** 9:16 görsel; `.webp`, `.jpg`, `.png` veya `.avif`;
+   - **video (isteğe bağlı):** kısa, sessiz oynatılacak klip; `.mp4` veya `.webm`. 15 MB üstü için betik uyarı verir.
+   - Dosya adlarında yalnızca harf, rakam, `-`, `_` (Türkçe karakter ve boşluk yok), ör. `2026-10-vitrin.webp`.
+2. `src/lib/social/instagram-content.ts` içindeki listeye bir kayıt ekleyin (dosyadaki örneği kopyalayın):
+   - `title`: kart üzerindeki başlık;
+   - `poster`, `video`: `/social/reels/…` yolu (`public` yazılmaz); videosuz içerikte `video` satırı silinir;
+   - `instagramUrl`: gerçek gönderi/reel adresi (`https://www.instagram.com/p/…` veya `/reel/…`); profil adresi kabul edilmez;
+   - `published`: `true` yayında, `false` dosyada kalır ama görünmez.
+   - Sıra: listedeki sıra ana sayfadaki sıradır; yayındaki ilk 5 geçerli kayıt gösterilir.
+3. Kontrol: `npx tsx scripts/verify-instagram-content.ts` — eksik dosya, hatalı yol, profil bağlantısı, aynı bağlantının iki kez kullanılması "FAIL" olarak çıkar; 5'ten fazla yayında kayıt uyarı verir.
+4. Commit + push → Preview'da kontrol → `main`'e alınınca Production'da yayınlanır.
+
+Kaldırmak için kaydı silin ya da `published: false` yapın; artık kullanılmayan dosyaları da `public/social/reels/`'ten silin.
+
+**Kurallar (kodda)**
+
+- Ana sayfa sunucuda posterin varlığını kontrol eder; posteri eksik, alanı hatalı veya yayında olmayan kayıt gösterilmez ve 5 kartlık yeri doldurmaz. Geçerli kayıt yoksa bölüm hiç çizilmez.
+- Videosuz kart: kartın tamamı Instagram gönderisine bağlantı (yeni sekme). Videolu kart: oynat düğmesi (sessiz, aynı anda tek video) + "Instagram" bağlantı etiketi.
+- Videolar sunucu fonksiyon paketine alınmaz (`next.config.ts`), statik dosya olarak sunulur; bu yüzden video dosyasının varlığı yalnızca doğrulama betiğiyle kontrol edilir — deploy'dan önce betiği çalıştırmak gerekir.
+- Instagram iframe'i ve Instagram API'si kullanılmaz; izlenme/beğeni gibi veri gösterilmez.
+
+**Dosyalar**
+
+- **Yeni:** `src/lib/social/instagram-content.ts` (içerik listesi), `src/lib/social/instagram.ts` (seçim kuralları), `scripts/verify-instagram-content.ts`, `public/social/reels/.gitkeep`.
+- **Değişen:** `src/lib/social/{instagram-types,index}.ts`, `src/components/home/{InstagramContentSection,SocialVideoRail}.tsx` (yer tutucu fotoğraflar ve "Video yakında" kaldırıldı, kart Instagram'a bağlanır), `next.config.ts`, `src/app/admin/page.tsx`, `src/components/admin/AdminShell.tsx`, `src/lib/admin/section-access.ts` (Instagram bölümü ve menüsü kaldırıldı; eski `?section=instagram` genel bakışa döner), `src/lib/persistence.ts` (`instagram` yazma alanı kaldırıldı).
+- **Silinen:** `src/app/api/admin/instagram/route.ts`, `src/components/admin/AdminInstagramContent.tsx`, `src/lib/social/{instagram-repository,instagram-mock,config}.ts`.
+- **Dokunulmayan:** kullanılmayan eski `components/home/InstagramSection.tsx` (§1.3 temizlik işi).
+- **Instagram hesabı `funda.1959`** (kullanıcı teyidi, 2026-10-14). Footer, mobil menü, iletişim sayfası ve schema.org bağlantıları zaten `https://instagram.com/funda.1959` / `@funda.1959` kullanıyor; farklı yazım (`funda1959`) yalnızca silinen `lib/social/config.ts`'teydi.
+
+**Doğrulama (2026-10-14, local)**
+
+- `verify-instagram-content` 19/19 (boş liste → gizli; videosuz/videolu; yayında değil; poster eksik; 7 kayıttan ilk 5, dosya sırası; aynı bağlantı bir kez; profil/başka site/http bağlantısı, `/social/` dışı veya `..` içeren yol, yanlış uzantı reddi; admin'de Instagram bölümü yok).
+- `tsc` temiz, `eslint` 0 hata, `next build` başarılı; `verify-funda-points` 49/49, `verify-accounts` 86/86, `verify-orders`, `verify-fulfillment`, `verify-prices` geçti.
+- Derlenmiş sürüm, tarayıcı (Playwright):
+  - boş liste (7/7): ana sayfada bölüm ve örnek başlıklar yok; Merkez menüsünde Instagram yok, diğer menüler duruyor; `?section=instagram` Instagram ekranı açmıyor; `POST /api/admin/instagram` 404.
+  - geçici test kayıtlarıyla (11/11; test sonrası kayıtlar ve dosyalar geri alındı): 6 geçerli kayıttan 5 kart, dosya sırasıyla; yayında olmayan, posteri eksik ve profil bağlantılı kayıt yok; kart 9:16 (masaüstü ve telefon); videosuz kart yeni sekmede Instagram bağlantısı; videolu kartta oynat → sessiz video, Instagram etiketi bağlantısı; poster `/social/` dosyasından; video statik olarak 200.
+  - Derleme izi: `public/social` altındaki `.mp4` sunucu paketine girmedi, poster girdi.
+- **Yapılmayanlar:** Preview kontrolü; gerçek içerikle deneme (henüz içerik yok).
 
 ---
 
 ## 9. Açık kararlar
 
-D1–D41 netleşti. Aşağıdakiler **hâlâ açık** ve onaylanmış sayılmaz. Koddan çıkarılabilen konular (şube listesi, çalışma saatleri, bölge mahalleleri, saatlik aralıklar, hazırlık süreleri, %10 oranı) sorulmuyor.
+D1–D42 netleşti. Aşağıdakiler **hâlâ açık** ve onaylanmış sayılmaz. Koddan çıkarılabilen konular (şube listesi, çalışma saatleri, bölge mahalleleri, saatlik aralıklar, hazırlık süreleri, %10 oranı) sorulmuyor.
 
 | # | Konu | Neden önemli |
 |---|---|---|
@@ -1374,7 +1426,7 @@ D1–D41 netleşti. Aşağıdakiler **hâlâ açık** ve onaylanmış sayılmaz.
 | **A13** | **Kampanya tarihleri ve koşulları:** "3 Al 2 Öde", "İlk online siparişe %15" gibi kurallar sepette uygulanacak mı, yoksa kampanyalar bilgilendirme mi kalacak? Bugün indirim mantığı yok **[K]**. Admin'den poster yükleme gerekli mi? | İndirim alanı, puan tabanı (indirim düşülür), Storage. |
 | **A14** | **Tatil / özel gün kapanışları** gerekiyor mu (kapasite olmadan gün kapatma)? | Motor kuralı; gerekirse küçük bir ayar tablosu. |
 | **A15** | **Ödeme sağlayıcısı** (seçilince). | Aşama 9 ve §6.1. |
-| **A16** | **Instagram içerik kaynağı** (dosyalar, gerçek bağlantılar; Storage veya `public/`). | Aşama 7. |
+| ~~A16~~ | **Kararlaştırıldı → D42 (2026-10-14).** Instagram veritabanına bağlanmaz; içerik tek dosyadan elle, deploy ile. | — |
 | **A17** | **İletişim talepleri** kime iletilecek (e-posta?), KVKK metni, spam koruması? | Aşama 8. |
 | **A18** | **Canlı alan adı:** schema.org `https://funda1959.com` yazıyor **[K]**; site `funda1959.vercel.app`. | SEO. |
 | **A19** | **Müşteri verilerinin saklama süresi** (KVKK). | Temizlik politikası. |
