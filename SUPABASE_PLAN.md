@@ -1,9 +1,9 @@
 # Funda 1959 — Supabase'e Geçiş Planı
 
-> **Durum:** Planlama dokümanı + Aşama 0 uygulaması. Ortam/yönetim kararları (D1–D4) ve iş kararları (D5–D11) işlendi. Aşama 0 kodu ve `0006` hazır (2026-10-10). `funda1959-test` kuruldu (`0001`–`0006` + `test` işareti); `supabase-test` dalı (`e897090`) Vercel Preview'da. **Aşama 1 Preview'da doğrulandı (2026-10-10).** **Aşama 2 tamamlandı (2026-10-10): `0007` `funda1959-test`'e uygulandı; local + gerçek test Supabase ve Preview doğrulaması geçti (`2c75944`).** **Aşama 3 tamamlandı (2026-10-10, `63331f7`; Preview doğrulandı).** **Aşama 4: `0009` `funda1959-test`'e uygulandı, gerçek test Supabase kontrolleri geçti; kod `supabase-test` dalına pushlandı (`04d7f43` fiyat yönetimi, `5c73517` ürün başına tek satır + açılır boyut düzenleme). Preview'da yalnızca Macaron fiyat eşleşmesi ve açılır boyut ekranı doğrulandı; diğer Preview kontrolleri yapılmadı (2026-10-12).** **Aşama 5 (müşteri üyeliği): `c6f1292` `supabase-test`'e pushlandı ve Preview'da Ready; `0010` `funda1959-test`'te; kullanıcının local ve Preview testleri ile local otomatik kontroller (38/38) geçti; temel akışlar local ve Preview'da doğrulandı, kalan kontroller ertelendi (2026-10-12). Google ve Funda Puan kapalı; özel SMTP sonraya bırakıldı.** Production projesi kurulmadı; `main` (`60355bf`) ve Production değişmedi.
+> **Durum:** Planlama dokümanı + Aşama 0 uygulaması. Ortam/yönetim kararları (D1–D4) ve iş kararları (D5–D11) işlendi. Aşama 0 kodu ve `0006` hazır (2026-10-10). `funda1959-test` kuruldu (`0001`–`0006` + `test` işareti); `supabase-test` dalı (`e897090`) Vercel Preview'da. **Aşama 1 Preview'da doğrulandı (2026-10-10).** **Aşama 2 tamamlandı (2026-10-10): `0007` `funda1959-test`'e uygulandı; local + gerçek test Supabase ve Preview doğrulaması geçti (`2c75944`).** **Aşama 3 tamamlandı (2026-10-10, `63331f7`; Preview doğrulandı).** **Aşama 4: `0009` `funda1959-test`'e uygulandı, gerçek test Supabase kontrolleri geçti; kod `supabase-test` dalına pushlandı (`04d7f43` fiyat yönetimi, `5c73517` ürün başına tek satır + açılır boyut düzenleme). Preview'da yalnızca Macaron fiyat eşleşmesi ve açılır boyut ekranı doğrulandı; diğer Preview kontrolleri yapılmadı (2026-10-12).** **Aşama 5 (müşteri üyeliği): `c6f1292` `supabase-test`'e pushlandı ve Preview'da Ready; `0010` `funda1959-test`'te; kullanıcının local ve Preview testleri ile local otomatik kontroller (38/38) geçti; temel akışlar local ve Preview'da doğrulandı, kalan kontroller ertelendi (2026-10-12). Google ve Funda Puan kapalı; özel SMTP sonraya bırakıldı.** **Aşama 6 (Funda Puan): `0011` ve `0011_funda_points_test.sql` `funda1959-test`'te kullanıcı tarafından çalıştırıldı, ikisi de başarılı (2026-10-13). Local uygulama + gerçek test projesinde health, admin düzeltmesi, müşteri görüntüleme, GOP engeli, kapalı kullanım ve API üzerinden eşzamanlı düşüş doğrulandı (1. tur 28/28, 2. tur 22/22). İki oturumlu rezervasyon eşzamanlılığı gerçek test projesinde SQL Editor'da geçti (B 17,7 sn bekledi, `insufficient_points`; tek rezervasyon, kalan 20, borç 0; temizlik `TEMİZ`). Kod, `0011` ve testler `51c0028` ile `supabase-test`'e pushlandı; Preview kontrolleri yapılmadı. Kazanım ve kullanım kapalı (D41).** Production projesi kurulmadı; `main` (`60355bf`) ve Production değişmedi.
 > **Çalışma klasörü:** `funda1959-supabase-test` — GitHub `supabase-test` dalının ZIP'i (`.git` yok; önceki yerel klasör silindi). Plan ilk olarak `funda1959-git` — son commit `60355bf` + commit edilmemiş değişiklikler — üzerinde hazırlandı (bkz. §8).
 > **Kapsam:** Site ve admin paneli aynı Next.js projesinde kalır; ayrıştırma kapsam dışıdır.
-> **Son güncelleme:** 2026-10-12
+> **Son güncelleme:** 2026-10-13
 
 **Gösterim.** Her iddianın yanında kaynağı belirtilir:
 
@@ -57,6 +57,17 @@
 | **D28** (2026-10-12) | **Checkout ve sipariş detayı:** varsayılan adres checkout'ta önceden seçili olabilir. Müşteri **kendi siparişinin iptal gerekçesini görebilir.** | Varsayılan adres yalnızca formda adres yokken ve kayıtlı bölge boş ya da aynıyken seçilir; başlıkta seçilen başka bölgenin yerine geçmez. Gerekçe görünür, işlemi yapan hesap görünmez (§8.2). |
 | **D29** (2026-10-12) | **Otomatik şifre geçersizleştirme veya toplu oturum kapatma uygulanmaz.** E-posta doğrulaması kapalı kalır (D23). Google ↔ e-posta/şifre hesap eşleşmesi güvenli biçimde çözülemiyorsa Google bağlantısı etkinleştirilmez. | Supabase belgeleri doğrulandı; otomatik bağlama doğrulama kapalıyken güvensiz ve kapatılamıyor → Google engelli (§8.2 "Google engeli", A25). Çıkış yalnızca o tarayıcının oturumunu kapatır (`scope: "local"`). |
 | **D30** (A26, 2026-10-12) | **Şifre değişince diğer oturumlar:** Supabase'in, şifre güncellenince aynı hesabın diğer oturumlarını sonlandırma davranışı **korunur.** | Supabase diğer oturumların yenileme belirteçlerini iptal eder; o oturumlar en geç erişim belirtecinin süresi dolunca (varsayılan 1 saat) kapanır. Uygulama kendisi oturum kapatmaz (D29 geçerli). Kabul kriteri buna göre düzeltildi. |
+| **D31** (A5'in puan kısmı, 2026-10-12) | **Puanı yalnızca giriş yapmış üyeler kazanır**, yalnızca online siparişlerde (web, mobil). Misafir siparişleri puan kazanmaz ve sonradan otomatik bağlanmaz. | Kazanım koşulu `orders.customer_user_id` dolu, kanal `web`/`mobile`, sipariş demo değil (`fp_earn_for_order`, 0011). |
+| **D32** (2026-10-12) | **Kazanım, ödeme onaylandığında** gerçekleşir. 1 puan = 1 TL (D9). | `complete_order_payment` (0011) ödemeyi işaretler, rezervasyonu tamamlar ve puanı yazar. Ödeme sağlayıcısı gelene kadar çağrılmaz (Aşama 9). |
+| **D33** (A6, 2026-10-12) | **Kazanım = indirimlerden ve kullanılan puandan sonra kalan ürün tutarının %10'u**; teslimat ücreti hariç. Örnek: 1.000 TL üründe 200 puan kullanılırsa 800 TL üzerinden 80 puan. | `floor((ara toplam − indirim − kullanılan puan) × %10)`; SQL'de kesin ondalık, uygulamada tam sayı kuruş hesabı (aynı sonuç). |
+| **D34** (2026-10-12) | **Her kazanım ayrı bir parti**, kazanıldığı andan itibaren **1 yıl** geçerli. Kullanımda **son kullanma tarihi en yakın** puanlar önce tüketilir. | `funda_point_lots.expires_at = earned_at + 1 yıl`; tüketim `fp_take_fefo`. |
+| **D35** (A13'ün puan kısmı, 2026-10-12) | **500 TL minimum**, puan düşülmeden önceki indirimli ürün toplamına göre kontrol edilir. | Sunucu (`buildOrderPayload`) ve `create_order` minimumu ara toplam − indirim üzerinden yapar; puan etkilemez. |
+| **D36** (A9'un ilk kısmı, 2026-10-12) | **Puan yalnızca ürün tutarında** kullanılır, teslimat ücretinde kullanılamaz; **ürün tutarının tamamına kadar** kullanılabilir. | Tam sayı puan: kuruşlu tutarda kalan kuruş ödenir. Sınır sunucuda ve veritabanında (`orders_points_within_products`). |
+| **D37** (A9'un son kısmı, 2026-10-12) | **Tamamı puanla ödenen sipariş** için sunucuda güvenli tamamlama akışı; mevcut Production sipariş engelini aşamaz. | `complete_order_payment(…, 'funda_points')` yalnızca toplam 0 ve aktif rezervasyonla; uygulamada `completePointsOnlyOrder` puan anahtarı ve sipariş kapısı açıkken. |
+| **D38** (A7, 2026-10-12) | **İptalde kullanılan puanlar orijinal son kullanma tarihleriyle geri gelir.** Süresi dolmuş puan yeniden harcanabilir hale gelmez. | İade aynı partilere yapılır; süresi dolmuş partiye dönen kısım `expired_points` olarak kaydedilir, bakiyeye eklenmez. |
+| **D39** (A8, 2026-10-12) | **İptalde kazanılan puan geri alınır.** Daha önce harcanmışsa bakiye eksiye düşebilir; sonraki kazanımlar bu borcu kapatır. Kullanılabilir bakiye sıfırın altına düşmez. | Geri alma önce o siparişin partisinden, sonra son kullanma sırasıyla diğerlerinden; kalan kısım `funda_point_accounts.debt`. Her yeni kazanım ve iade önce borcu kapatır. |
+| **D40** (2026-10-12) | **Admin:** uydurma müşteriler kaldırılır, gerçek veri yoksa boş durum gösterilir. Merkez düzeltmeleri **gerekçe ve işlemi yapan admin** ile kaydedilir; şube hesapları yetki kazanmaz. Ana sayfadaki "Funda Puan %10" posteri **mevcut haliyle kalır**. | `adjust_funda_points` (yalnızca `merkez`), tekrar korumalı istek kimliği; poster ve kampanya içeriğine dokunulmadı. |
+| **D41** (2026-10-12) | **Gerçek ödeme entegrasyonu tamamlanana kadar kazanım ve kullanım sunucu tarafında kapalı**; kullanıcıya çalışan bir özellik gibi sunulmaz. Demo siparişler puan kazanamaz ve harcayamaz. | `isFundaPointsActive()` = `false` (kod anahtarı, ortam değişkeni değil). Kapalıyken: puan isteyen sipariş/teklif 409, checkout'ta puan alanı yok, Hesabım "henüz etkin değil" der. Veritabanı demo siparişte puanı ayrıca reddeder. |
 
 **Henüz kararlaştırılmayanlar:** kampanya tarihleri ve koşulları, ve §9'daki diğer konular **onaylanmış sayılmaz**.
 
@@ -94,7 +105,8 @@
 - **Tamamlanan:** `funda1959-test` + Preview kurulumu (§7.6, adım 12–13), Aşama 1 doğrulaması (§8), Aşama 2'nin local + gerçek test Supabase doğrulaması ve Preview doğrulaması (§7.6 "Aşama 2 kurulum kontrolü"), Aşama 3'ün local + gerçek test Supabase doğrulaması ve Preview doğrulaması (`63331f7`; §7.6 "Aşama 3 kurulum kontrolü", 2026-10-10).
 - **Sıradaki:**
   - Aşama 4 (fiyat yönetimi): fiyat kararları D16–D21 işlendi; her boyutun fiyatı ayrı düzenlenebilir (47 fiyat), p13 kartı ₺260. `0009` `funda1959-test`'e uygulandı; local ve gerçek test Supabase kontrolleri geçti (2026-10-12, §7.6). Kod pushlandı (`04d7f43`, `5c73517`); Preview'da yalnızca Macaron fiyat eşleşmesi ve açılır boyut ekranı doğrulandı. Kalan Preview kontrolleri bekliyor (§7.6 "Aşama 4 kurulum kontrolü", adım 4),
-  - Aşama 5 (müşteri üyeliği): temel akışlar local ve Preview'da doğrulandı, kalan kontroller ertelendi ve açık (§7.6 "Aşama 5 durumu"); D30 kabul edildi. Sıradaki aşama (Aşama 6, Funda Puan) için kararlar bekleniyor; kod ve migration yok. Google engeli kararı bekliyor (A25),
+  - Aşama 5 (müşteri üyeliği): temel akışlar local ve Preview'da doğrulandı, kalan kontroller ertelendi ve açık (§7.6 "Aşama 5 durumu"); D30 kabul edildi.  Google engeli kararı bekliyor (A25),
+  - Aşama 6 (Funda Puan): kararlar D31–D41; `0011` ve SQL testi `funda1959-test`'te kullanıcı tarafından çalıştırıldı ve geçti (2026-10-13); local + gerçek test projesi kontrolleri ve iki oturumlu rezervasyon eşzamanlılığı geçti (§7.6 "Aşama 6 kurulum kontrolü"). Kod `51c0028` ile `supabase-test`'e pushlandı; sırada Preview kontrolleri. Kazanım/kullanım ödeme entegrasyonuna (Aşama 9) kadar kapalı,
   - Production kurulumu (§7.6, adım 14) ayrı onayla; sipariş alımı kapalı kalır (§6.1).
 - **Kalan bilinen sorunlar [K]:**
   - Teslimat ücreti ve minimum (Aşama 3): ücret `delivery_zone_fees`'ten (D15), minimum 500 TL adrese teslimde (D14); `0008` test projesinde (2026-10-10), production'da yok. Bölge/mahalle listeleri ve test projesindeki ücretler test amaçlı, onaylı fiyat değil (A4).
@@ -125,7 +137,7 @@ Supabase sütunu: **Hazır** = kod ve migration var, ortam kurulumu bekleniyor �
 | **Kampanyalar** | `lib/campaigns/*`; Supabase deposu hazır; seed `mock.ts` (5 poster) **[K]** | Ana sayfa, admin kampanya ekranı, `api/admin/campaigns` **[K]** | **Hazır** (`0002` + `0005`) | Canlıda bellek | Kurulum. Kampanya **tarihleri ve koşulları kararlaştırılmadı**; kampanyalar bugün yalnızca içerik, indirim mantığı yok **[K]**. |
 | **Instagram içerikleri** | `lib/social/*` (bellek); `public/social/reels/*` dosyaları yok **[K]** | Ana sayfa, admin, `api/admin/instagram` **[K]** | Eksik | Bellek | Aşama 7 (içerik kaynağı açık). |
 | **Müşteri hesapları ve adresleri** | Giriş/kayıt stub: `lib/auth.ts`; hesap verisi mock: `lib/account-service.ts`. `customers`/`addresses` (0001) yalnızca sipariş anı kaydı **[K]** | `/giris`, `/uye-ol`, `/sifremi-unuttum`, `/hesabim/*` **[K]** | Eksik | Ekranlar önizleme | Supabase Auth ile üyelik (D7, Aşama 5); misafir sipariş korunur. |
-| **Funda Puan** | `lib/funda-points/*`: bellekte hareket kaydı, `businessKey` ile tekrar koruması; müşteri anahtarı telefon (`resolveCustomerId`); oran %10 (`config.ts`); **son kullanma tarihi uygulanmıyor**; kazanım yalnızca bellek sipariş yolunda **[K]** | Admin Funda Puan ekranı, `api/admin/funda-points` **[K]** | Eksik | Bellek | D9 kurallarıyla, üyelik üzerinden (Aşama 6). Telefonla eşleme misafir kararına (§9) kadar **kullanılmaz** [V]. |
+| **Funda Puan** | `0011` defteri (partiler, hareketler, rezervasyonlar; **`funda1959-test`'e uygulandı, 2026-10-13; production yok**). Uygulama: `lib/funda-points/{config,rules,types,store,service}.ts`; bellek defteri ve uydurma müşteriler kaldırıldı **[K]** | Admin Funda Puan ekranı, `api/admin/funda-points`, Hesabım `/hesabim/puanlarim`, checkout (kapalı) **[K]** | Hazır (`0011`) | Yok (bellek kalmadı) | Kazanım ve kullanım ödeme entegrasyonuna kadar kapalı (D41); §8.3 |
 | **İletişim talepleri** | `app/iletisim/page.tsx`: form `action="#"`, alanlar `name`, `email`, `phone`, `subject`, `message`; backend yok **[K]** | — | Eksik | Form hiçbir yere gitmiyor | Aşama 8. |
 
 ### 1.2 Tarayıcıda tutulan veriler **[K]**
@@ -216,25 +228,31 @@ Aşağıdaki dört madde Aşama 2'de giderildi (2026-10-10, `0007` + kod; local 
 | `customer_profiles` | `auth_user_id uuid PK references auth.users on delete cascade`, `full_name`, `phone`, `email` (Auth e-postasının kopyası), `terms_version text null`, `terms_accepted_at timestamptz null`, zaman damgaları. **Pazarlama izni sütunu yok (D26).** | Onay alanları birlikte dolu ya da birlikte boş (check). Metinler yayımlanmadan dolmaz (D26). RLS açık, politika yok. |
 | `customer_addresses` | `id uuid`, `auth_user_id FK`, `label`, `district`, `neighborhood`, `address_line`, `building`, `floor`, `apartment`, `note`, `is_default bool` **[K: `AccountAddressInput`]** | Kullanıcı başına **en fazla 10** (D24; kaydeden fonksiyon kullanıcı başına kilitle sayar). Kısmi unique `(auth_user_id) where is_default` (tek varsayılan). İlk adres varsayılan; varsayılan silinirse en eski adres varsayılan olur. Yazma yalnızca RPC ile. RLS açık, politika yok. |
 
-**Funda Puan (D9; Aşama 6)**
+**Funda Puan (D9, D31–D41; Aşama 6) — `0011_funda_points.sql`, `funda1959-test`'e uygulandı (2026-10-13), production'a uygulanmadı**
 
-Puanın her kazanımı kendi son kullanma tarihiyle bir **parti** olarak tutulur. Bakiye, süresi dolmamış partilerin kalanlarının toplamıdır.
+Her kazanım kendi son kullanma tarihiyle bir **parti**. Kullanılabilir bakiye = süresi dolmamış partilerin kalanları. Defter değişmezi: üyenin hareket toplamı = bütün partilerin kalanı − borç.
 
 | Tablo | Alanlar | Kurallar |
 |---|---|---|
-| `funda_point_accounts` | `auth_user_id uuid PK references auth.users`, `created_at` | Üye başına bir hesap. Misafir hesabı yok (D7: karar bekliyor). |
-| `funda_point_lots` | `id uuid`, `auth_user_id FK`, `source_order_id uuid null references orders unique` (bir siparişten tek kazanım), `points int check (> 0)`, `remaining int check (0 ≤ remaining ≤ points)`, `earned_at timestamptz`, `expires_at timestamptz` (= `earned_at + interval '1 year'`), `status text check in ('active','expired','reversed')` | İndeks `(auth_user_id, expires_at) where remaining > 0`. Yeni kazanım eski partinin `expires_at` değerini değiştirmez (D9). |
-| `funda_point_transactions` | `id uuid`, `auth_user_id`, `type text check in ('EARN','REDEEM','REVERSAL','REFUND','EXPIRE','ADMIN_ADJUSTMENT')`, `points int check (points <> 0)` (işaretli), `order_id uuid null`, `business_key text unique` (ör. `<order_id>:EARN`, `<order_id>:REVERSAL`), `description`, `created_by`, `created_at` | Yalnızca ekleme; güncelleme/silme yok. Tekrar eden istek aynı `business_key`'e çarpar. |
-| `funda_point_lot_movements` | `transaction_id FK`, `lot_id FK`, `points int` (partiden düşülen/eklenen) | Harcamanın hangi partiden yapıldığını tutar. İade bu kayda göre yapılır. |
+| `funda_point_accounts` | `auth_user_id` PK, `debt int ≥ 0` | Her puan işlemi bu satırı kilitler: aynı bakiye iki siparişte harcanamaz. |
+| `funda_point_lots` | `source` (`earn`/`admin`), `source_order_id` (sipariş başına tek), `points`, `remaining`, `earned_at`, `expires_at` (= `earned_at` + 1 yıl) | Kalan 0…points. |
+| `funda_point_transactions` | `type` (`EARN`, `REDEEM`, `REDEEM_RELEASE`, `REFUND`, `REVERSAL`, `EXPIRE`, `ADMIN_ADD`, `ADMIN_SUBTRACT`), işaretli `points`, `expired_points`, `business_key` unique, `available_after`, `debt_after`, `reason`/`actor_*` | Yalnızca ekleme (güncelleme tetikleyiciyle reddedilir). Merkez hareketlerinde gerekçe ve admin zorunlu. |
+| `funda_point_lot_movements` | `transaction_id`, `lot_id`, `points` | Hangi hareketin hangi partiden ne aldığı veya ne geri verdiği; iade bunlara göre yapılır. |
+| `funda_point_reservations` | `order_id` PK, `points`, `status` (`reserved`/`captured`/`released`/`refunded`), `hold_until` | Ödeme bekleyen siparişin puanı. |
+| `orders` (ek) | `points_redeemed`, `points_earned`, `points_status`, `payment_reference`, `paid_at` | Kısıtlar: puan yalnızca üyede, demo siparişte asla, en fazla `floor(ara toplam − indirim)`. |
 
-Sunucu fonksiyonları (RPC; `security definer`, yalnızca `service_role`):
+Fonksiyonlar (hepsi yalnızca `service_role`; iç yardımcılar API'ye kapalı):
 
 | Fonksiyon | Görev |
 |---|---|
-| `earn_points(order_id)` | Sipariş oluşturulunca çalışır. Koşullar: üye, online kanal, **demo değil** [V], sipariş puan kullanmamış [D9; kapsamı §9].<br>Tutar = `floor((ürün toplamı − indirim) × %10)`; teslimat ücreti hariç **[K: `getEligibleFundaPointAmount`, `calculateEarnedPoints` (floor)]**.<br>Parti açar (`expires_at = now() + 1 yıl`) ve `EARN` hareketi yazar. `business_key` ile tekrarlanmaz. |
-| `redeem_points(order_id, points)` | Yalnızca online. Partilerden **en erken son kullanma tarihli önce** düşer [V]. Bakiye yetersizse reddeder. Hareket ve parti düşüşleri tek transaction'da. |
-| `reverse_order_points(order_id)` | İptal/iade. (1) Siparişten kazanılan partiyi geri alır. (2) Siparişte harcanan puanı, harcandığı partilere iade eder. Kazanılan puan önceden harcanmışsa ne olacağı açık (§9). |
-| `expire_points()` | Süresi dolan partilerin kalanını `EXPIRE` hareketiyle sıfırlar. Doğruluk buna bağlı değil (bakiye zaten `expires_at > now()` ile hesaplanır). Supabase'in kendi `pg_cron` özelliğiyle günlük çalışabilir; ek servis değil (D4). |
+| `create_order` v7 | v6 + `points_redeemed`: puanlar siparişle aynı işlemde partilerden alınır (rezervasyon, 30 dk). Yetmezse sipariş hiç oluşmaz (`insufficient_points`). Demo siparişte puan reddedilir. Toplam = ara toplam − indirim − puan + teslimat. |
+| `complete_order_payment(no, method, ref)` | Ödeme onayı: `paid`, rezervasyon `captured`, puan kazanımı. `funda_points` yöntemi yalnızca toplam 0 ise. Demo siparişi reddeder; tekrar çağrıda aynı sonuç. |
+| `fail_order_payment(no)` | Başarısız ödeme: `failed`, rezerve puan aynı partilere geri döner. |
+| `release_expired_point_reservations()` | Süresi dolan rezervasyonlar (ödenmemiş) için yukarıdaki. Zamanlanmış iş (pg_cron) Aşama 9'da. |
+| `update_order_status` v2 | v1 + iptalde puan: ödenmemişse bırakma, ödenmişse iade + kazanımın geri alınması (gerekirse borç). |
+| `expire_funda_points()` | Süresi dolan kalanları `EXPIRE` ile siler (doğruluk buna bağlı değil). |
+| `adjust_funda_points(...)` | Merkez düzeltmesi: + yeni 1 yıllık parti (önce borcu kapatır), − son kullanma sırasıyla ve en fazla kullanılabilir bakiye. Yalnızca `merkez`, gerekçe 3–300 karakter, istek kimliğiyle tekrar korumalı. |
+| `get_funda_points_summary`, `get_funda_points_admin_detail`, `list_funda_point_accounts` | Okuma: üye kendi bakiyesi/partileri/hareketleri (admin adı ve gerekçesi yok); Merkez listesi ve ayrıntı. |
 
 **İçerik ve iletişim**
 
@@ -341,7 +359,7 @@ Sunucu fonksiyonları (RPC; `security definer`, yalnızca `service_role`):
 | Sipariş oluşturma | ✔ (misafir) | ✔ | ✖ | ✖ |
 | Sipariş özeti (sipariş no ile, kişisel veri yok) | ✔ | ✔ | ✔ | ✔ |
 | Sipariş geçmişi, kayıtlı adresler | ✖ | ✔ (kendi) | ✖ | ✖ |
-| Funda Puan bakiyesi / kullanımı | ? (D7) | ✔ (kendi) | ✖ | ✔ (görüntüleme + düzeltme) **[K]** |
+| Funda Puan bakiyesi / kullanımı | ✖ (D31) | ✔ (kendi; kullanım D41'e kadar kapalı) | ✖ | ✔ (görüntüleme + gerekçeli düzeltme) **[K]** |
 | Şube stok durumu (aktif/pasif) | ✖ | ✖ | ✔ (kendi şube) **[K]** | ✔ (tüm şubeler) **[K]** |
 | **Ürün fiyatı güncelleme** | ✖ | ✖ | ✖ | ✔ (D5) |
 | **Teslimat ücreti ayarı** | ✖ | ✖ | ✖ | ✔ [V] |
@@ -393,7 +411,7 @@ Sunucu fonksiyonları (RPC; `security definer`, yalnızca `service_role`):
 | **Minimum sipariş 500 TL (D10, D14)** | `lib/order-rules.ts` | **Aşama 3 (kod):** adrese teslimde ürün toplamı − indirim ≥ 500 TL, teslimat ücreti hariç, gel-al muaf. Sepet / hızlı sipariş eksik tutarı gösterir ve checkout'a geçişi engeller (gel-ale geçiş açık); checkout ödeme adımını engeller; ödeme hesabı + sipariş 409 `BELOW_MINIMUM`; `create_order` (`0008`) `below_minimum`. Puan etkisi açık (A13). |
 | **Teslimat ücreti yapılandırılabilir; belirlenmemiş ≠ ücretsiz (D10, D15)** | `lib/delivery/fees.ts`, `fees-server.ts`, `delivery_zone_fees` | **Aşama 3 (kod):** motor, ödeme hesabı ve sipariş aynı kaynaktan; belirlenmedi → `DELIVERY_FEE_NOT_SET` (409), okunamıyor → `DELIVERY_INFO_UNAVAILABLE` (503, eski değer kullanılmaz); `create_order` ücreti tablodan doğrular. PDP ücreti yalnızca belirlenmişse gösterir; kuruş gösterimi (`formatTL`). Mevcut siparişlerin ücreti değişmez. |
 | **Güncel fiyat her yerde aynı; verilmiş sipariş değişmez (D5)** | `lib/pricing/*`, `product_prices` | **Aşama 4 (kod):** katalog, PDP, arama, hızlı sipariş, sepet, checkout, ödeme hesabı ve sipariş aynı fiyattan. Sipariş ve ödeme hesabı taze okur; okunamazsa 503, eski veya katalog değerle sipariş yok. `create_order` v5 kayıtlı fiyatı doğrular (`price_mismatch` → 409). Siparişin kalem fiyatları kayıtlı kalır. Kart en küçük boyutun, ürün sayfası seçilen boyutun fiyatını gösterir (D16). Her boyut ayrı fiyatlanır; bir boyutun değişmesi diğerlerini değiştirmez (D20). Eski fiyat yalnızca belirlenmiş ürün veya boyutta ve güncel fiyattan yüksekken (D18, D21). |
-| **Funda Puan (D9)** | Bellek; son kullanma yok. **Demo sipariş hiçbir depoda puan kazandırmaz (D13):** `awardPointsForOrder` demo siparişi `DEMO_ORDER` ile reddeder; sipariş motoru puan çağırmaz | Aşama 6: partiler (1 yıl), kazanım sipariş anında, teslimat ücreti hariç, puanlı siparişte kazanım yok, iptal/iadede geri alma + iade, yalnızca online, 1 puan = 1 TL. |
+| **Funda Puan (D9, D31–D41)** | `0011` (veritabanı), `lib/funda-points/*` | Kurallar veritabanı fonksiyonlarında tek yerde (§2.3): parti + 1 yıl, son kullanma sırası, siparişle aynı işlemde rezervasyon, ödeme onayında kazanım, iptalde iade ve geri alma (borç), tekrar koruması. Kazanım ve kullanım ödeme entegrasyonuna kadar kapalı (D41); demo sipariş hiçbir koşulda puan almaz/harcamaz. |
 | **Tarayıcıda kalabilecekler** | §1.2 | Sepet, adres tercihi, quiz ve aktarım tarayıcıda; sunucu hiçbirine güvenmez. |
 
 ### 6.1 Gerçek sipariş kabulü kapısı (D2, D8)
@@ -432,7 +450,7 @@ Hepsi yalnızca **ekleme** yapar; uygulanmış dosyalar değişmez. İki proje a
 | 2 | `0008_delivery_zone_fees.sql` | **Aşama 3 — `funda1959-test`'e uygulandı (2026-10-10)**; production'a uygulanmadı | `delivery_zone_fees` (3 durum, seed yok) + `create_order` v4 (ücret ve minimum kontrolü). Tekrar çalıştırılabilir. |
 | 3 | `0009_product_prices.sql` | **Aşama 4 — `funda1959-test`'e uygulandı (2026-10-12)**; production'a uygulanmadı | `product_prices` (seed yok) + `create_order` v5 (kayıtlı fiyat kontrolü, `price_mismatch`). Tekrar çalıştırılabilir. Uygulanmadan Aşama 4 kodu katalog fiyatlarıyla çalışır, "Fiyatlar" kaydetmez. |
 | 4 | `0010_customer_accounts.sql` | **Aşama 5 — `funda1959-test`'te çalıştırıldı (kullanıcı, 2026-10-12)**; production'a uygulanmadı (§8.2) | `customer_profiles` (onay sürümü alanları; pazarlama izni yok), `customer_addresses` (en fazla 10, tek varsayılan), `orders.customer_user_id`, `create_order` v6, üye sipariş ve adres RPC'leri |
-| 5 | `0011_funda_points.sql` | Plan (Aşama 6) | `funda_point_*`, puan RPC'leri |
+| 5 | `0011_funda_points.sql` | **Aşama 6 — `funda1959-test`'e uygulandı (kullanıcı, 2026-10-13); production'a uygulanmadı** (§8.3) | `funda_point_*` tabloları, sipariş puan alanları, `create_order` v7, `update_order_status` v2, ödeme/puan fonksiyonları (§2.3) |
 | 6 | `0012_instagram.sql` | Plan (Aşama 7) | `instagram_contents` |
 | 7 | `0013_contact_requests.sql` | Plan (Aşama 8) | `contact_requests` |
 
@@ -1008,6 +1026,56 @@ Adımlar hazır ama engel kalkana kadar **uygulanmaz.** Engel kalkınca ayrıca 
 - KVKK ve üyelik metinleri yayımlanmış olmalı (A24). Üyeliğin gerçek müşterilere açılması ayrı bir kod değişikliği ve onaydır (D27); ancak ondan sonra production projesinde "Allow new users to sign up" açılır.
 - Production projesinde 1, 3–9 tekrarlanır; 2. adım kapalı başlar.
 
+**Aşama 6 kurulum kontrolü (Funda Puan; önce yalnızca `funda1959-test`, web ekibi) — 1–6 tamam; 7: commit + push yapıldı, Preview kontrolleri bekliyor**
+
+1. ✅ `0011_funda_points.sql` SQL Editor'da test projesinde çalıştırıldı — **kullanıcı tarafından doğrulandı (2026-10-13):** "Success. No rows returned". Production'a uygulanmadı.
+2. ✅ Merkez `/api/health` (local uygulama, gerçek `funda1959-test`, 2026-10-13): `database: ready`, `expectedData: test`; `0001`–`0011` 20 tablo kontrolünün hepsi `ok` (0011: 6/6). `customerAuth`: kayıt açık, e-posta onayı kapalı, yalnız e-posta sağlayıcısı açık.
+3. ✅ `supabase/tests/0011_funda_points_test.sql` SQL Editor'da çalıştırıldı — **kullanıcı tarafından doğrulandı (2026-10-13):** "Success. No rows returned".
+   - Tek işlem içinde çalışır ve sonunda geri alınır; test kullanıcısı, sipariş veya puan kalmaz.
+   - Her kontrol başarısızlıkta "FAIL: …" istisnasıyla durduğu için hatasız bitmesi 10 bölümün tamamının geçtiği anlamına gelir. SQL Editor `NOTICE` satırlarını ("ok …", "ALL FUNDA PUAN CHECKS PASSED") göstermeyebilir.
+   - Daha önce geçici yerel Postgres 18'de 65/65 geçmişti.
+4. ✅ **Eşzamanlılık (iki oturum)** — **tamam (2026-10-13):**
+   - ✅ Aynı üye kilidi API üzerinden (2026-10-13, yalnız bu test için oluşturulan üye): 100 puanlı üyeye uygulama üzerinden aynı anda iki −80 düzeltmesi → biri 200, diğeri 409; iki ayrı Supabase istemcisinden aynı anda iki `adjust_funda_points` −50 (bakiye 80) → biri `ok`, diğeri `insufficient_points`. Son bakiye 30, defter toplamı = parti kalanı, reddedilenler deftere yazılmadı. Bu, bütün puan işlemlerinin kullandığı hesap kilidini (`fp_lock_account`) gerçek veritabanında doğrular.
+   - ✅ **Rezervasyon** (`fp_reserve_for_order`) iki oturumda — **kullanıcı tarafından gerçek `funda1959-test`'te SQL Editor'da çalıştırıldı (2026-10-13):**
+     - Sekme A: 80 puan ayırdı (`ayirdi_80`).
+     - Sekme B: kilidi **17,7 sn** bekledi, `insufficient_points` aldı; karar `GEÇTİ`.
+     - Doğrulama: tek sipariş, tek rezervasyon, tek kullanım (`REDEEM`) hareketi, kalan 20 puan, borç 0.
+     - Temizlik: üye, profil, müşteri ve sipariş sayıları 0; karar `TEMİZ`.
+     - Böylece aynı bakiyenin iki eşzamanlı siparişte harcanamadığı gerçek veritabanında, iki ayrı bağlantıyla doğrulandı. (Uygulama yolu `create_order` üzerinden değil: fonksiyon API'ye kapalı ve `create_order` demo olmayan siparişi hâlâ reddediyor; betikler `create_order`'ın aynı adımlarını tek işlemde uygular.)
+   - SQL Editor betikleri: `supabase/tests/0011_concurrency/`.
+     - Açık işlem çalıştırmalar arasında taşınamadığı için her sekme tek çalıştırmada biter; A sekmesi kilidi `pg_sleep(20)` ile tutar.
+     - Her betik önce ortam işaretinin `test` olduğunu kontrol eder; değilse durur.
+     - Yalnızca `fpc-eszamanlilik@example.invalid` üyesi, ona ait müşteri satırı ve `FPC-TEST-A` / `FPC-TEST-B` siparişleri kullanılır; mevcut üyelere dokunulmaz.
+     - Test sürerken Merkez'in sipariş listesinde `FPC-TEST-A` (bekliyor, demo değil) görünür; temizlikle silinir.
+   - Sıra:
+     1. `1_kurulum.sql`: test üyesi + 100 puan (Merkez düzeltmesi). Beklenen: `kullanilabilir_puan` 100.
+     2. `2_sekme_a.sql` (Sekme A): demo olmayan `FPC-TEST-A` + 80 puan rezervasyonu; kilidi 20 sn tutar. Beklenen: `ayirdi_80`.
+     3. `3_sekme_b.sql` (Sekme B, A'nın ilk 20 sn'sinde): aynı üye için 80 puan. Beklenen: `insufficient_points`, `kilit_bekleme_sn` ≥ 1, karar `GEÇTİ`; B'nin siparişi geri alınır. `TEKRARLA` → 5, 1, 2, 3.
+     4. `4_dogrulama.sql`: 1 sipariş, 1 rezervasyon, 1 `REDEEM`, kullanılabilir 20, parti kalanı = defter toplamı = 20, borç 0. Beklenen: `GEÇTİ`.
+     5. `5_temizlik.sql`: puan hesabı (parti, hareket, rezervasyon zincirleme) → `FPC-TEST-*` siparişleri → test müşterisi → test üyesi. Beklenen: `TEMİZ`.
+   - Betikler geçici yerel Postgres'te (PGlite) sırayla denendi: kurulum, ikinci kurulumun reddi, A → B (`insufficient_points`), doğrulama `GEÇTİ`, temizlik `TEMİZ` (iki tur); ters sıra; başka üyenin 50 puanı değişmedi; `production` işaretinde betikler durdu.
+   - PGlite tek bağlantılı olduğu için bu deneme eşzamanlılığın kanıtı **değildir**. Kanıt, yukarıdaki gerçek proje sonucudur (Sekme B 17,7 sn bekledi, `GEÇTİ`; doğrulama koşulları sağlandı).
+5. ✅ Admin "Funda Puan" (local uygulama + gerçek test projesi, 2026-10-13; yalnız bu test için oluşturulan üye, sonunda silindi):
+   - Merkez: gerekçeli +100 → 200 (bakiye 100); aynı `requestId` tekrarı bir kez uygulandı; gerekçesiz 400; bakiyeden fazla düşüş 409; detayda düzeltmeyi yapan ve gerekçe görünür.
+   - GOP: puan detayı ve düzeltme API'si 403; `/admin?section=funda-puan` bölümü çizmez, menüde Funda Puan bağlantısı yok; denemeler bakiyeyi değiştirmedi. Oturumsuz API 401.
+   - Boş durum metni Merkez'de görünür.
+   - Mevcut üyelerin bakiyelerine dokunulmadı; test üyesi ve tüm satırları silindi (profil, hesap, parti, hareket, rezervasyon: 0).
+   - **2. tur (2026-10-13, local derlenmiş sürüm + gerçek `funda1959-test`; yeni test üyesi, sonunda silindi): 22/22.**
+     - Merkez: gerekçeli +25 → yeni parti, süresi 1 yıl (365/366 gün); hareket gerekçe ve admin adıyla kayıtlı; aynı `requestId` bir kez uygulandı; −5 → 20; −999 → 409; gerekçesiz → 400; liste test üyesini gösterdi.
+     - GOP: detay 403, düzeltme 403, bölüm çizilmedi.
+     - Başka üyelerin puan hesapları ve partileri değişmedi; yeni defter satırlarının hepsi (3) test üyesine ait.
+6. ✅ `/hesabim/puanlarim` (test üyesi oturumu): 200, "Funda Puan henüz etkin değil" notu, bakiye 30; admin adı ve gerekçe görünmez; oturumsuz istek girişe yönlenir (307). Puan isteyen teklif (`/api/orders/quote`) 409 (D41). Kazanım ve kullanım kapalı kaldı.
+   - 2. tur: bakiye 20, son kullanma tarihi ve "Merkez düzeltmesi" hareketi görünür; admin adı ve gerekçe görünmez; başka bir üye bu puanları görmez. Puanlı teklif ve sipariş 409 `POINTS_DISABLED` (sipariş yazılmadı); checkout'ta puan alanı yok.
+7. Kod commit'i ve Preview — **commit + push yapıldı (2026-10-13), Preview kontrolleri yapılmadı.**
+   - Aşama 6 kodu, `0011`, SQL testleri ve eşzamanlılık betikleri `51c0028` ile `supabase-test` dalına pushlandı (yalnız bu dal; `main` ve Production değişmedi, migration çalıştırılmadı).
+   - Commit öncesi local: `tsc` temiz, `eslint` 0 hata, `next build` başarılı; `verify-funda-points` 44/44, `verify-accounts` 86/86, `verify-orders`, `verify-fulfillment`, `verify-prices` geçti.
+   - Preview'da yapılacaklar (henüz yapılmadı): `/api/health` `0011` 6/6; Merkez Funda Puan ekranı ve gerekçeli düzeltme; GOP 403; `/hesabim/puanlarim` "henüz etkin değil"; puanlı teklif 409 `POINTS_DISABLED`; checkout'ta puan alanı yok.
+8. **Aşama 9'a (ödeme) bırakılanlar:**
+   - `isFundaPointsActive()` → `true` (kod değişikliği + ayrı onay);
+   - `create_order`'ın demo olmayan sipariş kabulü;
+   - `complete_order_payment` / `fail_order_payment` çağrılarının ödeme sağlayıcısına bağlanması;
+   - `release_expired_point_reservations` (ör. 5 dakikada bir) ve `expire_funda_points` (günlük) için pg_cron zamanlaması.
+
 ---
 
 ## 8. Uygulama sırası ve testler
@@ -1022,7 +1090,7 @@ Aşamalar bağımlılık sırasındadır ve **tek tek** uygulanır; her biri ayr
 | **3. Teslimat ücreti + minimum sipariş** | `0008_delivery_zone_fees.sql`; `lib/order-rules.ts` (500 TL); `lib/delivery/fees.ts` + `fees-server.ts` (Supabase / local dosya / sunucusuz ortamda kullanılamaz); motor (`DELIVERY_FEE_NOT_SET`, `DELIVERY_INFO_UNAVAILABLE`); `lib/order-server.ts` (ücret + `BELOW_MINIMUM`, 503); `api/orders` (önceki siparişi istek kimliğiyle önce bulur), `api/orders/quote`, `api/availability`; `PATCH /api/admin/delivery-fees` (yalnızca Merkez); admin "Bölgeler" + `DeliveryFeeEditor`; `formatTL` kuruş; sepet / hızlı sipariş / checkout minimum (`DeliveryMinimumNotice`) ve sunucudan ücret (`POST /api/delivery-fee`, `useDeliveryFee`, `OrderTotals`); checkout'ta kayıtlı adresin ilk açılışta kontrolü; ödeme ekranında demo butonu yalnızca geçerli tutar hesabıyla; PDP ve ödeme özeti ücret durumu; `zones.ts`'ten örnek ücret ve minimumlar kaldırıldı; `/api/health` `0008`; `scripts/test-fee-store.ts`, `verify-orders`, `verify-fulfillment` | 2; D14, D15 | **Tamamlandı (2026-10-10)**: `0008` test projesinde; local + gerçek `funda1959-test` (57/57 sunucu + RPC, 24/24 ekran, 33/33 ücret düzenleyici, 33/33 sepet → checkout → ödeme → sipariş) ve Preview (`63331f7`; `FND-20261010-4866` ₺540 + ₺230 = ₺770, admin'de görünüyor) doğrulandı (§7.6 "Aşama 3 kurulum kontrolü") | Ücreti belirlenmemiş bölgeye adrese teslim alınmaz, ücretsiz kabul edilmez; gel-al çalışır. Açıkça ücretsiz bölge 0 TL. Kuruşlu ücret yuvarlanmadan. Ücret okunamazsa "Teslimat bilgisi şu an alınamıyor". 499,99 reddedilir, 500 kabul edilir; indirimle altına düşen reddedilir; gel-al muaf. Şube ücret yazamaz (403). Tekrarlanan istek ikinci sipariş oluşturmaz; ücret sonradan değişse de eski sipariş korunur. |
 | **4. Fiyat yönetimi** | `0009_product_prices.sql` (tablo + `create_order` v5); `lib/pricing/{prices,prices-server,prices-context,use-cart-prices}`; `lib/order-server.ts` ve motor aynı çözücü; `api/prices` (GET gösterim, POST sepet), `PATCH /api/admin/prices` (yalnızca Merkez); admin "Fiyatlar" (`ProductPricesTable`, `ProductPriceEditor`); fiyat gösteren sayfalar istek anında + `PricesProvider`; kart, hızlı sipariş, arama ve sıralama güncel fiyat; sepet / hızlı sipariş / checkout satır fiyatları sunucudan; `/api/health` `0009`; `scripts/verify-prices.ts`, `test-price-store.ts`. Teslimat Bölgeleri tablosu da istemci bileşeni (`ZoneFeesTable`) | 0 | **`0009` `funda1959-test`'te; local (mock e2e 255/255, tarayıcı 39/39 + 30/30, `verify-prices` 61/61) ve gerçek test Supabase'i (58/58) doğrulandı (2026-10-12)**; kararlar D16–D21 işlendi; **pushlandı (`04d7f43`, `5c73517`)**; Preview'da yalnızca Macaron fiyat eşleşmesi ve açılır boyut ekranı doğrulandı, diğer Preview kontrolleri bekliyor → §7.6 "Aşama 4 kurulum kontrolü" | Merkez fiyatı değiştirir; şube hesabı 403. Yeni fiyat katalogda, PDP'de, aramada, hızlı siparişte, sepette, checkout'ta, ödeme hesabında ve siparişte aynı. Eski siparişlerin kalemleri değişmez. Bilinmeyen ürün/varyant reddedilir. Fiyat okunamazsa sipariş ve ödeme hesabı 503. Kayıt sonrası admin tablosu hemen güncel; başarısız kayıt başarı göstermez. Kart en küçük boyutun fiyatını ("başlayan" ifadesi olmadan), ürün sayfası seçilen boyutun fiyatını gösterir. Her boyut ayrı düzenlenir, diğer boyutlar değişmez (D20). Eski fiyat yalnızca belirlenmiş ürün veya boyutta: Trüf kartı ₺260, 12'li seçilince ₺520 ~~₺580~~ (D21). |
 | **5. Müşteri üyeliği** | Ayrıntı §8.2. `0010`; Supabase Auth sunucuda (`@supabase/ssr` + `@supabase/supabase-js` [V]); e-posta + şifre ve Google (Apple, Facebook kurulunca); `lib/auth.ts`, `lib/account-service.ts`, `/giris`, `/uye-ol`, `/sifremi-unuttum`, yeni `/sifre-yenile` ve `/uyelik-tamamla`, `/hesabim/*`; checkout'ta profil ve kayıtlı adres; `src/proxy.ts`; `SUPABASE_ANON_KEY` | 2; D22–D29; gerçek müşteriye açılış için A24 (metinler) + ayrı onay | **Temel akışlar local ve Preview'da doğrulandı; kalan kontroller ertelendi (2026-10-12)**: `c6f1292` Preview'da Ready; kullanıcının local ve Preview testleri; local otomatik 38/38 (gerçek test projesi). Ertelenen ve açık kalan kontroller §7.6 "Aşama 5 durumu". D30 (diğer oturumlar Supabase davranışı). Google engelli (A25) | Üye olur (metinler yayımlanınca), girer (e-posta veya Google), çıkar, şifresini e-postayla sıfırlar; profil ve en fazla 10 adres yönetir; yalnızca girişliyken verdiği siparişleri görür, başkasınınkini göremez. Misafir sipariş, admin girişleri ve yetkileri değişmez; Funda Puan kapalı. |
-| **6. Funda Puan** | `0011`; puan RPC'leri; `lib/funda-points/*` (DB, partiler); Hesabım puan ekranı; admin ekranı DB'den; checkout'ta puan kullanımı | 5; §9 puan soruları | Bekliyor | 5.000 TL → 500 puan, sipariş sonrası hemen görünür. Teslimat ücreti puana girmez. Puanlı siparişte kazanım yok (onaylanan kapsamla). Her parti 1 yıl, yeni alışveriş uzatmaz. İptal/iadede geri alma + iade. Tekrarlanan istekte tek hareket. Yalnızca online kullanım. |
+| **6. Funda Puan** | Ayrıntı §8.3. `0011`; `lib/funda-points/*` (defter veritabanında); Hesabım `/hesabim/puanlarim`; admin ekranı veritabanından; checkout puan altyapısı (kapalı); `lib/orders/payment.ts` | 5; D31–D41 | **`51c0028` ile `supabase-test`'e pushlandı; Preview kontrolleri yapılmadı.** `0011` ve SQL testi `funda1959-test`'te kullanıcı tarafından çalıştırıldı, başarılı (2026-10-13); local + gerçek test projesi kontrolleri ve iki oturumlu rezervasyon testi geçti (§7.6). Kazanım ve kullanım kapalı (D41) | Ödeme onayında 1.000 TL − 200 puan → 80 puan; her parti 1 yıl; son kullanma sırasıyla tüketim; aynı bakiye iki kez harcanamaz; iptalde iade (süresi dolmuş hariç) ve geri alma (borç); tekrar korumalı; demo sipariş puan alamaz/harcayamaz; Merkez düzeltmesi gerekçeli; şube yetkisiz. |
 | **7. Instagram** | `0012`; `lib/social/*` DB deposu; (Storage kararına göre yükleme) | 0; içerik kaynağı kararı | Bekliyor | Admin değişikliği yenileme sonrası korunur. |
 | **8. İletişim talepleri** | `0013`; `app/iletisim/page.tsx` → `POST /api/contact`; admin listesi | 0; iletim/KVKK kararı | Bekliyor | Talep kaydedilir; tekrar gönderim çift kayıt üretmez. |
 | **9. Ödeme entegrasyonu** | Sağlayıcı seçilince ayrı plan; `paid` yalnızca sağlayıcı doğrulamasıyla; puan kullanımı ödemeyle birleşir | 2, 3; sağlayıcı kararı | **Atlandı (D8)** | Sonrasında §6.1 kapısı ayrıca onaylanır. |
@@ -1187,11 +1255,84 @@ Gerçek Supabase'ten önce yapılan kontroller:
 - **Değişmeyenler:** misafir checkout aynen çalışır; admin girişleri ve yetkileri aynı kalır; Funda Puan hareketi yazılmaz.
 - **Yanlış proje:** yanlış veya işaretsiz projede Auth ve hesap API'leri 503 döner; Supabase'e veri isteği gitmez.
 
+### 8.3 Aşama 6: Funda Puan (D9, D31–D41)
+
+Durum (2026-10-13):
+
+- **Kod `51c0028` ile `supabase-test` dalına pushlandı (2026-10-13); Preview kontrolleri yapılmadı.** `main` ve Production değişmedi.
+- `0011_funda_points.sql` ve `0011_funda_points_test.sql` `funda1959-test`'te **kullanıcı tarafından çalıştırıldı**; ikisi de "Success. No rows returned" (2026-10-13). Production'a uygulanmadı.
+- Local uygulama + gerçek test projesi kontrolleri geçti (§7.6 Aşama 6, adım 2, 5, 6). İki oturumlu rezervasyon testi gerçek test projesinde geçti (adım 4: B 17,7 sn bekledi, `insufficient_points`, `GEÇTİ`; temizlik `TEMİZ`).
+- **Kazanım ve kullanım kapalı** (D41, `isFundaPointsActive()` = `false`).
+- Paket değişikliği yok.
+
+**Tasarım**
+
+- **Kuralların tek yeri veritabanı.** Partiler, 1 yıl, son kullanma sırası, rezervasyon, bırakma/iade, geri alma ve borç, tekrar koruması `0011` fonksiyonlarında (§2.3). Uygulama yalnızca gösterim hesabı (`rules.ts`), kapı (`config.ts`) ve çağrı (`store.ts`, `service.ts`) içerir.
+- **Çift harcama yok.** Her puan işlemi üyenin hesap satırını kilitler. Puan, sipariş oluşturulurken aynı işlemde partilerden alınır; yetmezse sipariş oluşmaz.
+- **Ödeme bekleyen sipariş:**
+  - Puan `reserved` olur (30 dk). Ödeme onayında `captured` olur ve kazanım yazılır.
+  - Ödeme başarısız, süre doldu ya da ödemeden önce iptal edildiyse puan aynı partilere döner (`released`).
+  - Ödemeden sonra iptalde iade (`refunded`) ve kazanımın geri alınması.
+  - Süre dolduktan sonra gelen ödeme onayı reddedilir (`points_reservation_not_active`); ödeme sağlayıcısı akışı bunu iade/iptalle karşılamalı (Aşama 9).
+- **Tutarlar sunucuda.**
+  - Tarayıcıdan gelen bakiye, kazanım ve kullanıcı kimliği yok sayılır: kimlik oturumdan, bakiye veritabanından.
+  - Sipariş toplamı = ara toplam − indirim − puan + teslimat.
+  - Minimum puandan önce (D35).
+- **Demo siparişler:** `create_order` demo siparişte puanı reddeder; demo sipariş ödenemez ve kazanmaz; tablo kısıtı da engeller. Test verisi ortam işaretiyle ayrı projede kalır.
+- **Hesap anahtarı:** telefon numarası yerine üyenin Supabase kimliği (`auth_user_id`).
+- **Admin:** uydurma müşteriler kaldırıldı; boş durum; gerekçeli ve admin adıyla düzeltme; şube 403 (uygulama + veritabanı).
+
+**Dosyalar**
+
+- **Yeni:**
+  - `supabase/migrations/0011_funda_points.sql`, `supabase/tests/0011_funda_points_test.sql`
+  - `supabase/tests/0011_concurrency/{1_kurulum,2_sekme_a,3_sekme_b,4_dogrulama,5_temizlik}.sql` (SQL Editor, iki sekme)
+  - `src/lib/funda-points/{rules,store}.ts`, `src/lib/orders/payment.ts`
+  - `src/app/hesabim/puanlarim/page.tsx`, `src/components/account/PointsView.tsx`, `src/components/checkout/FundaPointsRedeem.tsx`
+- **Değişen:**
+  - `src/lib/funda-points/{config,types,service,index}.ts`
+  - Sipariş akışı: `lib/order.ts`, `lib/order-server.ts`, `lib/orders/engine.ts`, `app/api/orders/route.ts`, `app/api/orders/quote/route.ts`
+  - Admin: `app/api/admin/funda-points/route.ts`, `app/admin/page.tsx`, `components/admin/AdminFundaPoints.tsx`
+  - Checkout ve özetler: `components/checkout/{CheckoutPage,CheckoutSummary}.tsx`, `components/cart/OrderTotals.tsx`, `components/payment/PaymentSummary.tsx`
+  - Hesabım: `components/account/AccountNav.tsx`, `lib/account-service.ts`, `lib/customer-auth/next.ts`
+  - Diğer: `lib/persistence.ts`, `lib/order-rules.ts`, `app/api/health/route.ts`, `src/proxy.ts` (`/api/orders/quote`), `scripts/verify-{funda-points,orders}.ts`
+- **Silinen:** `src/lib/funda-points/{mock,repository}.ts`.
+- **Dokunulmayan:** ana sayfa "Funda Puan %10" posteri, Google/Apple/Facebook (kapalı), Production engelleri, admin hesapları, misafir checkout.
+
+**Doğrulama (2026-10-12)**
+
+- **`0011` SQL testi: 65/65** — geçici yerel Postgres 18 (PGlite, WASM), Supabase değil.
+  - `auth.users` ve API rolleri taslak olarak kuruldu; `0001`–`0011` iki kez sorunsuz çalıştı.
+  - Kapsam:
+    - kazanım hesabı (1.000 − 200 puan → 80; 785 → 78; 598,80 → 59; teslimat hariç; mağaza ve misafir kazanmaz);
+    - 1 yıl süre; son kullanma sırası; ödemeden önce iptalde bırakma (aynı partiler, aynı tarih);
+    - çift harcama reddi; süresi dolmuş partiye iade yok;
+    - geri alma → borç (−80), Merkez eklemesi ve sonraki kazanım borcu kapatır;
+    - ödemeden sonra iptalde iade + geri alma;
+    - tekrar koruması (ödeme, kazanım, düzeltme, geri alma, süre dolumu);
+    - başarısız ödeme ve süresi dolan rezervasyon;
+    - tamamı puanla ödeme;
+    - demo, sınır ve admin korumaları; defterin değiştirilemezliği;
+    - okuma ve defter değişmezleri.
+- **`verify-funda-points`: 44/44** — kurallar, kapalı anahtar, açık yolda sunucu kontrolleri (üyelik, ürün sınırı, bakiye, tarayıcı değerlerinin yok sayılması, minimumun puandan önce olması), veritabanı çağrılarında kimliğin oturumdan alınması, Merkez imzası, şube reddi, `0011` yok, yanlış proje.
+- **Mevcut betikler:** `verify-orders` 74, `verify-accounts` 86/86, `verify-fulfillment` 34, `verify-prices` 61, `verify-campaign-persistence` 9.
+- **Derleme:** `tsc` temiz, `eslint` hatasız, `next build` başarılı.
+- **Derlenmiş sürüm + gerçek `funda1959-test` (`0011` yok, salt okunur + bir test hesabıyla giriş): 11/11.**
+  - health `0001`–`0010` ok, `0011` 6 kontrol "missing";
+  - admin "tablolar henüz kurulmadı", uydurma müşteri yok; düzeltme 503 (hiçbir şey yazılmadı);
+  - GOP 403; üye `/hesabim/puanlarim` "henüz etkin değil" ve 0 puan; oturumsuz → `/giris`;
+  - puanlı teklif 409 `POINTS_DISABLED`, puansız teklif değişmedi; checkout'ta puan alanı yok.
+- **Gerçek `funda1959-test` (2026-10-13, `0011` uygulandıktan sonra):** `0011` ve SQL testi kullanıcı tarafından çalıştırıldı, başarılı; local uygulama kontrolleri 1. tur 28/28, 2. tur 22/22 (§7.6). Eşzamanlılık betikleri önce PGlite'ta sırayla denendi (kanıt değil), sonra kullanıcı tarafından gerçek projede iki sekmede çalıştırıldı ve geçti (§7.6 adım 4).
+- **Yapılmayanlar:**
+  - tarayıcıda ekran testi;
+  - Preview kontrolleri (§7.6 adım 7);
+  - kazanım/kullanımın gerçek ödemeyle uçtan uca denenmesi (Aşama 9).
+
 ---
 
 ## 9. Açık kararlar
 
-D1–D30 netleşti. Aşağıdakiler **hâlâ açık** ve onaylanmış sayılmaz. Koddan çıkarılabilen konular (şube listesi, çalışma saatleri, bölge mahalleleri, saatlik aralıklar, hazırlık süreleri, %10 oranı) sorulmuyor.
+D1–D41 netleşti. Aşağıdakiler **hâlâ açık** ve onaylanmış sayılmaz. Koddan çıkarılabilen konular (şube listesi, çalışma saatleri, bölge mahalleleri, saatlik aralıklar, hazırlık süreleri, %10 oranı) sorulmuyor.
 
 | # | Konu | Neden önemli |
 |---|---|---|
@@ -1206,13 +1347,13 @@ D1–D30 netleşti. Aşağıdakiler **hâlâ açık** ve onaylanmış sayılmaz.
 | **A25** | **Google girişi:** e-posta doğrulaması kapalıyken (D23) Supabase aynı e-postalı Google girişini mevcut şifreli hesaba otomatik bağlıyor ve bunu kapatan belgelenmiş ayar yok; şifre geçersizleştirme ve toplu oturum kapatma istenmedi (D29). Seçenekler: (1) "Confirm email" açılsın, (2) Google yalnızca şifreli hesabı olmayan e-postalara — ayrı tasarım ve test, (3) Google'sız devam. | Karara kadar Google kodda ve Supabase panelinde kapalı (§8.2). Apple/Facebook için de aynı soru geçerli. |
 | ~~A3~~ | **Kararlaştırıldı → D14 (2026-10-10).** Adrese teslim 500 TL, ürün toplamı − indirim, teslimat ücreti hariç; gel-al muaf. | — |
 | **A4** | **Bölgeler ve ücret tutarları:** ücret mekanizması kararlaştırıldı (D15); **bölge/mahalle listeleri ve bölge başına ücret tutarları henüz onaylanmadı.** Mevcut listeler test amaçlı. | Merkez ücret girene kadar o bölgeye adrese teslim kapalı (D15). |
-| **A5** | **Misafir siparişleri:** sonradan üyeliğe bağlanacak mı? Misafir puan kazanacak mı (telefonla mı)? (D7'de açık) | Aşama 5'te otomatik bağlama yapılmaz (D25). Karar gelene kadar misafire puan verilmez. |
-| **A6** | **Puan kullanılan sipariş:** hiç puan kazanmaz mı (kararın lafzı), yoksa yalnızca puanla ödenen kısım mı? Bugünkü kod puanla ödenen tutarı kazanımdan düşüyor (kısmi) **[K]**. | Kazanım formülü. |
-| **A7** | **İade edilen harcanmış puanın süresi:** orijinal kazanım tarihi mi korunur, yoksa iade tarihinden itibaren 1 yıl mı? Süresi zaten dolmuşsa? | Parti iadesi. |
-| **A8** | **İptal anında kazanılan puan zaten harcanmışsa:** bakiye eksiye düşebilir mi; düşülemeyen kısım ne olur? Kısmi iadede puan oransal mı geri alınır? | `reverse_order_points` kuralı. |
-| **A9** | **Puanla ödenebilecek kalemler:** teslimat ücreti puanla ödenebilir mi? Bir siparişte kullanılabilecek üst sınır var mı? Puan tutarın tamamını karşılarsa ödeme sağlayıcısı olmadan sipariş tamamlanabilir mi? | Aşama 6 ve 9. |
+| ~~A5~~ | **Puan kısmı kararlaştırıldı → D31 (2026-10-12):** misafir puan kazanmaz; misafir siparişleri otomatik bağlanmaz (D25). Misafir siparişlerinin sonradan **elle** bağlanması istenirse ayrıca karar. | — |
+| ~~A6~~ | **Kararlaştırıldı → D33 (2026-10-12).** Kazanım, kullanılan puan düşüldükten sonraki ürün tutarı üzerinden. | — |
+| ~~A7~~ | **Kararlaştırıldı → D38 (2026-10-12).** İade orijinal son kullanma tarihiyle; süresi dolmuş puan geri gelmez. | — |
+| ~~A8~~ | **Kararlaştırıldı → D39 (2026-10-12).** Harcanmış kazanım geri alınınca borç; sonraki kazanımlar kapatır; kullanılabilir bakiye sıfırın altına düşmez. Kısmi iade bugün yok (iptal tam). | — |
+| ~~A9~~ | **Kararlaştırıldı → D36, D37 (2026-10-12).** Teslimat ücreti puanla ödenmez; ürün tutarının tamamına kadar; tamamı puanla ödenen sipariş sunucuda tamamlanır, sipariş engelini aşamaz. | — |
 | ~~A10~~ | **Kararlaştırıldı → D13 (2026-10-10).** Demo siparişler bellek dahil hiçbir depoda puan kazandırmaz; gerçek puan kazanımı Aşama 6'ya kadar etkin değil. | — |
-| **A13** | **Puan kullanımının minimuma etkisi:** adrese teslimde 500 TL minimum (D14) puan düşülmeden önce mi sonra mı hesaplanır? | Aşama 6 (puan kullanımı). Puan işlemleri o zamana kadar kapalı. |
+| ~~A13 (puan)~~ | **Kararlaştırıldı → D35 (2026-10-12).** 500 TL minimum puandan önceki indirimli ürün toplamına göre. | — |
 | ~~A11~~ | **Kararlaştırıldı → D22 (2026-10-12).** E-posta + şifre ve Google; Apple ve Facebook kurulunca; Instagram yok; yapılandırılmamış sağlayıcının butonu gösterilmez. | — |
 | ~~A12~~ | **Kararlaştırıldı → D12 (2026-10-10).** Şube kendi şubesinde ilerletir ve iptal eder; Merkez tüm şubelerde; iptalde gerekçe zorunlu ve kayıtlı; teslim edilmiş sipariş iptali ve iade bu aşamada yok. | — |
 | **A13** | **Kampanya tarihleri ve koşulları:** "3 Al 2 Öde", "İlk online siparişe %15" gibi kurallar sepette uygulanacak mı, yoksa kampanyalar bilgilendirme mi kalacak? Bugün indirim mantığı yok **[K]**. Admin'den poster yükleme gerekli mi? | İndirim alanı, puan tabanı (indirim düşülür), Storage. |
