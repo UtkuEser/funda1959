@@ -1,6 +1,6 @@
 # Funda 1959 — Supabase'e Geçiş Planı
 
-> **Durum:** Planlama dokümanı + Aşama 0 uygulaması. Ortam/yönetim kararları (D1–D4) ve iş kararları (D5–D11) işlendi. Aşama 0 kodu ve `0006` hazır (2026-10-10). `funda1959-test` kuruldu (`0001`–`0006` + `test` işareti); `supabase-test` dalı (`e897090`) Vercel Preview'da. **Aşama 1 Preview'da doğrulandı (2026-10-10).** **Aşama 2 tamamlandı (2026-10-10): `0007` `funda1959-test`'e uygulandı; local + gerçek test Supabase ve Preview doğrulaması geçti (`2c75944`).** **Aşama 3 tamamlandı (2026-10-10, `63331f7`; Preview doğrulandı).** **Aşama 4: `0009` `funda1959-test`'e uygulandı, gerçek test Supabase kontrolleri geçti; kod `supabase-test` dalına pushlandı (`04d7f43` fiyat yönetimi, `5c73517` ürün başına tek satır + açılır boyut düzenleme). Preview'da yalnızca Macaron fiyat eşleşmesi ve açılır boyut ekranı doğrulandı; diğer Preview kontrolleri yapılmadı (2026-10-12).** **Aşama 5 (müşteri üyeliği): `c6f1292` `supabase-test`'e pushlandı ve Preview'da Ready; `0010` `funda1959-test`'te; kullanıcının local ve Preview testleri ile local otomatik kontroller (38/38) geçti; temel akışlar local ve Preview'da doğrulandı, kalan kontroller ertelendi (2026-10-12). Google ve Funda Puan kapalı; özel SMTP sonraya bırakıldı.** **Aşama 6 (Funda Puan): `0011` ve `0011_funda_points_test.sql` `funda1959-test`'te kullanıcı tarafından çalıştırıldı, ikisi de başarılı (2026-10-13). Local uygulama + gerçek test projesinde health, admin düzeltmesi, müşteri görüntüleme, GOP engeli, kapalı kullanım ve API üzerinden eşzamanlı düşüş doğrulandı (1. tur 28/28, 2. tur 22/22). İki oturumlu rezervasyon eşzamanlılığı gerçek test projesinde SQL Editor'da geçti (B 17,7 sn bekledi, `insufficient_points`; tek rezervasyon, kalan 20, borç 0; temizlik `TEMİZ`). Kod, `0011` ve testler `51c0028` ile `supabase-test`'e pushlandı; Preview kontrolleri yapılmadı. Kazanım ve kullanım kapalı (D41).** Production projesi kurulmadı; `main` (`60355bf`) ve Production değişmedi.
+> **Durum:** Planlama dokümanı + Aşama 0 uygulaması. Ortam/yönetim kararları (D1–D4) ve iş kararları (D5–D11) işlendi. Aşama 0 kodu ve `0006` hazır (2026-10-10). `funda1959-test` kuruldu (`0001`–`0006` + `test` işareti); `supabase-test` dalı (`e897090`) Vercel Preview'da. **Aşama 1 Preview'da doğrulandı (2026-10-10).** **Aşama 2 tamamlandı (2026-10-10): `0007` `funda1959-test`'e uygulandı; local + gerçek test Supabase ve Preview doğrulaması geçti (`2c75944`).** **Aşama 3 tamamlandı (2026-10-10, `63331f7`; Preview doğrulandı).** **Aşama 4: `0009` `funda1959-test`'e uygulandı, gerçek test Supabase kontrolleri geçti; kod `supabase-test` dalına pushlandı (`04d7f43` fiyat yönetimi, `5c73517` ürün başına tek satır + açılır boyut düzenleme). Preview'da yalnızca Macaron fiyat eşleşmesi ve açılır boyut ekranı doğrulandı; diğer Preview kontrolleri yapılmadı (2026-10-12).** **Aşama 5 (müşteri üyeliği): `c6f1292` `supabase-test`'e pushlandı ve Preview'da Ready; `0010` `funda1959-test`'te; kullanıcının local ve Preview testleri ile local otomatik kontroller (38/38) geçti; temel akışlar local ve Preview'da doğrulandı, kalan kontroller ertelendi (2026-10-12). Google ve Funda Puan kapalı; özel SMTP sonraya bırakıldı.** **Aşama 6 (Funda Puan): `0011` ve `0011_funda_points_test.sql` `funda1959-test`'te kullanıcı tarafından çalıştırıldı, ikisi de başarılı (2026-10-13). Local uygulama + gerçek test projesinde health, admin düzeltmesi, müşteri görüntüleme, GOP engeli, kapalı kullanım ve API üzerinden eşzamanlı düşüş doğrulandı (1. tur 28/28, 2. tur 22/22). İki oturumlu rezervasyon eşzamanlılığı gerçek test projesinde SQL Editor'da geçti (B 17,7 sn bekledi, `insufficient_points`; tek rezervasyon, kalan 20, borç 0; temizlik `TEMİZ`). Kod, `0011` ve testler `51c0028` ile `supabase-test`'e pushlandı; Merkez araması düzeltmesi `5e8b814` (puan hesabı olmayan üye de bulunur; local tarayıcı testi 34/34). Preview kontrolleri yapılmadı. Kazanım ve kullanım kapalı (D41).** Production projesi kurulmadı; `main` (`60355bf`) ve Production değişmedi.
 > **Çalışma klasörü:** `funda1959-supabase-test` — GitHub `supabase-test` dalının ZIP'i (`.git` yok; önceki yerel klasör silindi). Plan ilk olarak `funda1959-git` — son commit `60355bf` + commit edilmemiş değişiklikler — üzerinde hazırlandı (bkz. §8).
 > **Kapsam:** Site ve admin paneli aynı Next.js projesinde kalır; ayrıştırma kapsam dışıdır.
 > **Son güncelleme:** 2026-10-13
@@ -106,7 +106,7 @@
 - **Sıradaki:**
   - Aşama 4 (fiyat yönetimi): fiyat kararları D16–D21 işlendi; her boyutun fiyatı ayrı düzenlenebilir (47 fiyat), p13 kartı ₺260. `0009` `funda1959-test`'e uygulandı; local ve gerçek test Supabase kontrolleri geçti (2026-10-12, §7.6). Kod pushlandı (`04d7f43`, `5c73517`); Preview'da yalnızca Macaron fiyat eşleşmesi ve açılır boyut ekranı doğrulandı. Kalan Preview kontrolleri bekliyor (§7.6 "Aşama 4 kurulum kontrolü", adım 4),
   - Aşama 5 (müşteri üyeliği): temel akışlar local ve Preview'da doğrulandı, kalan kontroller ertelendi ve açık (§7.6 "Aşama 5 durumu"); D30 kabul edildi.  Google engeli kararı bekliyor (A25),
-  - Aşama 6 (Funda Puan): kararlar D31–D41; `0011` ve SQL testi `funda1959-test`'te kullanıcı tarafından çalıştırıldı ve geçti (2026-10-13); local + gerçek test projesi kontrolleri ve iki oturumlu rezervasyon eşzamanlılığı geçti (§7.6 "Aşama 6 kurulum kontrolü"). Kod `51c0028` ile `supabase-test`'e pushlandı; sırada Preview kontrolleri. Kazanım/kullanım ödeme entegrasyonuna (Aşama 9) kadar kapalı,
+  - Aşama 6 (Funda Puan): kararlar D31–D41; `0011` ve SQL testi `funda1959-test`'te kullanıcı tarafından çalıştırıldı ve geçti (2026-10-13); local + gerçek test projesi kontrolleri ve iki oturumlu rezervasyon eşzamanlılığı geçti (§7.6 "Aşama 6 kurulum kontrolü"). Kod `51c0028` ile `supabase-test`'e pushlandı; Preview'da bulunan arama hatası (puan hesabı olmayan üye bulunamıyordu) `5e8b814` ile düzeltildi (local tarayıcı testi 34/34). Sırada Preview kontrolleri. Kazanım/kullanım ödeme entegrasyonuna (Aşama 9) kadar kapalı,
   - Production kurulumu (§7.6, adım 14) ayrı onayla; sipariş alımı kapalı kalır (§6.1).
 - **Kalan bilinen sorunlar [K]:**
   - Teslimat ücreti ve minimum (Aşama 3): ücret `delivery_zone_fees`'ten (D15), minimum 500 TL adrese teslimde (D14); `0008` test projesinde (2026-10-10), production'da yok. Bölge/mahalle listeleri ve test projesindeki ücretler test amaçlı, onaylı fiyat değil (A4).
@@ -1070,6 +1070,20 @@ Adımlar hazır ama engel kalkana kadar **uygulanmaz.** Engel kalkınca ayrıca 
    - Aşama 6 kodu, `0011`, SQL testleri ve eşzamanlılık betikleri `51c0028` ile `supabase-test` dalına pushlandı (yalnız bu dal; `main` ve Production değişmedi, migration çalıştırılmadı).
    - Commit öncesi local: `tsc` temiz, `eslint` 0 hata, `next build` başarılı; `verify-funda-points` 44/44, `verify-accounts` 86/86, `verify-orders`, `verify-fulfillment`, `verify-prices` geçti.
    - Preview'da yapılacaklar (henüz yapılmadı): `/api/health` `0011` 6/6; Merkez Funda Puan ekranı ve gerekçeli düzeltme; GOP 403; `/hesabim/puanlarim` "henüz etkin değil"; puanlı teklif 409 `POINTS_DISABLED`; checkout'ta puan alanı yok.
+   - **Preview bulgusu (2026-10-14, kullanıcı): Merkez Funda Puan araması, hiç puan hareketi olmayan mevcut üyeyi e-postasıyla bulmuyordu; ilk düzeltme başlatılamıyordu.**
+     - Neden: `list_funda_point_accounts` listeyi `funda_point_accounts`'tan başlatır (hesabı olmayan üye hiç gelmez); ekrandaki arama da yalnızca tarayıcıya yüklenmiş ilk 200 satırı süzüyordu.
+     - Düzeltme (`5e8b814`, migration yok): `GET /api/admin/funda-points?search=` (2–100 karakter, en fazla 50 sonuç). Hesabı olanlar bakiyeleriyle mevcut RPC'den, hesabı olmayanlar `customer_profiles`'tan salt okunur sorguyla 0 puanla gelir. Yalnızca Merkez (servis katmanı şubeyi istek göndermeden reddeder). Arama metninde `%`, `_`, virgül, parantez ve tırnak kaçışlanır. Arama ve detay hiçbir şey yazmaz; puan hesabı ilk düzeltme kaydedilince `adjust_funda_points` içinde oluşur. Düzeltme ve tekrar koruması değişmedi.
+     - Ekran: yazarken 300 ms sonra sunucuda arar; hareketi olmayan üyede "Son Hareket" "—"; ilk düzeltmeden sonra üye listede kalır, toplamlar sunucudan yenilenir.
+     - **Local derlenmiş sürüm + gerçek `funda1959-test`, Playwright tarayıcı testi (2026-10-14): 34/34.** Yalnız bu test için oluşturulan, puan hesabı olmayan üye:
+       - ilk listede yok; e-postasıyla arama → bulundu (0 puan, "—"); arama ve detay sonrası hesap/hareket/parti sayıları değişmedi;
+       - mevcut, puan hesabı olmayan bir üye e-postasıyla bulundu (yalnız okuma; o üyeye bir şey yazılmadı);
+       - +25 → bakiye 25, parti 25/25, hareket gerekçe ve admin adıyla; −25 → bakiye 0, kullanılabilir parti yok; liste satırı: kullanılabilir 0, toplam kazanılan 25;
+       - ilk +25 isteği aynı `requestId` ile yeniden → 200, bakiye 0 kaldı (tekrar koruması);
+       - veritabanında tam 2 hareket (`ADMIN_ADD` +25, `ADMIN_SUBTRACT` −25; `merkez`, admin adı, gerekçe, iş anahtarı = istek kimliği), 1 parti (1 yıl, kalan 0), borç 0; başka üyelere satır yazılmadı;
+       - oturumsuz arama 401, 1 karakter 400, GOP 403 ve arama kutusu çizilmedi; bu denemeler bir şey yazmadı;
+       - temizlik: test üyesi silindi (profil, hesap, hareket, parti: 0).
+     - `verify-funda-points` 49/49 (5 yeni arama kontrolü: hesabı olmayan üye bulunur, bakiye defterden, yalnız okuma, kaçış, şube reddi).
+     - Test projesinde o sırada 4 kayıtlı üye vardı, hiçbirinin puan hesabı yoktu. Preview'da mevcut üyeyle +25/−25 kontrolünü kullanıcı arayüzden yapacak — **henüz yapılmadı.**
 8. **Aşama 9'a (ödeme) bırakılanlar:**
    - `isFundaPointsActive()` → `true` (kod değişikliği + ayrı onay);
    - `create_order`'ın demo olmayan sipariş kabulü;
@@ -1260,6 +1274,7 @@ Gerçek Supabase'ten önce yapılan kontroller:
 Durum (2026-10-13):
 
 - **Kod `51c0028` ile `supabase-test` dalına pushlandı (2026-10-13); Preview kontrolleri yapılmadı.** `main` ve Production değişmedi.
+- **Merkez araması düzeltmesi `5e8b814` (2026-10-14, migration yok):** puan hesabı olmayan üye de aranıp ilk düzeltme yapılabiliyor; local + gerçek test projesinde tarayıcı testi 34/34 (§7.6 Aşama 6, adım 7 "Preview bulgusu").
 - `0011_funda_points.sql` ve `0011_funda_points_test.sql` `funda1959-test`'te **kullanıcı tarafından çalıştırıldı**; ikisi de "Success. No rows returned" (2026-10-13). Production'a uygulanmadı.
 - Local uygulama + gerçek test projesi kontrolleri geçti (§7.6 Aşama 6, adım 2, 5, 6). İki oturumlu rezervasyon testi gerçek test projesinde geçti (adım 4: B 17,7 sn bekledi, `insufficient_points`, `GEÇTİ`; temizlik `TEMİZ`).
 - **Kazanım ve kullanım kapalı** (D41, `isFundaPointsActive()` = `false`).
@@ -1280,7 +1295,7 @@ Durum (2026-10-13):
   - Minimum puandan önce (D35).
 - **Demo siparişler:** `create_order` demo siparişte puanı reddeder; demo sipariş ödenemez ve kazanmaz; tablo kısıtı da engeller. Test verisi ortam işaretiyle ayrı projede kalır.
 - **Hesap anahtarı:** telefon numarası yerine üyenin Supabase kimliği (`auth_user_id`).
-- **Admin:** uydurma müşteriler kaldırıldı; boş durum; gerekçeli ve admin adıyla düzeltme; şube 403 (uygulama + veritabanı).
+- **Admin:** uydurma müşteriler kaldırıldı; boş durum; gerekçeli ve admin adıyla düzeltme; şube 403 (uygulama + veritabanı). Arama sunucuda ve tüm kayıtlı üyelerde (puan hesabı olmayanlar dahil, salt okunur); puan hesabı ilk düzeltmede oluşur.
 
 **Dosyalar**
 
@@ -1323,9 +1338,9 @@ Durum (2026-10-13):
   - GOP 403; üye `/hesabim/puanlarim` "henüz etkin değil" ve 0 puan; oturumsuz → `/giris`;
   - puanlı teklif 409 `POINTS_DISABLED`, puansız teklif değişmedi; checkout'ta puan alanı yok.
 - **Gerçek `funda1959-test` (2026-10-13, `0011` uygulandıktan sonra):** `0011` ve SQL testi kullanıcı tarafından çalıştırıldı, başarılı; local uygulama kontrolleri 1. tur 28/28, 2. tur 22/22 (§7.6). Eşzamanlılık betikleri önce PGlite'ta sırayla denendi (kanıt değil), sonra kullanıcı tarafından gerçek projede iki sekmede çalıştırıldı ve geçti (§7.6 adım 4).
+- **Tarayıcı testi (2026-10-14, local + gerçek `funda1959-test`, Playwright):** Merkez araması ve ilk +25/−25 düzeltmesi 34/34 (§7.6 adım 7). Diğer ekranlar (Hesabım puanlarım, checkout) tarayıcıda otomatik denenmedi.
 - **Yapılmayanlar:**
-  - tarayıcıda ekran testi;
-  - Preview kontrolleri (§7.6 adım 7);
+  - Preview kontrolleri (§7.6 adım 7), mevcut üyeyle Preview'da +25/−25 (kullanıcı yapacak);
   - kazanım/kullanımın gerçek ödemeyle uçtan uca denenmesi (Aşama 9).
 
 ---
