@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { branches } from "@/lib/data";
 import { FadeIn } from "@/components/shared/FadeIn";
+import { ContactForm } from "@/components/contact/ContactForm";
+import { isContactFormOpen } from "@/lib/contact/config";
 
 export const metadata: Metadata = {
   title: "İletişim",
@@ -54,109 +56,12 @@ export default function IletisimPage() {
                   Mesaj Gönderin
                 </h2>
                 <p className="font-sans text-sm text-mocha mb-8">
-                  Sipariş talepleriniz veya sorularınız için formu doldurun, en kısa sürede dönüş yapalım.
+                  Sorularınız, özel gün ve kurumsal talepleriniz için formu doldurun.
                 </p>
               </FadeIn>
 
               <FadeIn delay={100}>
-                <form className="space-y-5" action="#" method="POST">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                    <div>
-                      <label
-                        htmlFor="name"
-                        className="block font-sans text-sm font-medium text-chocolate mb-1.5"
-                      >
-                        Ad Soyad
-                      </label>
-                      <input
-                        type="text"
-                        id="name"
-                        name="name"
-                        placeholder="Adınız Soyadınız"
-                        className="w-full px-4 py-3 bg-cream-light border border-sand text-espresso font-sans text-sm rounded-xl placeholder:text-mocha/50 focus:outline-none focus:border-gold transition-colors"
-                      />
-                    </div>
-                    <div>
-                      <label
-                        htmlFor="phone"
-                        className="block font-sans text-sm font-medium text-chocolate mb-1.5"
-                      >
-                        Telefon
-                      </label>
-                      <input
-                        type="tel"
-                        id="phone"
-                        name="phone"
-                        placeholder="05xx xxx xx xx"
-                        className="w-full px-4 py-3 bg-cream-light border border-sand text-espresso font-sans text-sm rounded-xl placeholder:text-mocha/50 focus:outline-none focus:border-gold transition-colors"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label
-                      htmlFor="email"
-                      className="block font-sans text-sm font-medium text-chocolate mb-1.5"
-                    >
-                      E-posta
-                    </label>
-                    <input
-                      type="email"
-                      id="email"
-                      name="email"
-                      placeholder="ornek@email.com"
-                      className="w-full px-4 py-3 bg-cream-light border border-sand text-espresso font-sans text-sm rounded-xl placeholder:text-mocha/50 focus:outline-none focus:border-gold transition-colors"
-                    />
-                  </div>
-
-                  <div>
-                    <label
-                      htmlFor="subject"
-                      className="block font-sans text-sm font-medium text-chocolate mb-1.5"
-                    >
-                      Konu
-                    </label>
-                    <select
-                      id="subject"
-                      name="subject"
-                      className="w-full px-4 py-3 bg-cream-light border border-sand text-espresso font-sans text-sm rounded-xl focus:outline-none focus:border-gold transition-colors appearance-none cursor-pointer"
-                    >
-                      <option value="">Konu seçin...</option>
-                      <option value="ozel-gun">Özel Gün Sipariş</option>
-                      <option value="kurumsal">Kurumsal Sipariş</option>
-                      <option value="genel">Genel Bilgi</option>
-                      <option value="sikayet">Şikayet / Geri Bildirim</option>
-                      <option value="diger">Diğer</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label
-                      htmlFor="message"
-                      className="block font-sans text-sm font-medium text-chocolate mb-1.5"
-                    >
-                      Mesajınız
-                    </label>
-                    <textarea
-                      id="message"
-                      name="message"
-                      rows={5}
-                      placeholder="Mesajınızı yazın... Özel gün siparişleri için pasta türü, boyutu, tarihi ve varsa özel isteklerinizi belirtin."
-                      className="w-full px-4 py-3 bg-cream-light border border-sand text-espresso font-sans text-sm rounded-xl placeholder:text-mocha/50 focus:outline-none focus:border-gold transition-colors resize-none"
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    className="w-full py-4 bg-chocolate text-cream-light font-sans font-semibold text-sm rounded-xl hover:bg-chocolate-light transition-colors duration-200"
-                  >
-                    Mesajı Gönder
-                  </button>
-
-                  <p className="font-sans text-xs text-mocha text-center">
-                    Mesajınıza en kısa sürede, genellikle 24 saat içinde dönüş yaparız.
-                  </p>
-                </form>
+                <ContactForm open={isContactFormOpen()} />
               </FadeIn>
             </div>
 

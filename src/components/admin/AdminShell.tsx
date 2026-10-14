@@ -14,6 +14,7 @@ const NAV = [
   { key: "prices", label: "Fiyatlar" },
   { key: "campaigns", label: "Kampanyalar" },
   { key: "funda-puan", label: "Funda Puan" },
+  { key: "contact", label: "İletişim Talepleri" },
   { key: "zones", label: "Teslimat Bölgeleri" },
   { key: "slots", label: "Teslimat Slotları" },
   { key: "branches", label: "Şubeler" },

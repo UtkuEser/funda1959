@@ -27,7 +27,7 @@ if (typeof window !== "undefined") {
 
 export { expectedDataEnvironment, readDataEnvironmentMarker, type DataEnvironment, type MarkerState };
 
-export type PersistentDomain = "inventory" | "orders" | "campaigns" | "funda-points" | "delivery-fees" | "prices";
+export type PersistentDomain = "inventory" | "orders" | "campaigns" | "funda-points" | "delivery-fees" | "prices" | "contact";
 
 /** Domains whose data already has a Supabase table + store in this codebase. */
 const DATABASE_BACKED: Record<PersistentDomain, boolean> = {
@@ -37,6 +37,7 @@ const DATABASE_BACKED: Record<PersistentDomain, boolean> = {
   "funda-points": true, // funda_point_* ledger (0011)
   "delivery-fees": true, // delivery_zone_fees (0008)
   prices: true, // product_prices (0009)
+  contact: true, // contact_requests (0012)
 };
 
 /** Plain wording per domain — the technical reason is logged, never shown. */
@@ -47,6 +48,7 @@ const USER_MESSAGE: Record<PersistentDomain, string> = {
   "funda-points": "Puan hareketi kaydedilemedi: kayıt servisi şu an kullanılamıyor.",
   "delivery-fees": "Teslimat ücreti kaydedilemedi: kayıt servisi şu an kullanılamıyor.",
   prices: "Fiyat kaydedilemedi: kayıt servisi şu an kullanılamıyor.",
+  contact: "Mesajınız şu an kaydedilemedi. Lütfen daha sonra tekrar deneyin veya şubelerimizi arayın.",
 };
 
 /** Vercel (Preview + Production) or another serverless host. */

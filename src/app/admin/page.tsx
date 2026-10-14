@@ -32,6 +32,10 @@ import { getFundaPointsAdminPage } from "@/lib/funda-points/service";
 import { FundaPointsNotReadyError } from "@/lib/funda-points/store";
 import { isFundaPointsActive } from "@/lib/funda-points";
 import { AdminFundaPoints } from "@/components/admin/AdminFundaPoints";
+import { listContactRequests } from "@/lib/contact/service";
+import { ContactNotReadyError } from "@/lib/contact/store";
+import { isContactFormOpen } from "@/lib/contact/config";
+import { AdminContactRequests } from "@/components/admin/AdminContactRequests";
 import {
   Panel,
   Table,
@@ -102,6 +106,7 @@ export default async function AdminPage({ searchParams }: Props) {
       )}
       {section === "campaigns" && <CampaignsSection scope={scope} />}
       {section === "funda-puan" && <FundaPointsSection scope={scope} />}
+      {section === "contact" && <ContactRequestsSection scope={scope} />}
       {section === "prices" && <PricesSection />}
       {section === "zones" && <ZonesSection scope={scope} />}
       {section === "slots" && <SlotsSection branchId={scopedBranchId} date={date} />}
@@ -440,6 +445,49 @@ async function CampaignsSection({ scope }: { scope: AdminScope }) {
         {!canManage && " Bu görünüm salt-okunur."}
       </PageIntro>
       <AdminCampaigns initialCampaigns={campaigns} canManage={canManage} branches={branches} />
+    </>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+
+async function ContactRequestsSection({ scope }: { scope: AdminScope }) {
+  // Reachable only for SUPER_ADMIN — see the section-access guard in AdminPage above.
+  // listContactRequests asserts the role itself (lib/contact/service), and the
+  // database refuses any change not signed by "merkez".
+  let page: Awaited<ReturnType<typeof listContactRequests>>;
+  try {
+    page = await listContactRequests(scope.user.role, { limit: 50 });
+  } catch (err) {
+    const notReady = err instanceof ContactNotReadyError;
+    if (!notReady) console.error("[admin] contact requests could not be read", { error: (err as Error).message });
+    return (
+      <>
+        <PageIntro>İletişim sayfasındaki formdan gelen talepler.</PageIntro>
+        <Panel>
+          <p className="p-4 text-[13px] text-neutral-600">
+            {notReady
+              ? "İletişim talepleri tablosu bu projede henüz kurulmadı (migration 0012)."
+              : "Talepler şu an okunamadı. Lütfen biraz sonra tekrar deneyin."}
+          </p>
+        </Panel>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <PageIntro>
+        İletişim sayfasındaki formdan gelen talepler. Özel gün ve kurumsal başvurular sipariş değil, taleptir. İç not
+        yalnızca Merkez&apos;de görünür.
+      </PageIntro>
+      {!isContactFormOpen() && (
+        <p className="mb-4 rounded border border-neutral-300 bg-neutral-50 px-3 py-2 text-[12.5px] text-neutral-700">
+          Bu ortamda iletişim formu kapalı; yeni talep gelmez. Aydınlatma metni, saklama süresi ve silme politikası
+          netleşince ayrı bir değişiklikle açılır.
+        </p>
+      )}
+      <AdminContactRequests initial={page} />
     </>
   );
 }

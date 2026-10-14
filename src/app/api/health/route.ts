@@ -47,6 +47,7 @@ const TABLE_PROBES: { table: string; select: string; migration: string }[] = [
   { table: "funda_point_transactions", select: "id,type,points,business_key", migration: "0011" },
   { table: "funda_point_lot_movements", select: "id,transaction_id,lot_id", migration: "0011" },
   { table: "funda_point_reservations", select: "order_id,status,hold_until", migration: "0011" },
+  { table: "contact_requests", select: "id,status,internal_note,client_request_id,handled_at", migration: "0012" },
 ];
 
 export async function GET() {
