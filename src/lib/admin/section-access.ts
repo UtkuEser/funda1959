@@ -12,10 +12,11 @@
  */
 import type { AdminRole } from "./access";
 
-export const SUPER_ADMIN_ONLY_SECTIONS = ["prices", "campaigns", "funda-puan", "contact", "branches"] as const;
+// "product-new" / "product-edit": the "Ürün Ekle" / "Ürün Düzenle" screens (D45, D48) — opened from "Ürün Bilgisi", not menu items
+export const SUPER_ADMIN_ONLY_SECTIONS = ["prices", "product-new", "product-edit", "campaigns", "funda-puan", "contact", "branches"] as const;
 
 /** Every section the panel has — anything else (e.g. an old bookmark) goes back to the overview. */
-export const ADMIN_SECTIONS = ["overview", "orders", "stock", "prices", "campaigns", "funda-puan", "contact", "zones", "slots", "branches"] as const;
+export const ADMIN_SECTIONS = ["overview", "orders", "stock", "prices", "product-new", "product-edit", "campaigns", "funda-puan", "contact", "zones", "slots", "branches"] as const;
 
 export function isSectionAllowed(role: AdminRole, section: string): boolean {
   if (!(ADMIN_SECTIONS as readonly string[]).includes(section)) return false;

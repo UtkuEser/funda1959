@@ -16,8 +16,10 @@ export type ReasonCode =
   | "PRODUCT_DISABLED"
   | "PRODUCT_DISABLED_AT_BRANCH"
   | "NEXT_DAY_ONLY"
-  | "PREPARATION_TIME"
-  | "SAME_DAY_DISABLED"
+  /** today: the window has started (or passed) — Europe/Istanbul */
+  | "SLOT_STARTED"
+  /** today: every window of the day has started */
+  | "NO_SLOTS_LEFT_TODAY"
   | "DELIVERY_UNAVAILABLE"
   | "PICKUP_UNAVAILABLE"
   | "NO_SLOTS_DEFINED"
@@ -39,8 +41,8 @@ const MESSAGES: Record<ReasonCode, string> = {
   PRODUCT_DISABLED: "Bu ürün şu an satışta değil.",
   PRODUCT_DISABLED_AT_BRANCH: "Bu ürün seçtiğiniz bölgede/mağazada şu an sunulmuyor.",
   NEXT_DAY_ONLY: "En erken yarına teslim.",
-  PREPARATION_TIME: "Bu ürünün hazırlanması için daha fazla süre gerekiyor.",
-  SAME_DAY_DISABLED: "Bu ürün aynı gün teslimata uygun değil.",
+  SLOT_STARTED: "Bu saat aralığı başladı; lütfen daha ileri bir saat seçin.",
+  NO_SLOTS_LEFT_TODAY: "Bugün için seçilebilecek teslimat saati kalmadı.",
   DELIVERY_UNAVAILABLE: "Bu bölgede adrese teslimat yapılmıyor.",
   PICKUP_UNAVAILABLE: "Bu mağazadan teslim alma şu an mümkün değil.",
   NO_SLOTS_DEFINED: "Seçtiğiniz gün için teslimat saati tanımlı değil.",

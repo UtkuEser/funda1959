@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { deliverableDistricts, deliverableNeighborhoods } from "@/lib/delivery/zones";
+import { useState } from "react";
+import { addressDistricts, addressNeighborhoods } from "@/lib/delivery/zones";
 import {
   MAX_SAVED_ADDRESSES,
   deleteAddress,
@@ -10,6 +10,7 @@ import {
   type AccountAddressInput,
 } from "@/lib/account-service";
 import { checkAddressInput, isServiceArea, type AddressErrors } from "@/lib/customers/validation";
+import { useDelivery } from "@/lib/delivery/context";
 import { AuthCheckbox, AuthField, AuthInput, SubmitButton } from "@/components/auth/fields";
 
 const selectClass =
@@ -41,18 +42,21 @@ function AddressForm({
   onCancel: () => void;
   onSaved: (addresses: AccountAddress[]) => void;
 }) {
+  const { areasReady } = useDelivery();
   const [form, setForm] = useState<AccountAddressInput>(() => {
     if (!initial) return { ...EMPTY };
-    // an address whose area left the list keeps its text but must be re-chosen to be saved
-    const inArea = isServiceArea(initial.district, initial.neighborhood);
+    // an address whose area is no longer served keeps its text but must be re-chosen to be saved
+    // (unknown while the zone map isn't loaded: kept; the server checks on save)
+    const inArea = !areasReady || isServiceArea(initial.district, initial.neighborhood);
     return { ...initial, district: inArea ? initial.district : "", neighborhood: inArea ? initial.neighborhood : "" };
   });
   const [errors, setErrors] = useState<AddressErrors>({});
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
 
-  const districts = useMemo(() => deliverableDistricts(), []);
-  const neighborhoods = useMemo(() => (form.district ? deliverableNeighborhoods(form.district) : []), [form.district]);
+  // the loaded areas (D50), read again once they have loaded
+  const districts = areasReady ? addressDistricts() : [];
+  const neighborhoods = areasReady && form.district ? addressNeighborhoods(form.district) : [];
 
   const set = (patch: Partial<AccountAddressInput>) => {
     setForm((f) => ({ ...f, ...patch }));
@@ -214,7 +218,9 @@ function AddressCard({
   onDelete: () => void;
 }) {
   const extra = [address.building, address.floor && `Kat ${address.floor}`, address.apartment && `Daire ${address.apartment}`].filter(Boolean);
-  const served = isServiceArea(address.district, address.neighborhood);
+  // said only once the zone map is loaded (D49)
+  const { areasReady } = useDelivery();
+  const served = !areasReady || isServiceArea(address.district, address.neighborhood);
 
   return (
     <div className="rounded-lg border border-sand-light p-4">

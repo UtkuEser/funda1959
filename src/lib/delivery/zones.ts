@@ -1,161 +1,112 @@
 /**
- * Delivery zones.
+ * Delivery areas at run time (D15, D49, D50) — client-safe.
  *
- * v1 has no geocoding / polygons — a zone is a district + a neighbourhood
- * allow-list served by one branch. The customer enters district +
- * neighbourhood; `resolveZone` finds the zone and with it the branch that
- * serves the address. No zone -> the address is not served (never a
- * fallback branch).
+ * No geocoding / polygons. Every district + neighbourhood Merkez manages is
+ * one area: it belongs to one branch, delivery to it is open or closed, and
+ * its fee is its own fee row (`zoneId` -> delivery_zone_fees, read by
+ * `./fees`; migration 0015). The customer enters district + neighbourhood and
+ * `resolveZone` finds the open area, and with it the branch that serves the
+ * address. No area, or a closed one -> the address is not served: never a
+ * fallback branch, never a same-named neighbourhood of another district.
+ *
+ * The areas are registered here — on the server after each read
+ * (`./areas-server.ts`), in the browser by the delivery context after
+ * GET /api/delivery-areas.
  */
 
-import { normalize } from "../search";
+import { areaKey, SEED_ASSIGNMENTS, type AreaAssignment } from "./areas";
 
+/** What an order is fulfilled under: the area's fee row (`id`) and its branch. */
 export type DeliveryZone = {
   id: string;
   name: string;
   branchId: string;
   district: string;
-  /** neighbourhoods this zone covers (normalised match) */
   neighborhoods: string[];
   active: boolean;
 };
 
-/* -------------------------------------------------------------------------- */
-/* Seed — TEST DATA, not an approved service area (SUPABASE_PLAN.md D15, A4).  */
-/* Zones and neighbourhood lists are kept for testing until the business       */
-/* confirms them. Fees live in Supabase (`delivery_zone_fees`, see ./fees.ts)  */
-/* and the order minimum in `lib/order-rules.ts` — neither is defined here.    */
-/* -------------------------------------------------------------------------- */
+/** where the areas come from: the database (0015) or, before it, the old zone list */
+export type AreaSource = "database" | "seed";
 
-const ZONE_SEED: DeliveryZone[] = [
-  {
-    id: "zone-gop-cankaya",
-    name: "GOP & Çankaya",
-    branchId: "gop",
-    district: "Çankaya",
-    neighborhoods: [
-      "Gaziosmanpaşa",
-      "Kavaklıdere",
-      "Aşağı Ayrancı",
-      "Yukarı Ayrancı",
-      "Çankaya",
-      "Kızılay",
-      "Bahçelievler",
-    ],
-    active: true,
-  },
-  {
-    id: "zone-panora-kizilay",
-    name: "Panora Çevresi",
-    branchId: "panora",
-    district: "Çankaya",
-    neighborhoods: ["Oran", "Balgat", "Öveçler", "Dikmen", "Yıldız", "Söğütözü"],
-    active: true,
-  },
-  {
-    id: "zone-incek-golbasi",
-    name: "İncek & Gölbaşı",
-    branchId: "incek",
-    district: "Gölbaşı",
-    neighborhoods: ["İncek", "Taşpınar", "Karşıyaka", "Gölbaşı", "Bahçelievler"],
-    active: true,
-  },
-  {
-    id: "zone-incek-cankaya-south",
-    name: "İncek Güney Hattı",
-    branchId: "incek",
-    district: "Çankaya",
-    neighborhoods: ["Çayyolu", "Ümitköy", "Koru", "Alacaatlı"],
-    active: true,
-  },
-];
+type Registry =
+  | { state: "ready"; source: AreaSource; areas: AreaAssignment[]; byKey: Map<string, AreaAssignment> }
+  | { state: "loading" | "unavailable" };
 
-/* -------------------------------------------------------------------------- */
-/* Repository                                                                  */
-/* -------------------------------------------------------------------------- */
+const shared = globalThis as unknown as { __fundaAreas?: Registry };
 
-export interface DeliveryZoneRepository {
-  list(): DeliveryZone[];
-  get(id: string): DeliveryZone | null;
+function build(areas: AreaAssignment[], source: AreaSource): Registry {
+  const copy = areas.map((a) => ({ ...a }));
+  return { state: "ready", source, areas: copy, byKey: new Map(copy.map((a) => [areaKey(a.district, a.neighborhood), a])) };
 }
 
-class InMemoryZoneRepository implements DeliveryZoneRepository {
-  constructor(private readonly zones: DeliveryZone[]) {}
-  list(): DeliveryZone[] {
-    return this.zones.slice();
-  }
-  get(id: string): DeliveryZone | null {
-    return this.zones.find((z) => z.id === id) ?? null;
-  }
+/** server: the old list until the first read; browser: nothing until the context has loaded them */
+function registry(): Registry {
+  if (!shared.__fundaAreas) shared.__fundaAreas = typeof window === "undefined" ? build(SEED_ASSIGNMENTS, "seed") : { state: "loading" };
+  return shared.__fundaAreas;
 }
 
-let repo: DeliveryZoneRepository = new InMemoryZoneRepository(ZONE_SEED);
-
-export function setDeliveryZoneRepository(next: DeliveryZoneRepository): void {
-  repo = next;
-}
-export function getDeliveryZoneRepository(): DeliveryZoneRepository {
-  return repo;
+export function setAreaAssignments(areas: AreaAssignment[], source: AreaSource): void {
+  shared.__fundaAreas = build(areas, source);
 }
 
-/* -------------------------------------------------------------------------- */
-/* Resolution                                                                  */
-/* -------------------------------------------------------------------------- */
+/** The areas could not be read: delivery answers "Teslimat bilgisi şu an alınamıyor", never an older map. */
+export function markAreasUnavailable(): void {
+  shared.__fundaAreas = { state: "unavailable" };
+}
 
-export function getZone(id: string | null | undefined): DeliveryZone | null {
-  return id ? repo.get(id) : null;
+export function areasState(): "ready" | "loading" | "unavailable" {
+  return registry().state;
+}
+
+export function areaSource(): AreaSource | null {
+  const r = registry();
+  return r.state === "ready" ? r.source : null;
+}
+
+/** Every area, open and closed ([] unless read). */
+export function areaAssignments(): AreaAssignment[] {
+  const r = registry();
+  return r.state === "ready" ? r.areas.map((a) => ({ ...a })) : [];
+}
+
+/** The area of district + neighbourhood, open or closed (folded match on both). */
+export function findArea(district: string | null | undefined, neighborhood: string | null | undefined): AreaAssignment | null {
+  const r = registry();
+  if (r.state !== "ready" || !district?.trim() || !neighborhood?.trim()) return null;
+  const a = r.byKey.get(areaKey(district, neighborhood));
+  return a ? { ...a } : null;
 }
 
 /**
- * Every active zone covering district + neighbourhood — one per serving branch.
- * Neighbourhood match is normalised; district is a soft filter so a
- * neighbourhood listed under a slightly different district label still
- * resolves.
- */
-function servingZones(
-  district: string | null | undefined,
-  neighborhood: string | null | undefined,
-): DeliveryZone[] {
-  const n = normalize(neighborhood ?? "");
-  if (!n) return [];
-
-  const byNeighborhood = repo
-    .list()
-    .filter((z) => z.active && z.neighborhoods.some((hood) => normalize(hood) === n));
-
-  const d = normalize(district ?? "");
-  const inDistrict = byNeighborhood.filter((z) => normalize(z.district) === d);
-  return inDistrict.length > 0 ? inDistrict : byNeighborhood;
-}
-
-/**
- * The zone that fulfils an order to district + neighbourhood. With `branchId`
- * it is that branch's zone (null when the branch doesn't serve the area);
- * without it, the first serving zone.
+ * The open area that serves district + neighbourhood, as a zone (its fee
+ * row and branch) — null when there is none or delivery to it is closed.
+ * With `branchId` it must be that branch's.
  */
 export function resolveZone(
   district: string | null | undefined,
   neighborhood: string | null | undefined,
   branchId?: string | null,
 ): DeliveryZone | null {
-  const zones = servingZones(district, neighborhood);
-  if (branchId) return zones.find((z) => z.branchId === branchId) ?? null;
-  return zones[0] ?? null;
+  const a = findArea(district, neighborhood);
+  if (!a || !a.enabled || (branchId && a.branchId !== branchId)) return null;
+  return { id: a.zoneId, name: `${a.neighborhood} (${a.district})`, branchId: a.branchId, district: a.district, neighborhoods: [a.neighborhood], active: true };
 }
 
-/** Districts with at least one active zone — the address picker's first select. */
-export function deliverableDistricts(): string[] {
-  return [...new Set(repo.list().filter((z) => z.active).map((z) => z.district))].sort((a, b) =>
-    a.localeCompare(b, "tr"),
-  );
+/** Districts the address forms offer: those with at least one area (served or not). */
+export function addressDistricts(): string[] {
+  return [...new Set(areaAssignments().map((a) => a.district))].sort((x, y) => x.localeCompare(y, "tr"));
 }
 
-/** Neighbourhoods served within a district — the picker's second select. */
-export function deliverableNeighborhoods(district: string): string[] {
-  const d = normalize(district);
-  const hoods = repo
-    .list()
-    .filter((z) => z.active && normalize(z.district) === d)
-    .flatMap((z) => z.neighborhoods);
-  return [...new Set(hoods)].sort((a, b) => a.localeCompare(b, "tr"));
+/** A district's neighbourhoods, open and closed — a closed one answers "not served" instead of hiding. */
+export function addressNeighborhoods(district: string): string[] {
+  return areaAssignments()
+    .filter((a) => a.district === district)
+    .map((a) => a.neighborhood)
+    .sort((x, y) => x.localeCompare(y, "tr"));
+}
+
+/** Is this an exact district + neighbourhood of an area? */
+export function isKnownArea(district: string, neighborhood: string): boolean {
+  return areaAssignments().some((a) => a.district === district && a.neighborhood === neighborhood);
 }

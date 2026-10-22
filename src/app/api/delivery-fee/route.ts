@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { refreshDeliveryFees } from "@/lib/delivery/fees-server";
+import { refreshDeliveryAreas } from "@/lib/delivery/areas-server";
 import { reasonMessage, resolveContextBranch } from "@/lib/availability";
 import type { DeliveryFeeAnswer } from "@/lib/delivery/fees";
 
@@ -26,7 +27,7 @@ export async function POST(request: Request) {
   const neighborhood = typeof body.neighborhood === "string" ? body.neighborhood : null;
 
   // lenient: a failed read leaves the fees "unavailable" -> DELIVERY_INFO_UNAVAILABLE below
-  await refreshDeliveryFees();
+  await Promise.all([refreshDeliveryFees(), refreshDeliveryAreas()]);
 
   const resolved = resolveContextBranch({ fulfillmentType: "delivery", district, neighborhood, deliveryZoneId: null, branchId: null });
   if (!resolved.ok) {

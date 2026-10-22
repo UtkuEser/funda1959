@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { AccountShell } from "@/components/account/AccountShell";
 import { AccountUnavailable } from "@/components/account/AccountUnavailable";
 import { AddressesView } from "@/components/account/AddressesView";
-import { requireMemberPage } from "@/lib/customer-auth/next";
+import { requireMemberPageWith } from "@/lib/customer-auth/next";
 import { getCustomerRepository } from "@/lib/customers/repository";
 
 export const metadata: Metadata = {
@@ -11,16 +11,16 @@ export const metadata: Metadata = {
 };
 
 export default async function AdreslerimPage() {
-  const member = await requireMemberPage("/hesabim/adreslerim");
-  if (member.kind !== "member") return <AccountUnavailable current="addresses" title="Adreslerim" />;
-
-  let addresses;
-  try {
-    addresses = await getCustomerRepository().listAddresses(member.userId);
-  } catch (err) {
-    console.error("[hesabim] addresses could not be read", { error: (err as Error).message });
+  // the addresses are read together with the profile
+  const [member, read] = await requireMemberPageWith("/hesabim/adreslerim", (userId) =>
+    getCustomerRepository().listAddresses(userId),
+  );
+  if (member.kind !== "member" || !read) return <AccountUnavailable current="addresses" title="Adreslerim" />;
+  if (!read.ok) {
+    console.error("[hesabim] addresses could not be read", { error: (read.error as Error).message });
     return <AccountUnavailable current="addresses" title="Adreslerim" />;
   }
+  const addresses = read.value;
 
   return (
     <AccountShell

@@ -9,7 +9,7 @@
  * Pure given its inputs (`now` is injectable). No network, no storage.
  */
 
-import { catalogProducts, type CatalogProduct } from "../data";
+import { allCatalogProducts, type CatalogProduct } from "../data";
 import {
   getBranch,
   isBranchOpenOn,
@@ -17,12 +17,12 @@ import {
   type Branch,
   type Weekday,
 } from "../branch";
-import { resolveZone } from "../delivery/zones";
+import { areasState, resolveZone } from "../delivery/zones";
 import { deliveryFeeFor } from "../delivery/fees";
 import { effectivePriceValue, effectiveUnitPrice, priceRowsForDisplay } from "../pricing/prices";
-import { getSlotRepository, slotLabel, type DeliverySlotDefinition } from "../delivery/slots";
+import { getSlotRepository, slotHasStarted, slotLabel, type DeliverySlotDefinition } from "../delivery/slots";
 import { getBranchProduct, branchUnitPrice, type BranchProduct } from "../inventory";
-import { addDaysISO, istanbulDateISO, istanbulInstant, weekdayOfISO } from "../time/istanbul";
+import { addDaysISO, istanbulDateISO, weekdayOfISO } from "../time/istanbul";
 import type { ReasonCode } from "./reasons";
 import type {
   AvailabilityResult,
@@ -40,12 +40,11 @@ const WEEKDAY_TR = ["Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "C
 
 /* All calendar math is Europe/Istanbul, whatever the server's own time zone. */
 const toISO = (d: Date) => istanbulDateISO(d);
-const at = (iso: string, time: string) => istanbulInstant(iso, time);
 
 function resolveProduct(idOrSlug: string, slug?: string): CatalogProduct | null {
   return (
-    catalogProducts.find((p) => p.id === idOrSlug || p.slug === idOrSlug) ??
-    (slug ? catalogProducts.find((p) => p.slug === slug) ?? null : null)
+    allCatalogProducts().find((p) => p.id === idOrSlug || p.slug === idOrSlug) ??
+    (slug ? allCatalogProducts().find((p) => p.slug === slug) ?? null : null)
   );
 }
 
@@ -77,6 +76,8 @@ export function resolveContextBranch(ctx: DeliveryContext): BranchResolution {
   // changes which branch serves it, so without district + neighbourhood there
   // is no availability and no fee.
   if (!ctx.district?.trim() || !ctx.neighborhood?.trim()) return { ok: false, reason: "LOCATION_REQUIRED" };
+  // D49: the district + neighbourhood -> branch map as last read; unreadable -> no answer built on an older map
+  if (areasState() !== "ready") return { ok: false, reason: "DELIVERY_INFO_UNAVAILABLE" };
   const zone = resolveZone(ctx.district, ctx.neighborhood);
   if (!zone) return { ok: false, reason: "DELIVERY_ZONE_NOT_FOUND" };
   const branch = getBranch(zone.branchId);
@@ -103,48 +104,32 @@ export function resolveContextBranch(ctx: DeliveryContext): BranchResolution {
 type StockCheck = { ok: boolean; reason: ReasonCode | null };
 
 /**
- * Branch availability for a date. Quantities no longer decide anything: a
- * product the branch has set "passive" can't go out today but stays orderable
- * from tomorrow; preparation time and slots are checked separately.
+ * Branch stock for a date — the only product rule for dates (D44): a product
+ * the branch has set "passive" can't go out today but stays orderable from
+ * tomorrow; an active one can go out today. No preparation time, production
+ * day, per-product wait, cut-off or buffer.
  */
 function branchDayCheck(bp: BranchProduct, iso: string, todayISO: string): StockCheck {
   return bp.status === "passive" && iso === todayISO ? { ok: false, reason: "NEXT_DAY_ONLY" } : { ok: true, reason: null };
 }
 
-type SlotEval = SlotAvailability & { prepFeasible: boolean };
-
 /**
- * One window for one product. There is no hourly order limit (D11): a window
- * closes only for opening hours, same-day rules or preparation time; the
- * branch's passive flag is checked per day (`branchDayCheck`).
+ * One of the branch's windows on a date — the same for every product. There
+ * is no hourly order limit (D11): a window closes only outside opening hours
+ * or once it has started (`slotHasStarted`, Europe/Istanbul). Stock is
+ * checked per product and day (`branchDayCheck`).
  */
-function evalSlot(def: DeliverySlotDefinition, iso: string, branch: Branch, bp: BranchProduct, now: Date): SlotEval {
-  const base: Omit<SlotEval, "available" | "reason" | "prepFeasible"> = {
-    slotId: def.id,
-    startTime: def.startTime,
-    endTime: def.endTime,
-    label: slotLabel(def),
-  };
+function evalSlot(def: DeliverySlotDefinition, iso: string, branch: Branch, now: Date): SlotAvailability {
+  const base = { slotId: def.id, startTime: def.startTime, endTime: def.endTime, label: slotLabel(def) };
 
   const weekday = weekdayOfISO(iso) as Weekday;
   if (!isBranchOpenAt(branch, weekday, def.startTime)) {
-    return { ...base, available: false, reason: "BRANCH_CLOSED", prepFeasible: false };
+    return { ...base, available: false, reason: "BRANCH_CLOSED" };
   }
-
-  // preparation time: ready by the END of the window
-  const readyBy = new Date(now.getTime() + bp.prepTimeMinutes * 60_000);
-  const slotEnd = at(iso, def.endTime);
-  const isToday = iso === toISO(now);
-  const prepFeasible = slotEnd.getTime() >= readyBy.getTime();
-
-  if (isToday && !bp.sameDayEnabled) {
-    return { ...base, available: false, reason: "SAME_DAY_DISABLED", prepFeasible: false };
+  if (slotHasStarted(iso, def.startTime, now)) {
+    return { ...base, available: false, reason: "SLOT_STARTED" };
   }
-  if (!prepFeasible) {
-    return { ...base, available: false, reason: "PREPARATION_TIME", prepFeasible: false };
-  }
-
-  return { ...base, available: true, reason: null, prepFeasible };
+  return { ...base, available: true, reason: null };
 }
 
 /* -------------------------------------------------------------------------- */
@@ -233,24 +218,11 @@ export function getProductAvailability(req: ProductAvailabilityRequest): Availab
         if (defs.length === 0) {
           dayReason = "NO_SLOTS_DEFINED";
         } else {
-          daySlots = defs.map((def) => {
-            const e = evalSlot(def, iso, branch, bp, now);
-            return {
-              slotId: e.slotId,
-              startTime: e.startTime,
-              endTime: e.endTime,
-              label: e.label,
-              available: e.available,
-              reason: e.reason,
-            };
-          });
+          daySlots = defs.map((def) => evalSlot(def, iso, branch, now));
           const openSlots = daySlots.filter((s) => s.available);
           if (openSlots.length === 0) {
-            // surface the most informative reason
-            dayReason =
-              daySlots.find((s) => s.reason === "PREPARATION_TIME")?.reason ??
-              daySlots.find((s) => s.reason === "SAME_DAY_DISABLED")?.reason ??
-              "DATE_UNAVAILABLE";
+            // today, after the last window has started -> say so; otherwise generic
+            dayReason = daySlots.some((s) => s.reason === "SLOT_STARTED") ? "NO_SLOTS_LEFT_TODAY" : "DATE_UNAVAILABLE";
           }
         }
       }
@@ -371,40 +343,31 @@ export function getCartAvailability(req: CartAvailabilityRequest): CartAvailabil
   const weekday = weekdayOfISO(requestedDate) as Weekday;
   const defs = slotRepo.forBranchDay(branch.id, weekday);
 
-  const slots: SlotAvailability[] = defs.map((def) => {
-    const perItemSlot = perItem.map(({ item }) => {
+  // the first stock reason any item has on a date (a passive item holds the whole order to tomorrow)
+  const stockBlock = (iso: string): ReasonCode | null => {
+    for (const { item } of perItem) {
       const bp = getBranchProduct(branch.id, resolveProduct(item.productId, item.productSlug)?.id ?? "");
-      if (!bp) return { available: false, reason: "PRODUCT_DISABLED_AT_BRANCH" as ReasonCode };
-      const e = evalSlot(def, requestedDate, branch, bp, now);
-      const dateStock = branchDayCheck(bp, requestedDate, todayISO);
-      if (!dateStock.ok) return { available: false, reason: dateStock.reason as ReasonCode };
-      return { available: e.available, reason: e.reason };
-    });
-    const worst = perItemSlot.find((s) => !s.available);
-    return {
-      slotId: def.id,
-      startTime: def.startTime,
-      endTime: def.endTime,
-      label: slotLabel(def),
-      available: !worst,
-      reason: worst ? worst.reason : null,
-    };
+      if (!bp) return "PRODUCT_DISABLED_AT_BRANCH";
+      const stock = branchDayCheck(bp, iso, todayISO);
+      if (!stock.ok) return stock.reason;
+    }
+    return null;
+  };
+
+  const blockedToday = stockBlock(requestedDate);
+  const slots: SlotAvailability[] = defs.map((def) => {
+    const slot = evalSlot(def, requestedDate, branch, now);
+    return blockedToday ? { ...slot, available: false, reason: blockedToday } : slot;
   });
 
   // Earliest shared slot across the whole horizon.
   let earliest: CartAvailabilityResult["earliestAvailableSlot"] = null;
   const horizonDates = perItem[0]?.result.dates ?? [];
   for (const d of horizonDates) {
+    if (stockBlock(d.date)) continue;
     const wd = weekdayOfISO(d.date) as Weekday;
     const dayDefs = slotRepo.forBranchDay(branch.id, wd);
-    const shared = dayDefs.find((def) =>
-      perItem.every(({ item }) => {
-        const bp = getBranchProduct(branch.id, resolveProduct(item.productId, item.productSlug)?.id ?? "");
-        if (!bp) return false;
-        if (!branchDayCheck(bp, d.date, todayISO).ok) return false;
-        return evalSlot(def, d.date, branch, bp, now).available;
-      }),
-    );
+    const shared = dayDefs.find((def) => evalSlot(def, d.date, branch, now).available);
     if (shared) {
       earliest = {
         date: d.date,

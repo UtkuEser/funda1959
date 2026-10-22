@@ -57,12 +57,13 @@ async function main() {
   }
   check("resolves to İncek", a.branchId === "incek");
   check("today has an available slot", a.available);
-  // no hourly order limit (SUPABASE_PLAN.md, D11): a slot closes only for hours / preparation / passive stock
+  // no hourly order limit (D11), no product lead time (D44): a slot closes only for hours / having started / passive stock
   check("12:00 slot open (no hourly limit)", a.slots.find((s) => s.startTime === "12:00")?.available === true);
   check(
-    "closed slots only for hours / preparation",
-    a.slots.every((s) => s.available || s.reason === "PREPARATION_TIME" || s.reason === "BRANCH_CLOSED" || s.reason === "SAME_DAY_DISABLED"),
+    "closed slots only for hours / started windows",
+    a.slots.every((s) => s.available || s.reason === "SLOT_STARTED" || s.reason === "BRANCH_CLOSED"),
   );
+  check("at 11:00 the 10:00 and 11:00 windows have started", ["10:00", "11:00"].every((t) => a.slots.find((s) => s.startTime === t)?.reason === "SLOT_STARTED"));
   check("18:00 slot is available", a.slots.find((s) => s.startTime === "18:00")?.available === true);
   check("earliest slot found", a.earliestAvailableSlot !== null);
 
@@ -150,7 +151,7 @@ async function main() {
   });
   check("p8 @ gop passive -> next day only", oos.reason === "NEXT_DAY_ONLY" && oos.slots.every((s) => !s.available));
 
-  console.log("\n── branch switch changes behaviour (p1 @ Panora = made-to-order) ──");
+  console.log("\n── branch switch: p1 @ Panora (its windows start 12:00) ──");
   const panora = getProductAvailability({
     productId: "p1",
     quantity: 1,
@@ -163,11 +164,10 @@ async function main() {
     },
     now: NOW,
   });
-  check("p1 @ panora not same-day today", panora.slots.every((s) => !s.available));
-  check(
-    "p1 @ panora has a future date",
-    panora.earliestAvailableDate !== null && panora.earliestAvailableDate !== a.requestedDate,
-  );
+  // D44: the same rule for every product — an active cake can go out today at Panora too
+  check("p1 @ panora: today, 12:00 open", panora.available && panora.slots.find((s) => s.startTime === "12:00")?.available === true);
+  check("p1 @ panora: no 10:00 / 11:00 window at all", !panora.slots.some((s) => s.startTime === "10:00" || s.startTime === "11:00"));
+  check("p1 @ panora: earliest = today 12:00", panora.earliestAvailableDate === a.requestedDate && panora.earliestAvailableSlot?.startTime === "12:00");
 
   console.log("\n── cart availability ──");
   const cart = getCartAvailability({

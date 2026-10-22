@@ -13,6 +13,7 @@ import {
 } from "@/lib/search";
 import { SearchResultItem } from "./SearchResultItem";
 import { applyPrice, type PriceMap } from "@/lib/pricing/prices";
+import { catalogVersion, setPublishedProducts, type PublishedProduct } from "@/lib/data";
 
 const DEBOUNCE_MS = 250;
 
@@ -77,17 +78,24 @@ export function SearchOverlay({ open, onClose }: { open: boolean; onClose: () =>
   // current prices (D5): the results are built from the code catalog, so the
   // prices are asked for when the overlay opens — none is shown before that
   const [prices, setPrices] = useState<PriceMap | null>(null);
+  const [catalogKey, setCatalogKey] = useState("");
   useEffect(() => {
     if (!open) return;
     const ctrl = new AbortController();
     fetch("/api/prices", { signal: ctrl.signal })
-      .then((r) => r.json() as Promise<{ prices?: PriceMap }>)
-      .then((data) => setPrices(data.prices ?? {}))
+      .then((r) => r.json() as Promise<{ prices?: PriceMap; products?: PublishedProduct[]; hidden?: string[] }>)
+      .then((data) => {
+        // published panel products (D45) join the browser's catalog, code products off the site (D48) leave it
+        if (Array.isArray(data.products)) setPublishedProducts(data.products, Array.isArray(data.hidden) ? data.hidden : []);
+        setCatalogKey(catalogVersion());
+        setPrices(data.prices ?? {});
+      })
       .catch(() => {});
     return () => ctrl.abort();
   }, [open]);
 
-  const results = useMemo(() => search(debounced), [debounced]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- the catalog changes with catalogKey
+  const results = useMemo(() => search(debounced), [debounced, catalogKey]);
   const hasQuery = debounced.trim().length >= MIN_QUERY_LENGTH;
 
   if (!open) return null;

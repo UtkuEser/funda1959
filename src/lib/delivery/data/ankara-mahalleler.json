@@ -1,0 +1,3689 @@
+{
+ "description": "Ankara mahalle havuzu (D52, D55): Çankaya, Gölbaşı, Yenimahalle, Keçiören, Etimesgut, Sincan, Mamak, Altındağ. Yalnızca ilçe ve mahalle adları — muhtar adı, telefon, e-posta ve adres alınmadı. Şube ataması ve teslimat ücreti burada değil (delivery_areas, delivery_zone_fees).",
+ "accessedAt": "2026-10-22",
+ "rules": [
+  "Görünen ad ilçe belediyesinin yazımıdır (ilçe listesi büyük harfle yazılmışsa harf biçimi ABB'den alınır); ABB'deki farklı yazım ve arama karşılıkları 'aliases' içindedir (ayrı mahalle değildir).",
+  "Durum: 'verified' = ilçe belediyesi listesinde var; 'pending' = yalnızca ABB listesinde, ilçe listesinde yok (doğrulama bekliyor, teslimata eklenemez).",
+  "İlçe belediyesi listesine ulaşılamayan ilçelerde (Yenimahalle, Etimesgut) ABB listesi tek resmî kaynak olarak kullanıldı; bu kayıtların 'sources' alanında yalnızca ABB vardır ve notlarında belirtilir.",
+  "Aynı ad farklı ilçelerde ayrı kayıttır (ör. Çankaya/Bahçelievler ile Gölbaşı/Bahçelievler; Karşıyaka Gölbaşı, Keçiören, Mamak ve Yenimahalle'de ayrı).",
+  "Havuzdaki bir mahalle şubeye atanmamış, gönderime kapalı ve ücret tanımsız başlar; müşteri teslimatı yalnızca aktif şube atamasıyla açılır."
+ ],
+ "sources": [
+  {
+   "id": "cankaya-bel",
+   "district": "Çankaya",
+   "publisher": "Çankaya Belediyesi",
+   "url": "https://www.cankaya.bel.tr/rehber/muhtarlarimiz/muhtarlarimiz",
+   "pages": 1,
+   "count": 124
+  },
+  {
+   "id": "abb-cankaya",
+   "district": "Çankaya",
+   "publisher": "Ankara Büyükşehir Belediyesi",
+   "url": "https://www.ankara.bel.tr/muhtarlar/cankaya",
+   "pageUrls": [
+    "https://www.ankara.bel.tr/muhtarlar/cankaya",
+    "https://www.ankara.bel.tr/muhtarlar/cankaya?page=2",
+    "https://www.ankara.bel.tr/muhtarlar/cankaya?page=3"
+   ],
+   "pages": 3,
+   "count": 124
+  },
+  {
+   "id": "golbasi-bel",
+   "district": "Gölbaşı",
+   "publisher": "Gölbaşı Belediyesi",
+   "url": "https://www.ankaragolbasi.bel.tr/muhtarliklar",
+   "pages": 1,
+   "count": 54
+  },
+  {
+   "id": "abb-golbasi",
+   "district": "Gölbaşı",
+   "publisher": "Ankara Büyükşehir Belediyesi",
+   "url": "https://www.ankara.bel.tr/muhtarlar/golbasi",
+   "pageUrls": [
+    "https://www.ankara.bel.tr/muhtarlar/golbasi",
+    "https://www.ankara.bel.tr/muhtarlar/golbasi?page=2"
+   ],
+   "pages": 2,
+   "count": 54
+  },
+  {
+   "id": "abb-yenimahalle",
+   "district": "Yenimahalle",
+   "publisher": "Ankara Büyükşehir Belediyesi",
+   "url": "https://www.ankara.bel.tr/muhtarlar/yenimahalle",
+   "pageUrls": [
+    "https://www.ankara.bel.tr/muhtarlar/yenimahalle",
+    "https://www.ankara.bel.tr/muhtarlar/yenimahalle?page=2"
+   ],
+   "pages": 2,
+   "count": 57
+  },
+  {
+   "id": "abb-kecioren",
+   "district": "Keçiören",
+   "publisher": "Ankara Büyükşehir Belediyesi",
+   "url": "https://www.ankara.bel.tr/muhtarlar/kecioren",
+   "pageUrls": [
+    "https://www.ankara.bel.tr/muhtarlar/kecioren",
+    "https://www.ankara.bel.tr/muhtarlar/kecioren?page=2"
+   ],
+   "pages": 2,
+   "count": 45
+  },
+  {
+   "id": "kecioren-bel",
+   "district": "Keçiören",
+   "publisher": "Keçiören Belediyesi",
+   "url": "https://www.kecioren.bel.tr/kecioren_muhtarliklari.html",
+   "pages": 1,
+   "count": 51
+  },
+  {
+   "id": "abb-etimesgut",
+   "district": "Etimesgut",
+   "publisher": "Ankara Büyükşehir Belediyesi",
+   "url": "https://www.ankara.bel.tr/muhtarlar/etimesgut",
+   "pages": 1,
+   "count": 38
+  },
+  {
+   "id": "abb-sincan",
+   "district": "Sincan",
+   "publisher": "Ankara Büyükşehir Belediyesi",
+   "url": "https://www.ankara.bel.tr/muhtarlar/sincan",
+   "pageUrls": [
+    "https://www.ankara.bel.tr/muhtarlar/sincan",
+    "https://www.ankara.bel.tr/muhtarlar/sincan?page=2"
+   ],
+   "pages": 2,
+   "count": 51
+  },
+  {
+   "id": "sincan-bel",
+   "district": "Sincan",
+   "publisher": "Sincan Belediyesi",
+   "url": "https://www.sincan.bel.tr/muhtarliklar",
+   "pageUrls": [
+    "https://www.sincan.bel.tr/muhtarliklar",
+    "https://www.sincan.bel.tr/muhtarliklar?page=2",
+    "https://www.sincan.bel.tr/muhtarliklar?page=3",
+    "https://www.sincan.bel.tr/muhtarliklar?page=4",
+    "https://www.sincan.bel.tr/muhtarliklar?page=5",
+    "https://www.sincan.bel.tr/muhtarliklar?page=6"
+   ],
+   "pages": 6,
+   "count": 57
+  },
+  {
+   "id": "abb-mamak",
+   "district": "Mamak",
+   "publisher": "Ankara Büyükşehir Belediyesi",
+   "url": "https://www.ankara.bel.tr/muhtarlar/mamak",
+   "pageUrls": [
+    "https://www.ankara.bel.tr/muhtarlar/mamak",
+    "https://www.ankara.bel.tr/muhtarlar/mamak?page=2"
+   ],
+   "pages": 2,
+   "count": 64
+  },
+  {
+   "id": "mamak-bel",
+   "district": "Mamak",
+   "publisher": "Mamak Belediyesi",
+   "url": "https://www.mamak.bel.tr/mamak/muhtarlarimiz/",
+   "pages": 1,
+   "count": 64
+  },
+  {
+   "id": "abb-altindag",
+   "district": "Altındağ",
+   "publisher": "Ankara Büyükşehir Belediyesi",
+   "url": "https://www.ankara.bel.tr/muhtarlar/altindag",
+   "pages": 1,
+   "count": 26
+  },
+  {
+   "id": "altindag-bel",
+   "district": "Altındağ",
+   "publisher": "Altındağ Belediyesi",
+   "url": "https://www.altindag.bel.tr/tr/muhtarliklar",
+   "pageUrls": [
+    "https://www.altindag.bel.tr/tr/muhtarliklar",
+    "https://www.altindag.bel.tr/tr/muhtarliklar?page=2",
+    "https://www.altindag.bel.tr/tr/muhtarliklar?page=3"
+   ],
+   "pages": 3,
+   "count": 26
+  }
+ ],
+ "differences": [
+  "Çankaya: “Saraçoğlu” yalnızca Çankaya Belediyesi listesinde; ABB listesinde yok (havuzda doğrulanmış, fark raporlandı).",
+  "Çankaya: “Namık Kemal” yalnızca ABB listesinde; Çankaya Belediyesi listesinde yok (doğrulama bekliyor).",
+  "Çankaya: yazım farkları (ilçe belediyesi / ABB): Yakupabdal / Yakubabdal; Ellinciyıl / 50.Yıl; Ahmet Taner Kışlalı / Prof. Dr.ahmet Taner Kışlalı; Ş. Cengiz Karaca / Şehit Cengiz Karaca; Ş. Cevdet Özdemir / Şehit Cevdet Özdemir; Büyükesat / Büyük Esat; Keklikpınarı / Keklik Pınarı; Korkutreis / Korkut Reis; Ön Cebeci / Öncebeci; Sokullu Mehmet Paşa / Sokullu Mehmetpaşa; 100. Yıl (K. Esat) / 100.Yıl (K.esat).",
+  "Gölbaşı: “YAVRUCAK” (Gölbaşı Belediyesi) / “Yavrucuk” (ABB).",
+  "Gölbaşı: iki kaynakta da “Gölbaşı” adlı mahalle yok.",
+  "Çankaya: kaynaklarda “Oran” ve “Ümitköy” yok; resmî adlar “Or-An” ve “Ümit” (arama karşılığı olarak eklendi). “Aşağı Ayrancı”, “Yukarı Ayrancı”, “Dikmen” ve “Yıldız” yok (yalnızca “Ayrancı”, “Yukarı Dikmen”, “Yıldızevler” var; birleştirilmedi).",
+  "Keçiören: ilçe belediyesi listesinde olup ABB'de olmayanlar: Ayvalı, Bağlarbaşı, Bağlum Güzelyurt, Çalseki, Emrah, Etlik (doğrulanmış). Yazım farkı: Şefkat (ilçe) / Şevkat (ABB); Kamil Ocak / Kamilocak.",
+  "Mamak: Kıbrıs (ilçe) / Kıbrısköy (ABB) ad farkı; Eski Bayındır başlığı / Bayındır; Çiğiltepe (PTT Evleri) / Çiğiltepe; Şehit Cengiz Topel / Ş.cengiz Topel; Akşemsettin / Akşemşettin; Türkozü / Türközü; boşluk farkları (Durali Alıç, Kutludüğün, Küçükkayaş, Peyamisefa, Şahap Gürler).",
+  "Sincan: ilçe belediyesinde olup ABB'de olmayanlar: G. O. P., İstiklal, Malazgirt, Malı Köy, Mareşal Çakmak, Mevlana, Osmaniye (doğrulanmış). Yalnızca ABB'de: Gaziosmanpaşa (doğrulama bekliyor; “G. O. P.” ile aynı olabilir, eşleştirilmedi). Boşluk farkları: Ulubatlıhasan, Yeni Çimşit, Yeni Hisar.",
+  "Altındağ: iki listede aynı 26 mahalle; yalnızca boşluk farkı (Battal Gazi, Hacı Bayram, Zübeyde Hanım).",
+  "Yenimahalle (57) ve Etimesgut (38): ilçe belediyesi listesi alınamadı; yalnızca ABB listesi kullanıldı."
+ ],
+ "districts": [
+  {
+   "district": "Çankaya",
+   "neighborhoods": [
+    {
+     "name": "100. Yıl (K. Esat)",
+     "aliases": [
+      "100.Yıl (K.esat)"
+     ],
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ],
+     "note": "ABB yazımı: “100.Yıl (K.esat)”"
+    },
+    {
+     "name": "Ahlatlıbel",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Ahmet Taner Kışlalı",
+     "aliases": [
+      "Prof. Dr.ahmet Taner Kışlalı"
+     ],
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ],
+     "note": "ABB yazımı: “Prof. Dr.ahmet Taner Kışlalı”"
+    },
+    {
+     "name": "Akarlar",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Akpınar",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Alacaatlı",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Anıttepe",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Arka Topraklık",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Aşağı İmrahor",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Aşağı Öveçler",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Aşıkpaşa",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Ata",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Aydınlar",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Ayrancı",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Aziziye",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Bademlidere",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Bağcılar",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Bahçelievler",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Balgat",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Barbaros",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Bayraktar",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Beytepe",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Birlik",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Boztepe",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Büyükesat",
+     "aliases": [
+      "Büyük Esat"
+     ],
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ],
+     "note": "ABB yazımı: “Büyük Esat”"
+    },
+    {
+     "name": "Cebeci",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Cevizlidere",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Cumhuriyet",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Çamlıtepe",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Çankaya",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Çavuşlu",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Çayyolu",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Çiğdem",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Çukurambar",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Devlet",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Dilekler",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Dodurga",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Doğuş",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Dumlupınar",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Ehlibeyt",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Ellinciyıl",
+     "aliases": [
+      "50.Yıl"
+     ],
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ],
+     "note": "ABB yazımı: “50.Yıl”"
+    },
+    {
+     "name": "Emek",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Ertuğrulgazi",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Erzurum",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Esatoğlu",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Eti",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Evciler",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Fakülteler",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Fidanlık",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Gaziosmanpaşa",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Gökkuşağı",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Göktürk",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Güvenevler",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Güzeltepe",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Harbiye",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Hilal",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Huzur",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "İleri",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "İlkadım",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "İlkbahar",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "İlker",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "İncesu",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "İşçi Blokları",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Karahasanlı",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Karapınar",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Karataş",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Kavaklıdere",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Kazım Özalp",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Keklikpınarı",
+     "aliases": [
+      "Keklik Pınarı"
+     ],
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ],
+     "note": "ABB yazımı: “Keklik Pınarı”"
+    },
+    {
+     "name": "Kırkkonaklar",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Kızılay",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Kızılırmak",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Kocatepe",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Konutkent",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Korkutreis",
+     "aliases": [
+      "Korkut Reis"
+     ],
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ],
+     "note": "ABB yazımı: “Korkut Reis”"
+    },
+    {
+     "name": "Koru",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Kömürcü",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Küçükesat",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Kültür",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Malazgirt",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Maltepe",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Mebusevleri",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Meşrutiyet",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Metin Akkuş",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Metin Oktay",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Mimar Sinan",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Muhsin Ertuğrul",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Murat",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Mustafa Kemal",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Mutlukent",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Mürsel Uluç",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Naci Çakır",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Namık Kemal",
+     "sources": [
+      "abb-cankaya"
+     ],
+     "status": "pending",
+     "note": "Yalnızca ABB listesinde; Çankaya Belediyesi listesinde yok — ayrı doğrulama bekliyor, teslimata eklenemez"
+    },
+    {
+     "name": "Nasuh Akar",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Oğuzlar",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Orta İmrahor",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Or-An",
+     "aliases": [
+      "Oran"
+     ],
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ],
+     "note": "arama karşılığı (kaynakta yok): Oran"
+    },
+    {
+     "name": "Osman Temiz",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Ön Cebeci",
+     "aliases": [
+      "Öncebeci"
+     ],
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ],
+     "note": "ABB yazımı: “Öncebeci”"
+    },
+    {
+     "name": "Öveçler",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Remzi Oğuz Arık",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Sağlık",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Sancak",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Saraçoğlu",
+     "sources": [
+      "cankaya-bel"
+     ],
+     "note": "Yalnızca Çankaya Belediyesi listesinde; ABB listesinde yok"
+    },
+    {
+     "name": "Seyranbağları",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Sokullu Mehmet Paşa",
+     "aliases": [
+      "Sokullu Mehmetpaşa"
+     ],
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ],
+     "note": "ABB yazımı: “Sokullu Mehmetpaşa”"
+    },
+    {
+     "name": "Söğütözü",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Ş. Cengiz Karaca",
+     "aliases": [
+      "Şehit Cengiz Karaca"
+     ],
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ],
+     "note": "ABB yazımı: “Şehit Cengiz Karaca”"
+    },
+    {
+     "name": "Ş. Cevdet Özdemir",
+     "aliases": [
+      "Şehit Cevdet Özdemir"
+     ],
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ],
+     "note": "ABB yazımı: “Şehit Cevdet Özdemir”"
+    },
+    {
+     "name": "Tınaztepe",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Tohumlar",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Topraklık",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Umut",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Ümit",
+     "aliases": [
+      "Ümitköy"
+     ],
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ],
+     "note": "arama karşılığı (kaynakta yok): Ümitköy"
+    },
+    {
+     "name": "Üniversiteler",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Yakupabdal",
+     "aliases": [
+      "Yakubabdal"
+     ],
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ],
+     "note": "ABB yazımı: “Yakubabdal”"
+    },
+    {
+     "name": "Yaşamkent",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Yayla",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Yeşilkent",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Yıldızevler",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Yukarı Bahçelievler",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Yukarı Dikmen",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Yukarı Öveçler",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Yücetepe",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    },
+    {
+     "name": "Zafertepe",
+     "sources": [
+      "cankaya-bel",
+      "abb-cankaya"
+     ]
+    }
+   ]
+  },
+  {
+   "district": "Gölbaşı",
+   "neighborhoods": [
+    {
+     "name": "Ahiboz",
+     "sources": [
+      "golbasi-bel",
+      "abb-golbasi"
+     ]
+    },
+    {
+     "name": "Akörençarsak",
+     "sources": [
+      "golbasi-bel",
+      "abb-golbasi"
+     ]
+    },
+    {
+     "name": "Altunçanak",
+     "sources": [
+      "golbasi-bel",
+      "abb-golbasi"
+     ]
+    },
+    {
+     "name": "Bağiçi",
+     "sources": [
+      "golbasi-bel",
+      "abb-golbasi"
+     ]
+    },
+    {
+     "name": "Bahçelievler",
+     "sources": [
+      "golbasi-bel",
+      "abb-golbasi"
+     ]
+    },
+    {
+     "name": "Ballıkpınar",
+     "sources": [
+      "golbasi-bel",
+      "abb-golbasi"
+     ]
+    },
+    {
+     "name": "Bezirhane",
+     "sources": [
+      "golbasi-bel",
+      "abb-golbasi"
+     ]
+    },
+    {
+     "name": "Boyalık",
+     "sources": [
+      "golbasi-bel",
+      "abb-golbasi"
+     ]
+    },
+    {
+     "name": "Çayırlı",
+     "sources": [
+      "golbasi-bel",
+      "abb-golbasi"
+     ]
+    },
+    {
+     "name": "Çeltek",
+     "sources": [
+      "golbasi-bel",
+      "abb-golbasi"
+     ]
+    },
+    {
+     "name": "Çimşit",
+     "sources": [
+      "golbasi-bel",
+      "abb-golbasi"
+     ]
+    },
+    {
+     "name": "Dikilitaş",
+     "sources": [
+      "golbasi-bel",
+      "abb-golbasi"
+     ]
+    },
+    {
+     "name": "Emirler",
+     "sources": [
+      "golbasi-bel",
+      "abb-golbasi"
+     ]
+    },
+    {
+     "name": "Eymir",
+     "sources": [
+      "golbasi-bel",
+      "abb-golbasi"
+     ]
+    },
+    {
+     "name": "Gaziosmanpaşa",
+     "sources": [
+      "golbasi-bel",
+      "abb-golbasi"
+     ]
+    },
+    {
+     "name": "Gökçehöyük",
+     "sources": [
+      "golbasi-bel",
+      "abb-golbasi"
+     ]
+    },
+    {
+     "name": "Gölbek",
+     "sources": [
+      "golbasi-bel",
+      "abb-golbasi"
+     ]
+    },
+    {
+     "name": "Günalan",
+     "sources": [
+      "golbasi-bel",
+      "abb-golbasi"
+     ]
+    },
+    {
+     "name": "Hacıhasan",
+     "sources": [
+      "golbasi-bel",
+      "abb-golbasi"
+     ]
+    },
+    {
+     "name": "Hacılar",
+     "sources": [
+      "golbasi-bel",
+      "abb-golbasi"
+     ]
+    },
+    {
+     "name": "Hacımuratlı",
+     "sources": [
+      "golbasi-bel",
+      "abb-golbasi"
+     ]
+    },
+    {
+     "name": "Hallaçlı",
+     "sources": [
+      "golbasi-bel",
+      "abb-golbasi"
+     ]
+    },
+    {
+     "name": "İkizce",
+     "sources": [
+      "golbasi-bel",
+      "abb-golbasi"
+     ]
+    },
+    {
+     "name": "İncek",
+     "sources": [
+      "golbasi-bel",
+      "abb-golbasi"
+     ]
+    },
+    {
+     "name": "Karaali Merkez",
+     "sources": [
+      "golbasi-bel",
+      "abb-golbasi"
+     ]
+    },
+    {
+     "name": "Karaali Yazlık",
+     "sources": [
+      "golbasi-bel",
+      "abb-golbasi"
+     ]
+    },
+    {
+     "name": "Karacaören",
+     "sources": [
+      "golbasi-bel",
+      "abb-golbasi"
+     ]
+    },
+    {
+     "name": "Karagedik Aydın",
+     "sources": [
+      "golbasi-bel",
+      "abb-golbasi"
+     ]
+    },
+    {
+     "name": "Karagedik Ercan",
+     "sources": [
+      "golbasi-bel",
+      "abb-golbasi"
+     ]
+    },
+    {
+     "name": "Karaoğlan",
+     "sources": [
+      "golbasi-bel",
+      "abb-golbasi"
+     ]
+    },
+    {
+     "name": "Karşıyaka",
+     "sources": [
+      "golbasi-bel",
+      "abb-golbasi"
+     ]
+    },
+    {
+     "name": "Kırıklı",
+     "sources": [
+      "golbasi-bel",
+      "abb-golbasi"
+     ]
+    },
+    {
+     "name": "Kızılcaşar",
+     "sources": [
+      "golbasi-bel",
+      "abb-golbasi"
+     ]
+    },
+    {
+     "name": "Koparan",
+     "sources": [
+      "golbasi-bel",
+      "abb-golbasi"
+     ]
+    },
+    {
+     "name": "Mahmatlı",
+     "sources": [
+      "golbasi-bel",
+      "abb-golbasi"
+     ]
+    },
+    {
+     "name": "Mahmatlıbahçe",
+     "sources": [
+      "golbasi-bel",
+      "abb-golbasi"
+     ]
+    },
+    {
+     "name": "Oğulbey",
+     "sources": [
+      "golbasi-bel",
+      "abb-golbasi"
+     ]
+    },
+    {
+     "name": "Oyaca Akarsu",
+     "sources": [
+      "golbasi-bel",
+      "abb-golbasi"
+     ]
+    },
+    {
+     "name": "Oyaca Yeşilçam",
+     "sources": [
+      "golbasi-bel",
+      "abb-golbasi"
+     ]
+    },
+    {
+     "name": "Örencik",
+     "sources": [
+      "golbasi-bel",
+      "abb-golbasi"
+     ]
+    },
+    {
+     "name": "Seğmenler",
+     "sources": [
+      "golbasi-bel",
+      "abb-golbasi"
+     ]
+    },
+    {
+     "name": "Selametli Şehit Emrah",
+     "sources": [
+      "golbasi-bel",
+      "abb-golbasi"
+     ]
+    },
+    {
+     "name": "Soğulcak",
+     "sources": [
+      "golbasi-bel",
+      "abb-golbasi"
+     ]
+    },
+    {
+     "name": "Subaşı",
+     "sources": [
+      "golbasi-bel",
+      "abb-golbasi"
+     ]
+    },
+    {
+     "name": "Şafak",
+     "sources": [
+      "golbasi-bel",
+      "abb-golbasi"
+     ]
+    },
+    {
+     "name": "Taşpınar",
+     "sources": [
+      "golbasi-bel",
+      "abb-golbasi"
+     ]
+    },
+    {
+     "name": "Tepeyurt",
+     "sources": [
+      "golbasi-bel",
+      "abb-golbasi"
+     ]
+    },
+    {
+     "name": "Topaklı",
+     "sources": [
+      "golbasi-bel",
+      "abb-golbasi"
+     ]
+    },
+    {
+     "name": "Tulumtaş",
+     "sources": [
+      "golbasi-bel",
+      "abb-golbasi"
+     ]
+    },
+    {
+     "name": "Velihimmetli",
+     "sources": [
+      "golbasi-bel",
+      "abb-golbasi"
+     ]
+    },
+    {
+     "name": "Yağlıpınar",
+     "sources": [
+      "golbasi-bel",
+      "abb-golbasi"
+     ]
+    },
+    {
+     "name": "Yavrucak",
+     "aliases": [
+      "Yavrucuk"
+     ],
+     "sources": [
+      "golbasi-bel",
+      "abb-golbasi"
+     ],
+     "note": "Gölbaşı Belediyesi “YAVRUCAK”, ABB “Yavrucuk” yazıyor"
+    },
+    {
+     "name": "Yaylabağ",
+     "sources": [
+      "golbasi-bel",
+      "abb-golbasi"
+     ]
+    },
+    {
+     "name": "Yurtbeyi",
+     "sources": [
+      "golbasi-bel",
+      "abb-golbasi"
+     ]
+    }
+   ]
+  },
+  {
+   "district": "Yenimahalle",
+   "neighborhoods": [
+    {
+     "name": "Anadolu",
+     "sources": [
+      "abb-yenimahalle"
+     ],
+     "note": "Tek resmî kaynak (ABB); Yenimahalle Belediyesi listesi alınamadı (sayfa içeriği tarayıcıda oluşturuluyor), Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Ata",
+     "sources": [
+      "abb-yenimahalle"
+     ],
+     "note": "Tek resmî kaynak (ABB); Yenimahalle Belediyesi listesi alınamadı (sayfa içeriği tarayıcıda oluşturuluyor), Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Avcılar",
+     "sources": [
+      "abb-yenimahalle"
+     ],
+     "note": "Tek resmî kaynak (ABB); Yenimahalle Belediyesi listesi alınamadı (sayfa içeriği tarayıcıda oluşturuluyor), Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "A.yahyalar",
+     "sources": [
+      "abb-yenimahalle"
+     ],
+     "note": "Tek resmî kaynak (ABB); Yenimahalle Belediyesi listesi alınamadı (sayfa içeriği tarayıcıda oluşturuluyor), Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Barış",
+     "sources": [
+      "abb-yenimahalle"
+     ],
+     "note": "Tek resmî kaynak (ABB); Yenimahalle Belediyesi listesi alınamadı (sayfa içeriği tarayıcıda oluşturuluyor), Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Barıştepe",
+     "sources": [
+      "abb-yenimahalle"
+     ],
+     "note": "Tek resmî kaynak (ABB); Yenimahalle Belediyesi listesi alınamadı (sayfa içeriği tarayıcıda oluşturuluyor), Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Batı Sitesi",
+     "sources": [
+      "abb-yenimahalle"
+     ],
+     "note": "Tek resmî kaynak (ABB); Yenimahalle Belediyesi listesi alınamadı (sayfa içeriği tarayıcıda oluşturuluyor), Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Beştepeler",
+     "sources": [
+      "abb-yenimahalle"
+     ],
+     "note": "Tek resmî kaynak (ABB); Yenimahalle Belediyesi listesi alınamadı (sayfa içeriği tarayıcıda oluşturuluyor), Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Burç",
+     "sources": [
+      "abb-yenimahalle"
+     ],
+     "note": "Tek resmî kaynak (ABB); Yenimahalle Belediyesi listesi alınamadı (sayfa içeriği tarayıcıda oluşturuluyor), Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Cumhuriyet",
+     "sources": [
+      "abb-yenimahalle"
+     ],
+     "note": "Tek resmî kaynak (ABB); Yenimahalle Belediyesi listesi alınamadı (sayfa içeriği tarayıcıda oluşturuluyor), Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Çakırlar",
+     "sources": [
+      "abb-yenimahalle"
+     ],
+     "note": "Tek resmî kaynak (ABB); Yenimahalle Belediyesi listesi alınamadı (sayfa içeriği tarayıcıda oluşturuluyor), Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Çamlıca",
+     "sources": [
+      "abb-yenimahalle"
+     ],
+     "note": "Tek resmî kaynak (ABB); Yenimahalle Belediyesi listesi alınamadı (sayfa içeriği tarayıcıda oluşturuluyor), Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Çarşı",
+     "sources": [
+      "abb-yenimahalle"
+     ],
+     "note": "Tek resmî kaynak (ABB); Yenimahalle Belediyesi listesi alınamadı (sayfa içeriği tarayıcıda oluşturuluyor), Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Çiğdemtepe",
+     "sources": [
+      "abb-yenimahalle"
+     ],
+     "note": "Tek resmî kaynak (ABB); Yenimahalle Belediyesi listesi alınamadı (sayfa içeriği tarayıcıda oluşturuluyor), Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Demet",
+     "sources": [
+      "abb-yenimahalle"
+     ],
+     "note": "Tek resmî kaynak (ABB); Yenimahalle Belediyesi listesi alınamadı (sayfa içeriği tarayıcıda oluşturuluyor), Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Demetgül",
+     "sources": [
+      "abb-yenimahalle"
+     ],
+     "note": "Tek resmî kaynak (ABB); Yenimahalle Belediyesi listesi alınamadı (sayfa içeriği tarayıcıda oluşturuluyor), Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Demetlale",
+     "sources": [
+      "abb-yenimahalle"
+     ],
+     "note": "Tek resmî kaynak (ABB); Yenimahalle Belediyesi listesi alınamadı (sayfa içeriği tarayıcıda oluşturuluyor), Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Emniyet",
+     "sources": [
+      "abb-yenimahalle"
+     ],
+     "note": "Tek resmî kaynak (ABB); Yenimahalle Belediyesi listesi alınamadı (sayfa içeriği tarayıcıda oluşturuluyor), Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Ergazi",
+     "sources": [
+      "abb-yenimahalle"
+     ],
+     "note": "Tek resmî kaynak (ABB); Yenimahalle Belediyesi listesi alınamadı (sayfa içeriği tarayıcıda oluşturuluyor), Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Ergenekon",
+     "sources": [
+      "abb-yenimahalle"
+     ],
+     "note": "Tek resmî kaynak (ABB); Yenimahalle Belediyesi listesi alınamadı (sayfa içeriği tarayıcıda oluşturuluyor), Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Esentepe",
+     "sources": [
+      "abb-yenimahalle"
+     ],
+     "note": "Tek resmî kaynak (ABB); Yenimahalle Belediyesi listesi alınamadı (sayfa içeriği tarayıcıda oluşturuluyor), Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Gayret",
+     "sources": [
+      "abb-yenimahalle"
+     ],
+     "note": "Tek resmî kaynak (ABB); Yenimahalle Belediyesi listesi alınamadı (sayfa içeriği tarayıcıda oluşturuluyor), Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Gazi",
+     "sources": [
+      "abb-yenimahalle"
+     ],
+     "note": "Tek resmî kaynak (ABB); Yenimahalle Belediyesi listesi alınamadı (sayfa içeriği tarayıcıda oluşturuluyor), Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Güventepe",
+     "sources": [
+      "abb-yenimahalle"
+     ],
+     "note": "Tek resmî kaynak (ABB); Yenimahalle Belediyesi listesi alınamadı (sayfa içeriği tarayıcıda oluşturuluyor), Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Güzelyaka",
+     "sources": [
+      "abb-yenimahalle"
+     ],
+     "note": "Tek resmî kaynak (ABB); Yenimahalle Belediyesi listesi alınamadı (sayfa içeriği tarayıcıda oluşturuluyor), Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Işınlar",
+     "sources": [
+      "abb-yenimahalle"
+     ],
+     "note": "Tek resmî kaynak (ABB); Yenimahalle Belediyesi listesi alınamadı (sayfa içeriği tarayıcıda oluşturuluyor), Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "İlkyerleşim",
+     "sources": [
+      "abb-yenimahalle"
+     ],
+     "note": "Tek resmî kaynak (ABB); Yenimahalle Belediyesi listesi alınamadı (sayfa içeriği tarayıcıda oluşturuluyor), Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "İnönü",
+     "sources": [
+      "abb-yenimahalle"
+     ],
+     "note": "Tek resmî kaynak (ABB); Yenimahalle Belediyesi listesi alınamadı (sayfa içeriği tarayıcıda oluşturuluyor), Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "İvedik",
+     "sources": [
+      "abb-yenimahalle"
+     ],
+     "note": "Tek resmî kaynak (ABB); Yenimahalle Belediyesi listesi alınamadı (sayfa içeriği tarayıcıda oluşturuluyor), Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Kaletepe",
+     "sources": [
+      "abb-yenimahalle"
+     ],
+     "note": "Tek resmî kaynak (ABB); Yenimahalle Belediyesi listesi alınamadı (sayfa içeriği tarayıcıda oluşturuluyor), Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Karacakaya",
+     "sources": [
+      "abb-yenimahalle"
+     ],
+     "note": "Tek resmî kaynak (ABB); Yenimahalle Belediyesi listesi alınamadı (sayfa içeriği tarayıcıda oluşturuluyor), Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Kardelen",
+     "sources": [
+      "abb-yenimahalle"
+     ],
+     "note": "Tek resmî kaynak (ABB); Yenimahalle Belediyesi listesi alınamadı (sayfa içeriği tarayıcıda oluşturuluyor), Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Karşıyaka",
+     "sources": [
+      "abb-yenimahalle"
+     ],
+     "note": "Tek resmî kaynak (ABB); Yenimahalle Belediyesi listesi alınamadı (sayfa içeriği tarayıcıda oluşturuluyor), Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Kayalar",
+     "sources": [
+      "abb-yenimahalle"
+     ],
+     "note": "Tek resmî kaynak (ABB); Yenimahalle Belediyesi listesi alınamadı (sayfa içeriği tarayıcıda oluşturuluyor), Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Kent-Koop",
+     "sources": [
+      "abb-yenimahalle"
+     ],
+     "note": "Tek resmî kaynak (ABB); Yenimahalle Belediyesi listesi alınamadı (sayfa içeriği tarayıcıda oluşturuluyor), Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Kuzey Yıldızı",
+     "sources": [
+      "abb-yenimahalle"
+     ],
+     "note": "Tek resmî kaynak (ABB); Yenimahalle Belediyesi listesi alınamadı (sayfa içeriği tarayıcıda oluşturuluyor), Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Macun",
+     "sources": [
+      "abb-yenimahalle"
+     ],
+     "note": "Tek resmî kaynak (ABB); Yenimahalle Belediyesi listesi alınamadı (sayfa içeriği tarayıcıda oluşturuluyor), Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Mehmet Akif Ersoy",
+     "sources": [
+      "abb-yenimahalle"
+     ],
+     "note": "Tek resmî kaynak (ABB); Yenimahalle Belediyesi listesi alınamadı (sayfa içeriği tarayıcıda oluşturuluyor), Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Memlik",
+     "sources": [
+      "abb-yenimahalle"
+     ],
+     "note": "Tek resmî kaynak (ABB); Yenimahalle Belediyesi listesi alınamadı (sayfa içeriği tarayıcıda oluşturuluyor), Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Ostim",
+     "sources": [
+      "abb-yenimahalle"
+     ],
+     "note": "Tek resmî kaynak (ABB); Yenimahalle Belediyesi listesi alınamadı (sayfa içeriği tarayıcıda oluşturuluyor), Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Özevler",
+     "sources": [
+      "abb-yenimahalle"
+     ],
+     "note": "Tek resmî kaynak (ABB); Yenimahalle Belediyesi listesi alınamadı (sayfa içeriği tarayıcıda oluşturuluyor), Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Pamuklar",
+     "sources": [
+      "abb-yenimahalle"
+     ],
+     "note": "Tek resmî kaynak (ABB); Yenimahalle Belediyesi listesi alınamadı (sayfa içeriği tarayıcıda oluşturuluyor), Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Ragıp Tüzün",
+     "sources": [
+      "abb-yenimahalle"
+     ],
+     "note": "Tek resmî kaynak (ABB); Yenimahalle Belediyesi listesi alınamadı (sayfa içeriği tarayıcıda oluşturuluyor), Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Serhat",
+     "sources": [
+      "abb-yenimahalle"
+     ],
+     "note": "Tek resmî kaynak (ABB); Yenimahalle Belediyesi listesi alınamadı (sayfa içeriği tarayıcıda oluşturuluyor), Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Susuz",
+     "sources": [
+      "abb-yenimahalle"
+     ],
+     "note": "Tek resmî kaynak (ABB); Yenimahalle Belediyesi listesi alınamadı (sayfa içeriği tarayıcıda oluşturuluyor), Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Tepealtı",
+     "sources": [
+      "abb-yenimahalle"
+     ],
+     "note": "Tek resmî kaynak (ABB); Yenimahalle Belediyesi listesi alınamadı (sayfa içeriği tarayıcıda oluşturuluyor), Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Turgut Özal",
+     "sources": [
+      "abb-yenimahalle"
+     ],
+     "note": "Tek resmî kaynak (ABB); Yenimahalle Belediyesi listesi alınamadı (sayfa içeriği tarayıcıda oluşturuluyor), Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Uğur Mumcu",
+     "sources": [
+      "abb-yenimahalle"
+     ],
+     "note": "Tek resmî kaynak (ABB); Yenimahalle Belediyesi listesi alınamadı (sayfa içeriği tarayıcıda oluşturuluyor), Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Varlık",
+     "sources": [
+      "abb-yenimahalle"
+     ],
+     "note": "Tek resmî kaynak (ABB); Yenimahalle Belediyesi listesi alınamadı (sayfa içeriği tarayıcıda oluşturuluyor), Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Yakacık",
+     "sources": [
+      "abb-yenimahalle"
+     ],
+     "note": "Tek resmî kaynak (ABB); Yenimahalle Belediyesi listesi alınamadı (sayfa içeriği tarayıcıda oluşturuluyor), Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Yenibatı",
+     "sources": [
+      "abb-yenimahalle"
+     ],
+     "note": "Tek resmî kaynak (ABB); Yenimahalle Belediyesi listesi alınamadı (sayfa içeriği tarayıcıda oluşturuluyor), Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Yeniçağ",
+     "sources": [
+      "abb-yenimahalle"
+     ],
+     "note": "Tek resmî kaynak (ABB); Yenimahalle Belediyesi listesi alınamadı (sayfa içeriği tarayıcıda oluşturuluyor), Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Yeşilevler",
+     "sources": [
+      "abb-yenimahalle"
+     ],
+     "note": "Tek resmî kaynak (ABB); Yenimahalle Belediyesi listesi alınamadı (sayfa içeriği tarayıcıda oluşturuluyor), Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Yirmibeş Mart",
+     "sources": [
+      "abb-yenimahalle"
+     ],
+     "note": "Tek resmî kaynak (ABB); Yenimahalle Belediyesi listesi alınamadı (sayfa içeriği tarayıcıda oluşturuluyor), Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Yunus Emre",
+     "sources": [
+      "abb-yenimahalle"
+     ],
+     "note": "Tek resmî kaynak (ABB); Yenimahalle Belediyesi listesi alınamadı (sayfa içeriği tarayıcıda oluşturuluyor), Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Yuvaköy",
+     "sources": [
+      "abb-yenimahalle"
+     ],
+     "note": "Tek resmî kaynak (ABB); Yenimahalle Belediyesi listesi alınamadı (sayfa içeriği tarayıcıda oluşturuluyor), Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Y.yahyalar",
+     "sources": [
+      "abb-yenimahalle"
+     ],
+     "note": "Tek resmî kaynak (ABB); Yenimahalle Belediyesi listesi alınamadı (sayfa içeriği tarayıcıda oluşturuluyor), Kaymakamlık sitesi HTTP 500"
+    }
+   ]
+  },
+  {
+   "district": "Keçiören",
+   "neighborhoods": [
+    {
+     "name": "19 Mayıs",
+     "sources": [
+      "kecioren-bel",
+      "abb-kecioren"
+     ]
+    },
+    {
+     "name": "23 Nisan",
+     "sources": [
+      "kecioren-bel",
+      "abb-kecioren"
+     ]
+    },
+    {
+     "name": "Adnan Menderes",
+     "sources": [
+      "kecioren-bel",
+      "abb-kecioren"
+     ]
+    },
+    {
+     "name": "Aktepe",
+     "sources": [
+      "kecioren-bel",
+      "abb-kecioren"
+     ]
+    },
+    {
+     "name": "Aşağı Eğlence",
+     "sources": [
+      "kecioren-bel",
+      "abb-kecioren"
+     ]
+    },
+    {
+     "name": "Atapark",
+     "sources": [
+      "kecioren-bel",
+      "abb-kecioren"
+     ]
+    },
+    {
+     "name": "Ayvalı",
+     "sources": [
+      "kecioren-bel"
+     ],
+     "note": "İlçe belediyesi listesinde var; ABB listesinde yok"
+    },
+    {
+     "name": "Bademlik",
+     "sources": [
+      "kecioren-bel",
+      "abb-kecioren"
+     ]
+    },
+    {
+     "name": "Bağlarbaşı",
+     "sources": [
+      "kecioren-bel"
+     ],
+     "note": "İlçe belediyesi listesinde var; ABB listesinde yok"
+    },
+    {
+     "name": "Bağlum Güzelyurt",
+     "sources": [
+      "kecioren-bel"
+     ],
+     "note": "İlçe belediyesi listesinde var; ABB listesinde yok"
+    },
+    {
+     "name": "Basınevleri",
+     "sources": [
+      "kecioren-bel",
+      "abb-kecioren"
+     ]
+    },
+    {
+     "name": "Çaldıran",
+     "sources": [
+      "kecioren-bel",
+      "abb-kecioren"
+     ]
+    },
+    {
+     "name": "Çalseki",
+     "sources": [
+      "kecioren-bel"
+     ],
+     "note": "İlçe belediyesi listesinde var; ABB listesinde yok"
+    },
+    {
+     "name": "Çiçekli",
+     "sources": [
+      "kecioren-bel",
+      "abb-kecioren"
+     ]
+    },
+    {
+     "name": "Emrah",
+     "sources": [
+      "kecioren-bel"
+     ],
+     "note": "İlçe belediyesi listesinde var; ABB listesinde yok"
+    },
+    {
+     "name": "Esertepe",
+     "sources": [
+      "kecioren-bel",
+      "abb-kecioren"
+     ]
+    },
+    {
+     "name": "Etlik",
+     "sources": [
+      "kecioren-bel"
+     ],
+     "note": "İlçe belediyesi listesinde var; ABB listesinde yok"
+    },
+    {
+     "name": "Güçlükaya",
+     "sources": [
+      "kecioren-bel",
+      "abb-kecioren"
+     ]
+    },
+    {
+     "name": "Gümüşdere",
+     "sources": [
+      "kecioren-bel",
+      "abb-kecioren"
+     ]
+    },
+    {
+     "name": "Güzelyurt",
+     "sources": [
+      "kecioren-bel",
+      "abb-kecioren"
+     ]
+    },
+    {
+     "name": "Hasköy",
+     "sources": [
+      "kecioren-bel",
+      "abb-kecioren"
+     ]
+    },
+    {
+     "name": "Hisar",
+     "sources": [
+      "kecioren-bel",
+      "abb-kecioren"
+     ]
+    },
+    {
+     "name": "İncirli",
+     "sources": [
+      "kecioren-bel",
+      "abb-kecioren"
+     ]
+    },
+    {
+     "name": "Kafkas",
+     "sources": [
+      "kecioren-bel",
+      "abb-kecioren"
+     ]
+    },
+    {
+     "name": "Kalaba",
+     "sources": [
+      "kecioren-bel",
+      "abb-kecioren"
+     ]
+    },
+    {
+     "name": "Kamilocak",
+     "aliases": [
+      "Kamil Ocak"
+     ],
+     "sources": [
+      "kecioren-bel",
+      "abb-kecioren"
+     ],
+     "note": "İlçe belediyesi yazımı: “Kamil Ocak”"
+    },
+    {
+     "name": "Kanuni",
+     "sources": [
+      "kecioren-bel",
+      "abb-kecioren"
+     ]
+    },
+    {
+     "name": "Karakaya",
+     "sources": [
+      "kecioren-bel",
+      "abb-kecioren"
+     ]
+    },
+    {
+     "name": "Karargahtepe",
+     "sources": [
+      "kecioren-bel",
+      "abb-kecioren"
+     ]
+    },
+    {
+     "name": "Karşıyaka",
+     "sources": [
+      "kecioren-bel",
+      "abb-kecioren"
+     ]
+    },
+    {
+     "name": "Kavacık Subayevleri",
+     "sources": [
+      "kecioren-bel",
+      "abb-kecioren"
+     ]
+    },
+    {
+     "name": "Kösrelik",
+     "sources": [
+      "kecioren-bel",
+      "abb-kecioren"
+     ]
+    },
+    {
+     "name": "Köşk",
+     "sources": [
+      "kecioren-bel",
+      "abb-kecioren"
+     ]
+    },
+    {
+     "name": "Kuşcağız",
+     "sources": [
+      "kecioren-bel",
+      "abb-kecioren"
+     ]
+    },
+    {
+     "name": "Osmangazi",
+     "sources": [
+      "kecioren-bel",
+      "abb-kecioren"
+     ]
+    },
+    {
+     "name": "Ovacık",
+     "sources": [
+      "kecioren-bel",
+      "abb-kecioren"
+     ]
+    },
+    {
+     "name": "Pınarbaşı",
+     "sources": [
+      "kecioren-bel",
+      "abb-kecioren"
+     ]
+    },
+    {
+     "name": "Sancaktepe",
+     "sources": [
+      "kecioren-bel",
+      "abb-kecioren"
+     ]
+    },
+    {
+     "name": "Sarıbeyler",
+     "sources": [
+      "kecioren-bel",
+      "abb-kecioren"
+     ]
+    },
+    {
+     "name": "Şefkat",
+     "aliases": [
+      "Şevkat"
+     ],
+     "sources": [
+      "kecioren-bel",
+      "abb-kecioren"
+     ],
+     "note": "Keçiören Belediyesi “ŞEFKAT”, ABB “Şevkat” yazıyor"
+    },
+    {
+     "name": "Şehit Kubilay",
+     "sources": [
+      "kecioren-bel",
+      "abb-kecioren"
+     ]
+    },
+    {
+     "name": "Şenlik",
+     "sources": [
+      "kecioren-bel",
+      "abb-kecioren"
+     ]
+    },
+    {
+     "name": "Şenyuva",
+     "sources": [
+      "kecioren-bel",
+      "abb-kecioren"
+     ]
+    },
+    {
+     "name": "Tepebaşı",
+     "sources": [
+      "kecioren-bel",
+      "abb-kecioren"
+     ]
+    },
+    {
+     "name": "Ufuktepe",
+     "sources": [
+      "kecioren-bel",
+      "abb-kecioren"
+     ]
+    },
+    {
+     "name": "Uyanış",
+     "sources": [
+      "kecioren-bel",
+      "abb-kecioren"
+     ]
+    },
+    {
+     "name": "Yakacık",
+     "sources": [
+      "kecioren-bel",
+      "abb-kecioren"
+     ]
+    },
+    {
+     "name": "Yayla",
+     "sources": [
+      "kecioren-bel",
+      "abb-kecioren"
+     ]
+    },
+    {
+     "name": "Yeşilöz",
+     "sources": [
+      "kecioren-bel",
+      "abb-kecioren"
+     ]
+    },
+    {
+     "name": "Yeşiltepe",
+     "sources": [
+      "kecioren-bel",
+      "abb-kecioren"
+     ]
+    },
+    {
+     "name": "Yükseltepe",
+     "sources": [
+      "kecioren-bel",
+      "abb-kecioren"
+     ]
+    }
+   ]
+  },
+  {
+   "district": "Etimesgut",
+   "neighborhoods": [
+    {
+     "name": "30 Ağustos",
+     "sources": [
+      "abb-etimesgut"
+     ],
+     "note": "Tek resmî kaynak (ABB); Etimesgut Belediyesi sitesinde mahalle listesi yok, Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Ahi Mesut",
+     "sources": [
+      "abb-etimesgut"
+     ],
+     "note": "Tek resmî kaynak (ABB); Etimesgut Belediyesi sitesinde mahalle listesi yok, Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Alsancak",
+     "sources": [
+      "abb-etimesgut"
+     ],
+     "note": "Tek resmî kaynak (ABB); Etimesgut Belediyesi sitesinde mahalle listesi yok, Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Altay",
+     "sources": [
+      "abb-etimesgut"
+     ],
+     "note": "Tek resmî kaynak (ABB); Etimesgut Belediyesi sitesinde mahalle listesi yok, Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Aşağıyurtçu",
+     "sources": [
+      "abb-etimesgut"
+     ],
+     "note": "Tek resmî kaynak (ABB); Etimesgut Belediyesi sitesinde mahalle listesi yok, Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Atakent",
+     "sources": [
+      "abb-etimesgut"
+     ],
+     "note": "Tek resmî kaynak (ABB); Etimesgut Belediyesi sitesinde mahalle listesi yok, Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Atayurt",
+     "sources": [
+      "abb-etimesgut"
+     ],
+     "note": "Tek resmî kaynak (ABB); Etimesgut Belediyesi sitesinde mahalle listesi yok, Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Ayyıldız",
+     "sources": [
+      "abb-etimesgut"
+     ],
+     "note": "Tek resmî kaynak (ABB); Etimesgut Belediyesi sitesinde mahalle listesi yok, Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Bağlıca",
+     "sources": [
+      "abb-etimesgut"
+     ],
+     "note": "Tek resmî kaynak (ABB); Etimesgut Belediyesi sitesinde mahalle listesi yok, Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Bahçekapı",
+     "sources": [
+      "abb-etimesgut"
+     ],
+     "note": "Tek resmî kaynak (ABB); Etimesgut Belediyesi sitesinde mahalle listesi yok, Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Balıkuyumcu",
+     "sources": [
+      "abb-etimesgut"
+     ],
+     "note": "Tek resmî kaynak (ABB); Etimesgut Belediyesi sitesinde mahalle listesi yok, Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Devlet",
+     "sources": [
+      "abb-etimesgut"
+     ],
+     "note": "Tek resmî kaynak (ABB); Etimesgut Belediyesi sitesinde mahalle listesi yok, Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Elvan",
+     "sources": [
+      "abb-etimesgut"
+     ],
+     "note": "Tek resmî kaynak (ABB); Etimesgut Belediyesi sitesinde mahalle listesi yok, Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Erler",
+     "sources": [
+      "abb-etimesgut"
+     ],
+     "note": "Tek resmî kaynak (ABB); Etimesgut Belediyesi sitesinde mahalle listesi yok, Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Eryaman",
+     "sources": [
+      "abb-etimesgut"
+     ],
+     "note": "Tek resmî kaynak (ABB); Etimesgut Belediyesi sitesinde mahalle listesi yok, Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Etiler",
+     "sources": [
+      "abb-etimesgut"
+     ],
+     "note": "Tek resmî kaynak (ABB); Etimesgut Belediyesi sitesinde mahalle listesi yok, Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Fatih Sultan",
+     "sources": [
+      "abb-etimesgut"
+     ],
+     "note": "Tek resmî kaynak (ABB); Etimesgut Belediyesi sitesinde mahalle listesi yok, Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Fevziye",
+     "sources": [
+      "abb-etimesgut"
+     ],
+     "note": "Tek resmî kaynak (ABB); Etimesgut Belediyesi sitesinde mahalle listesi yok, Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Göksu",
+     "sources": [
+      "abb-etimesgut"
+     ],
+     "note": "Tek resmî kaynak (ABB); Etimesgut Belediyesi sitesinde mahalle listesi yok, Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Güzelkent",
+     "sources": [
+      "abb-etimesgut"
+     ],
+     "note": "Tek resmî kaynak (ABB); Etimesgut Belediyesi sitesinde mahalle listesi yok, Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "İstasyon",
+     "sources": [
+      "abb-etimesgut"
+     ],
+     "note": "Tek resmî kaynak (ABB); Etimesgut Belediyesi sitesinde mahalle listesi yok, Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Kazımkarabekir",
+     "sources": [
+      "abb-etimesgut"
+     ],
+     "note": "Tek resmî kaynak (ABB); Etimesgut Belediyesi sitesinde mahalle listesi yok, Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Oğuzlar",
+     "sources": [
+      "abb-etimesgut"
+     ],
+     "note": "Tek resmî kaynak (ABB); Etimesgut Belediyesi sitesinde mahalle listesi yok, Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Orhun",
+     "sources": [
+      "abb-etimesgut"
+     ],
+     "note": "Tek resmî kaynak (ABB); Etimesgut Belediyesi sitesinde mahalle listesi yok, Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Piyade",
+     "sources": [
+      "abb-etimesgut"
+     ],
+     "note": "Tek resmî kaynak (ABB); Etimesgut Belediyesi sitesinde mahalle listesi yok, Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Süvari",
+     "sources": [
+      "abb-etimesgut"
+     ],
+     "note": "Tek resmî kaynak (ABB); Etimesgut Belediyesi sitesinde mahalle listesi yok, Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Şehitali",
+     "sources": [
+      "abb-etimesgut"
+     ],
+     "note": "Tek resmî kaynak (ABB); Etimesgut Belediyesi sitesinde mahalle listesi yok, Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Şehit Osman Avcı",
+     "sources": [
+      "abb-etimesgut"
+     ],
+     "note": "Tek resmî kaynak (ABB); Etimesgut Belediyesi sitesinde mahalle listesi yok, Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Şeker",
+     "sources": [
+      "abb-etimesgut"
+     ],
+     "note": "Tek resmî kaynak (ABB); Etimesgut Belediyesi sitesinde mahalle listesi yok, Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Şeyhşamil",
+     "sources": [
+      "abb-etimesgut"
+     ],
+     "note": "Tek resmî kaynak (ABB); Etimesgut Belediyesi sitesinde mahalle listesi yok, Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Topçu",
+     "sources": [
+      "abb-etimesgut"
+     ],
+     "note": "Tek resmî kaynak (ABB); Etimesgut Belediyesi sitesinde mahalle listesi yok, Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Tunahan",
+     "sources": [
+      "abb-etimesgut"
+     ],
+     "note": "Tek resmî kaynak (ABB); Etimesgut Belediyesi sitesinde mahalle listesi yok, Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Turkuaz",
+     "sources": [
+      "abb-etimesgut"
+     ],
+     "note": "Tek resmî kaynak (ABB); Etimesgut Belediyesi sitesinde mahalle listesi yok, Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Yapracık",
+     "sources": [
+      "abb-etimesgut"
+     ],
+     "note": "Tek resmî kaynak (ABB); Etimesgut Belediyesi sitesinde mahalle listesi yok, Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Yavuz Selim",
+     "sources": [
+      "abb-etimesgut"
+     ],
+     "note": "Tek resmî kaynak (ABB); Etimesgut Belediyesi sitesinde mahalle listesi yok, Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Yeni Bağlıca",
+     "sources": [
+      "abb-etimesgut"
+     ],
+     "note": "Tek resmî kaynak (ABB); Etimesgut Belediyesi sitesinde mahalle listesi yok, Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Yeşilova",
+     "sources": [
+      "abb-etimesgut"
+     ],
+     "note": "Tek resmî kaynak (ABB); Etimesgut Belediyesi sitesinde mahalle listesi yok, Kaymakamlık sitesi HTTP 500"
+    },
+    {
+     "name": "Yukarı Yurtçu",
+     "sources": [
+      "abb-etimesgut"
+     ],
+     "note": "Tek resmî kaynak (ABB); Etimesgut Belediyesi sitesinde mahalle listesi yok, Kaymakamlık sitesi HTTP 500"
+    }
+   ]
+  },
+  {
+   "district": "Sincan",
+   "neighborhoods": [
+    {
+     "name": "29 Ekim",
+     "sources": [
+      "sincan-bel",
+      "abb-sincan"
+     ]
+    },
+    {
+     "name": "Adalet",
+     "sources": [
+      "sincan-bel",
+      "abb-sincan"
+     ]
+    },
+    {
+     "name": "Ahi Evran",
+     "sources": [
+      "sincan-bel",
+      "abb-sincan"
+     ]
+    },
+    {
+     "name": "Akçaören",
+     "sources": [
+      "sincan-bel",
+      "abb-sincan"
+     ]
+    },
+    {
+     "name": "Akşemsettin",
+     "sources": [
+      "sincan-bel",
+      "abb-sincan"
+     ]
+    },
+    {
+     "name": "Alagöz",
+     "sources": [
+      "sincan-bel",
+      "abb-sincan"
+     ]
+    },
+    {
+     "name": "Alcı",
+     "sources": [
+      "sincan-bel",
+      "abb-sincan"
+     ]
+    },
+    {
+     "name": "Anayurt",
+     "sources": [
+      "sincan-bel",
+      "abb-sincan"
+     ]
+    },
+    {
+     "name": "Andiçen",
+     "sources": [
+      "sincan-bel",
+      "abb-sincan"
+     ]
+    },
+    {
+     "name": "Atatürk",
+     "sources": [
+      "sincan-bel",
+      "abb-sincan"
+     ]
+    },
+    {
+     "name": "Bacı",
+     "sources": [
+      "sincan-bel",
+      "abb-sincan"
+     ]
+    },
+    {
+     "name": "Beyobası",
+     "sources": [
+      "sincan-bel",
+      "abb-sincan"
+     ]
+    },
+    {
+     "name": "Cumhuriyet",
+     "sources": [
+      "sincan-bel",
+      "abb-sincan"
+     ]
+    },
+    {
+     "name": "Çiçektepe",
+     "sources": [
+      "sincan-bel",
+      "abb-sincan"
+     ]
+    },
+    {
+     "name": "Çoğlu",
+     "sources": [
+      "sincan-bel",
+      "abb-sincan"
+     ]
+    },
+    {
+     "name": "Çokören",
+     "sources": [
+      "sincan-bel",
+      "abb-sincan"
+     ]
+    },
+    {
+     "name": "Erkeksu",
+     "sources": [
+      "sincan-bel",
+      "abb-sincan"
+     ]
+    },
+    {
+     "name": "Ertuğrul Gazi",
+     "sources": [
+      "sincan-bel",
+      "abb-sincan"
+     ]
+    },
+    {
+     "name": "Esenler",
+     "sources": [
+      "sincan-bel",
+      "abb-sincan"
+     ]
+    },
+    {
+     "name": "Fatih",
+     "sources": [
+      "sincan-bel",
+      "abb-sincan"
+     ]
+    },
+    {
+     "name": "Fevzi Çakmak",
+     "sources": [
+      "sincan-bel",
+      "abb-sincan"
+     ]
+    },
+    {
+     "name": "Gazi",
+     "sources": [
+      "sincan-bel",
+      "abb-sincan"
+     ]
+    },
+    {
+     "name": "Gaziosmanpaşa",
+     "sources": [
+      "abb-sincan"
+     ],
+     "status": "pending",
+     "note": "Yalnızca ABB listesinde; Sincan Belediyesi listesinde “G. O. P.” var — muhtemelen aynı mahalle, eşleştirilmedi; doğrulama bekliyor"
+    },
+    {
+     "name": "Girmeç",
+     "sources": [
+      "sincan-bel",
+      "abb-sincan"
+     ]
+    },
+    {
+     "name": "Gökçek",
+     "sources": [
+      "sincan-bel",
+      "abb-sincan"
+     ]
+    },
+    {
+     "name": "G. O. P.",
+     "sources": [
+      "sincan-bel"
+     ],
+     "note": "İlçe belediyesi listesinde var; ABB listesinde yok"
+    },
+    {
+     "name": "Hisarlıkaya",
+     "sources": [
+      "sincan-bel",
+      "abb-sincan"
+     ]
+    },
+    {
+     "name": "Hürriyet",
+     "sources": [
+      "sincan-bel",
+      "abb-sincan"
+     ]
+    },
+    {
+     "name": "İlyakut",
+     "sources": [
+      "sincan-bel",
+      "abb-sincan"
+     ]
+    },
+    {
+     "name": "İncirlik",
+     "sources": [
+      "sincan-bel",
+      "abb-sincan"
+     ]
+    },
+    {
+     "name": "İstasyon",
+     "sources": [
+      "sincan-bel",
+      "abb-sincan"
+     ]
+    },
+    {
+     "name": "İstiklal",
+     "sources": [
+      "sincan-bel"
+     ],
+     "note": "İlçe belediyesi listesinde var; ABB listesinde yok"
+    },
+    {
+     "name": "Kesiktaş",
+     "sources": [
+      "sincan-bel",
+      "abb-sincan"
+     ]
+    },
+    {
+     "name": "Malazgirt",
+     "sources": [
+      "sincan-bel"
+     ],
+     "note": "İlçe belediyesi listesinde var; ABB listesinde yok"
+    },
+    {
+     "name": "Malı Köy",
+     "sources": [
+      "sincan-bel"
+     ],
+     "note": "İlçe belediyesi listesinde var; ABB listesinde yok"
+    },
+    {
+     "name": "Mareşal Çakmak",
+     "sources": [
+      "sincan-bel"
+     ],
+     "note": "İlçe belediyesi listesinde var; ABB listesinde yok"
+    },
+    {
+     "name": "Menderes",
+     "sources": [
+      "sincan-bel",
+      "abb-sincan"
+     ]
+    },
+    {
+     "name": "Mevlana",
+     "sources": [
+      "sincan-bel"
+     ],
+     "note": "İlçe belediyesi listesinde var; ABB listesinde yok"
+    },
+    {
+     "name": "Mustafa Kemal",
+     "sources": [
+      "sincan-bel",
+      "abb-sincan"
+     ]
+    },
+    {
+     "name": "Mülk",
+     "sources": [
+      "sincan-bel",
+      "abb-sincan"
+     ]
+    },
+    {
+     "name": "Osmaniye",
+     "sources": [
+      "sincan-bel"
+     ],
+     "note": "İlçe belediyesi listesinde var; ABB listesinde yok"
+    },
+    {
+     "name": "Osmanlı",
+     "sources": [
+      "sincan-bel",
+      "abb-sincan"
+     ]
+    },
+    {
+     "name": "Pınarbaşı",
+     "sources": [
+      "sincan-bel",
+      "abb-sincan"
+     ]
+    },
+    {
+     "name": "Plevne",
+     "sources": [
+      "sincan-bel",
+      "abb-sincan"
+     ]
+    },
+    {
+     "name": "Polatlar",
+     "sources": [
+      "sincan-bel",
+      "abb-sincan"
+     ]
+    },
+    {
+     "name": "Saraycık",
+     "sources": [
+      "sincan-bel",
+      "abb-sincan"
+     ]
+    },
+    {
+     "name": "Selçuklu",
+     "sources": [
+      "sincan-bel",
+      "abb-sincan"
+     ]
+    },
+    {
+     "name": "Tandoğan",
+     "sources": [
+      "sincan-bel",
+      "abb-sincan"
+     ]
+    },
+    {
+     "name": "Tatlar",
+     "sources": [
+      "sincan-bel",
+      "abb-sincan"
+     ]
+    },
+    {
+     "name": "Törekent",
+     "sources": [
+      "sincan-bel",
+      "abb-sincan"
+     ]
+    },
+    {
+     "name": "Türkobası",
+     "sources": [
+      "sincan-bel",
+      "abb-sincan"
+     ]
+    },
+    {
+     "name": "Ulubatlıhasan",
+     "aliases": [
+      "Ulubatlı Hasan"
+     ],
+     "sources": [
+      "sincan-bel",
+      "abb-sincan"
+     ],
+     "note": "ABB yazımı: “Ulubatlı Hasan”"
+    },
+    {
+     "name": "Ücret",
+     "sources": [
+      "sincan-bel",
+      "abb-sincan"
+     ]
+    },
+    {
+     "name": "Yenipeçenek",
+     "sources": [
+      "sincan-bel",
+      "abb-sincan"
+     ]
+    },
+    {
+     "name": "Yeni Çimşit",
+     "aliases": [
+      "Yeniçimşit"
+     ],
+     "sources": [
+      "sincan-bel",
+      "abb-sincan"
+     ],
+     "note": "ABB yazımı: “Yeniçimşit”"
+    },
+    {
+     "name": "Yeni Hisar",
+     "aliases": [
+      "Yenihisar"
+     ],
+     "sources": [
+      "sincan-bel",
+      "abb-sincan"
+     ],
+     "note": "ABB yazımı: “Yenihisar”"
+    },
+    {
+     "name": "Yeni Kayı",
+     "sources": [
+      "sincan-bel",
+      "abb-sincan"
+     ]
+    },
+    {
+     "name": "Yunus Emre",
+     "sources": [
+      "sincan-bel",
+      "abb-sincan"
+     ]
+    }
+   ]
+  },
+  {
+   "district": "Mamak",
+   "neighborhoods": [
+    {
+     "name": "Abidinpaşa",
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ]
+    },
+    {
+     "name": "Akdere",
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ]
+    },
+    {
+     "name": "Akşemşettin",
+     "aliases": [
+      "Akşemsettin"
+     ],
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ],
+     "note": "İlçe belediyesi yazımı: “Akşemsettin”"
+    },
+    {
+     "name": "Altıağaç",
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ]
+    },
+    {
+     "name": "Altınevler",
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ]
+    },
+    {
+     "name": "Araplar",
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ]
+    },
+    {
+     "name": "Aşıkveysel",
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ]
+    },
+    {
+     "name": "Bahçeleriçi",
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ]
+    },
+    {
+     "name": "Bahçelerüstü",
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ]
+    },
+    {
+     "name": "Balkiraz",
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ]
+    },
+    {
+     "name": "Başak",
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ]
+    },
+    {
+     "name": "Bayındır",
+     "aliases": [
+      "Eski Bayındır"
+     ],
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ],
+     "note": "Mamak Belediyesi başlığı “ESKİ BAYINDIR”, adres satırı “Bayındır Mah.”; ABB “Bayındır”"
+    },
+    {
+     "name": "Boğaziçi",
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ]
+    },
+    {
+     "name": "Bostancık",
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ]
+    },
+    {
+     "name": "Cengizhan",
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ]
+    },
+    {
+     "name": "Çağlayan",
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ]
+    },
+    {
+     "name": "Çiğiltepe",
+     "aliases": [
+      "Çiğiltepe (ptt Evleri)"
+     ],
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ],
+     "note": "Mamak Belediyesi “ÇİĞİLTEPE (PTT EVLERİ)” yazıyor"
+    },
+    {
+     "name": "Demirlibahçe",
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ]
+    },
+    {
+     "name": "Derbent",
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ]
+    },
+    {
+     "name": "Diriliş",
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ]
+    },
+    {
+     "name": "Dostlar",
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ]
+    },
+    {
+     "name": "Duralialıç",
+     "aliases": [
+      "Durali Alıç"
+     ],
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ],
+     "note": "İlçe belediyesi yazımı: “Durali Alıç”"
+    },
+    {
+     "name": "Dutluk",
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ]
+    },
+    {
+     "name": "Ege",
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ]
+    },
+    {
+     "name": "Ekin",
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ]
+    },
+    {
+     "name": "Fahri Korutürk",
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ]
+    },
+    {
+     "name": "General Zeki Doğan",
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ]
+    },
+    {
+     "name": "Gökçeyurt",
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ]
+    },
+    {
+     "name": "Gülveren",
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ]
+    },
+    {
+     "name": "Harman",
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ]
+    },
+    {
+     "name": "Hürel",
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ]
+    },
+    {
+     "name": "Hüseyingazi",
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ]
+    },
+    {
+     "name": "Karaağaç",
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ]
+    },
+    {
+     "name": "Karşıyaka",
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ]
+    },
+    {
+     "name": "Kartaltepe",
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ]
+    },
+    {
+     "name": "Kayaş",
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ]
+    },
+    {
+     "name": "Kazım Orbay",
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ]
+    },
+    {
+     "name": "Kıbrıs",
+     "aliases": [
+      "Kıbrısköy"
+     ],
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ],
+     "note": "Mamak Belediyesi “KIBRIS” (adres satırı “Kıbrıs Mahallesi”), ABB “Kıbrısköy” yazıyor — ad farkı"
+    },
+    {
+     "name": "Kızılca",
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ]
+    },
+    {
+     "name": "Köstence",
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ]
+    },
+    {
+     "name": "Kusunlar",
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ]
+    },
+    {
+     "name": "Kutlu",
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ]
+    },
+    {
+     "name": "Kutlu Düğün",
+     "aliases": [
+      "Kutludüğün"
+     ],
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ],
+     "note": "İlçe belediyesi yazımı: “Kutludüğün”"
+    },
+    {
+     "name": "Küçük Kayaş",
+     "aliases": [
+      "Küçükkayaş"
+     ],
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ],
+     "note": "İlçe belediyesi yazımı: “Küçükkayaş”"
+    },
+    {
+     "name": "Lalahan",
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ]
+    },
+    {
+     "name": "Mehtap",
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ]
+    },
+    {
+     "name": "Misket",
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ]
+    },
+    {
+     "name": "Mutlu",
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ]
+    },
+    {
+     "name": "Ortaköy",
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ]
+    },
+    {
+     "name": "Peyami Sefa",
+     "aliases": [
+      "Peyamisefa"
+     ],
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ],
+     "note": "İlçe belediyesi yazımı: “Peyamisefa”"
+    },
+    {
+     "name": "Saimekadın",
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ]
+    },
+    {
+     "name": "Şafaktepe",
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ]
+    },
+    {
+     "name": "Şahapgürler",
+     "aliases": [
+      "Şahap Gürler"
+     ],
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ],
+     "note": "İlçe belediyesi yazımı: “Şahap Gürler”"
+    },
+    {
+     "name": "Şahintepe",
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ]
+    },
+    {
+     "name": "Şehit Cengiz Topel",
+     "aliases": [
+      "Ş.cengiz Topel"
+     ],
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ],
+     "note": "ABB kısaltması: “Ş.cengiz Topel”"
+    },
+    {
+     "name": "Şirintepe",
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ]
+    },
+    {
+     "name": "Tepecik",
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ]
+    },
+    {
+     "name": "Tuzluçayır",
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ]
+    },
+    {
+     "name": "Türközü",
+     "aliases": [
+      "Türkozü"
+     ],
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ],
+     "note": "İlçe belediyesi yazımı: “Türkozü”"
+    },
+    {
+     "name": "Üreğil",
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ]
+    },
+    {
+     "name": "Yenibayındır",
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ]
+    },
+    {
+     "name": "Yeşilbayır",
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ]
+    },
+    {
+     "name": "Yukarı İmrahor",
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ]
+    },
+    {
+     "name": "Zirvekent",
+     "sources": [
+      "mamak-bel",
+      "abb-mamak"
+     ]
+    }
+   ]
+  },
+  {
+   "district": "Altındağ",
+   "neighborhoods": [
+    {
+     "name": "Atıfbey",
+     "sources": [
+      "altindag-bel",
+      "abb-altindag"
+     ]
+    },
+    {
+     "name": "Aydıncık",
+     "sources": [
+      "altindag-bel",
+      "abb-altindag"
+     ]
+    },
+    {
+     "name": "Aydınlıkevler",
+     "sources": [
+      "altindag-bel",
+      "abb-altindag"
+     ]
+    },
+    {
+     "name": "Baraj",
+     "sources": [
+      "altindag-bel",
+      "abb-altindag"
+     ]
+    },
+    {
+     "name": "Başpınar",
+     "sources": [
+      "altindag-bel",
+      "abb-altindag"
+     ]
+    },
+    {
+     "name": "Battal Gazi",
+     "aliases": [
+      "Battalgazi"
+     ],
+     "sources": [
+      "altindag-bel",
+      "abb-altindag"
+     ],
+     "note": "ABB yazımı: “Battalgazi”"
+    },
+    {
+     "name": "Beşikkaya",
+     "sources": [
+      "altindag-bel",
+      "abb-altindag"
+     ]
+    },
+    {
+     "name": "Doğantepe",
+     "sources": [
+      "altindag-bel",
+      "abb-altindag"
+     ]
+    },
+    {
+     "name": "Feridun Çelik",
+     "sources": [
+      "altindag-bel",
+      "abb-altindag"
+     ]
+    },
+    {
+     "name": "Gicik",
+     "sources": [
+      "altindag-bel",
+      "abb-altindag"
+     ]
+    },
+    {
+     "name": "Gültepe",
+     "sources": [
+      "altindag-bel",
+      "abb-altindag"
+     ]
+    },
+    {
+     "name": "Güneşevler",
+     "sources": [
+      "altindag-bel",
+      "abb-altindag"
+     ]
+    },
+    {
+     "name": "Hacettepe",
+     "sources": [
+      "altindag-bel",
+      "abb-altindag"
+     ]
+    },
+    {
+     "name": "Hacı Bayram",
+     "aliases": [
+      "Hacıbayram"
+     ],
+     "sources": [
+      "altindag-bel",
+      "abb-altindag"
+     ],
+     "note": "ABB yazımı: “Hacıbayram”"
+    },
+    {
+     "name": "Kale",
+     "sources": [
+      "altindag-bel",
+      "abb-altindag"
+     ]
+    },
+    {
+     "name": "Karacaören",
+     "sources": [
+      "altindag-bel",
+      "abb-altindag"
+     ]
+    },
+    {
+     "name": "Karapürçek",
+     "sources": [
+      "altindag-bel",
+      "abb-altindag"
+     ]
+    },
+    {
+     "name": "Kavaklı",
+     "sources": [
+      "altindag-bel",
+      "abb-altindag"
+     ]
+    },
+    {
+     "name": "Önder",
+     "sources": [
+      "altindag-bel",
+      "abb-altindag"
+     ]
+    },
+    {
+     "name": "Örnek",
+     "sources": [
+      "altindag-bel",
+      "abb-altindag"
+     ]
+    },
+    {
+     "name": "Peçenek",
+     "sources": [
+      "altindag-bel",
+      "abb-altindag"
+     ]
+    },
+    {
+     "name": "Solfasol",
+     "sources": [
+      "altindag-bel",
+      "abb-altindag"
+     ]
+    },
+    {
+     "name": "Tatlar",
+     "sources": [
+      "altindag-bel",
+      "abb-altindag"
+     ]
+    },
+    {
+     "name": "Ulubey",
+     "sources": [
+      "altindag-bel",
+      "abb-altindag"
+     ]
+    },
+    {
+     "name": "Yıldıztepe",
+     "sources": [
+      "altindag-bel",
+      "abb-altindag"
+     ]
+    },
+    {
+     "name": "Zübeyde Hanım",
+     "aliases": [
+      "Zübeydehanım"
+     ],
+     "sources": [
+      "altindag-bel",
+      "abb-altindag"
+     ],
+     "note": "ABB yazımı: “Zübeydehanım”"
+    }
+   ]
+  }
+ ],
+ "unavailableSources": [
+  {
+   "district": "Yenimahalle",
+   "publisher": "Yenimahalle Belediyesi",
+   "url": "https://www.yenimahalle.bel.tr/muhtarliklar",
+   "reason": "sayfa içeriği tarayıcıda oluşturuluyor; liste okunamadı"
+  },
+  {
+   "district": "Yenimahalle",
+   "publisher": "Yenimahalle Kaymakamlığı",
+   "url": "https://www.yenimahalle.gov.tr/",
+   "reason": "HTTP 500"
+  },
+  {
+   "district": "Etimesgut",
+   "publisher": "Etimesgut Belediyesi",
+   "url": "https://www.etimesgut.bel.tr/",
+   "reason": "sitede mahalle/muhtar listesi bulunamadı"
+  },
+  {
+   "district": "Etimesgut",
+   "publisher": "Etimesgut Kaymakamlığı",
+   "url": "https://www.etimesgut.gov.tr/",
+   "reason": "HTTP 500"
+  }
+ ]
+}

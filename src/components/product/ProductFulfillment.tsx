@@ -3,9 +3,11 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useDelivery } from "@/lib/delivery/context";
-import { isDeliveryFeeReason, reasonMessage, type AvailabilityResult } from "@/lib/availability";
+import { isDeliveryFeeReason, reasonMessage, type AvailabilityResult, type SlotAvailability } from "@/lib/availability";
+import { slotHasStarted } from "@/lib/delivery/slots";
+import { useNow } from "@/lib/time/use-now";
 import { SampleDataNote } from "@/components/delivery/SampleDataNote";
-import { NotServedNotice } from "@/components/delivery/AddressPicker";
+import { AreasUnavailableNotice, NotServedNotice } from "@/components/delivery/AddressPicker";
 import { PickupStorePicker } from "@/components/delivery/PickupStorePicker";
 import { DeliveryPill } from "@/components/delivery/DeliveryPill";
 import { compactSlot, deliverySummary, earliestLabel } from "@/lib/delivery/labels";
@@ -64,7 +66,7 @@ export function ProductFulfillment({
   const todayISO = istanbulDateISO();
   const tomorrowISO = addDaysISO(todayISO, 1);
 
-  // One source: the server engine (branch status, preparation time, slots —
+  // One source: the server engine (branch stock status, the branch's slots —
   // Europe/Istanbul). The top label, date cards, calendar and slots all read it.
   const [availability, setAvailability] = useState<AvailabilityResult | null>(null);
   const [loading, setLoading] = useState(false);
@@ -117,7 +119,24 @@ export function ProductFulfillment({
   }, [availability, selectedDate, selectedSlotId]);
 
   const current = availability && availability.requestedDate === selectedDate ? availability : null;
-  const chosenSlot = current?.slots.find((s) => s.slotId === selectedSlotId && s.available) ?? null;
+  // the server's windows, with any that started since it answered closed too (D44, Europe/Istanbul)
+  const now = useNow();
+  const liveSlots: SlotAvailability[] = (current?.slots ?? []).map((s) =>
+    s.available && now && current && slotHasStarted(current.requestedDate, s.startTime, now)
+      ? { ...s, available: false, reason: "SLOT_STARTED" }
+      : s,
+  );
+  const chosenSlot = liveSlots.find((s) => s.slotId === selectedSlotId && s.available) ?? null;
+
+  // a chosen window that starts while the page is open is dropped and a new one asked for
+  const [slotNotice, setSlotNotice] = useState<string | null>(null);
+  const chosenStarted = liveSlots.some((s) => s.slotId === selectedSlotId && s.reason === "SLOT_STARTED");
+  useEffect(() => {
+    if (!chosenStarted) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSelectedSlotId(null);
+    setSlotNotice("Seçtiğiniz saat aralığı başladı; lütfen yeni bir saat seçin.");
+  }, [chosenStarted]);
 
   // publish selection upward
   useEffect(() => {
@@ -215,6 +234,7 @@ export function ProductFulfillment({
               </button>
             </p>
             {addressStatus === "unserved" && <NotServedNotice className="mt-1.5" />}
+            {addressStatus === "unknown" && <AreasUnavailableNotice className="mt-1.5" />}
           </>
         )}
       </div>
@@ -338,11 +358,11 @@ export function ProductFulfillment({
                   <div key={i} className="h-10 animate-pulse rounded-md bg-sand-light/70" />
                 ))}
               </div>
-            ) : current.slots.length === 0 ? (
+            ) : liveSlots.length === 0 ? (
               <p className="mt-2 font-sans text-[12.5px] text-taupe">{reasonMessage(current.reason)}</p>
             ) : (
               <div role="radiogroup" aria-labelledby="delivery-slot-label" className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-4">
-                {current.slots.map((s) => {
+                {liveSlots.map((s) => {
                   const on = selectedSlotId === s.slotId && s.available;
                   return (
                     <button
@@ -352,7 +372,10 @@ export function ProductFulfillment({
                       aria-checked={on}
                       disabled={!s.available}
                       title={s.available ? undefined : reasonMessage(s.reason)}
-                      onClick={() => setSelectedSlotId(s.slotId)}
+                      onClick={() => {
+                        setSelectedSlotId(s.slotId);
+                        setSlotNotice(null);
+                      }}
                       className={`h-10 rounded-md border px-1 font-sans text-[13px] font-medium tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-burgundy/40 ${
                         on
                           ? "border-burgundy bg-burgundy text-cream-light"
@@ -366,6 +389,11 @@ export function ProductFulfillment({
                   );
                 })}
               </div>
+            )}
+            {slotNotice && !chosenSlot && (
+              <p className="mt-2 font-sans text-[12.5px] text-chocolate-light" aria-live="polite">
+                {slotNotice}
+              </p>
             )}
           </div>
 

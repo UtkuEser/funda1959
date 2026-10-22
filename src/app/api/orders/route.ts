@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { refreshInventory } from "@/lib/inventory/server-init";
 import { refreshDeliveryFees } from "@/lib/delivery/fees-server";
+import { refreshDeliveryAreas } from "@/lib/delivery/areas-server";
 import { refreshProductPrices } from "@/lib/pricing/prices-server";
+import { CATALOG_UNAVAILABLE_ERROR, refreshCatalog } from "@/lib/catalog/server";
 import { SupabaseRestError } from "@/lib/supabase-server";
 import { PRICES_UNAVAILABLE_ERROR, buildOrderPayload } from "@/lib/order-server";
 import { OrderIntakeClosedError, findOrderByRequestId, isOrderIntakeOpen, placeOrder } from "@/lib/orders";
@@ -34,7 +36,10 @@ const RULE_CHANGED: Record<string, string> = {
   points_not_allowed_for_demo: "Funda Puan kullanımı henüz açılmadı; siparişiniz alınmadı.",
   delivery_fee_mismatch: "Teslimat ücreti az önce güncellendi; siparişiniz alınmadı. Lütfen tutarı yeniden kontrol edin.",
   delivery_fee_not_set: "Bu bölge için teslimat ücreti belirlenmedi; adrese teslim şu an yapılamıyor. Mağazadan teslim alabilirsiniz.",
+  delivery_area_closed: "Bu adrese teslimat az önce kapatıldı; siparişiniz alınmadı. Mağazadan teslim alabilirsiniz.",
+  delivery_area_changed: "Teslimat bölgeniz az önce güncellendi; siparişiniz alınmadı. Lütfen teslimatı ve tutarı yeniden kontrol edin.",
   below_minimum: "Adrese teslim için minimum sipariş tutarına ulaşılmadı.",
+  product_unavailable: "Sepetinizdeki bir ürün artık satışta değil; siparişiniz alınmadı. Lütfen sepetinizi kontrol edin.",
   invalid_delivery_date: "Seçilen teslimat tarihi geçmişte kaldı. Lütfen yeni bir tarih seçin.",
 };
 
@@ -59,21 +64,32 @@ export async function POST(request: Request) {
   const requestId = typeof (body as { clientRequestId?: unknown })?.clientRequestId === "string"
     ? ((body as { clientRequestId: string }).clientRequestId.slice(0, 64) || null)
     : null;
-  if (requestId) {
-    try {
-      const existing = await findOrderByRequestId(requestId);
-      if (existing) return NextResponse.json({ ok: true, order: existing }, { status: 201 });
-    } catch (err) {
-      console.error("[api/orders] refused: earlier order could not be looked up", { error: (err as Error).message });
-      return NextResponse.json({ ok: false, error: "Siparişiniz şu an alınamıyor. Lütfen daha sonra tekrar deneyin." }, { status: 503 });
-    }
+
+  // The reads below are independent of each other and nothing is written
+  // until placeOrder, so they are fetched together; their results are
+  // checked one by one in this order, exactly as before.
+  const [existingRead, memberRead, stockRead, pricesRead, , catalogRead] = await Promise.allSettled([
+    requestId ? findOrderByRequestId(requestId) : Promise.resolve(null),
+    routeCookieJar().then(resolveOrderMember),
+    refreshInventory({ strict: true }),
+    refreshProductPrices({ strict: true }),
+    // fees and the district + neighbourhood -> branch map (D49), fresh; unreadable -> delivery refused
+    Promise.all([refreshDeliveryFees(), refreshDeliveryAreas()]),
+    refreshCatalog({ strict: true }),
+  ]);
+
+  if (existingRead.status === "rejected") {
+    console.error("[api/orders] refused: earlier order could not be looked up", { error: (existingRead.reason as Error).message });
+    return NextResponse.json({ ok: false, error: "Siparişiniz şu an alınamıyor. Lütfen daha sonra tekrar deneyin." }, { status: 503 });
   }
+  if (existingRead.value) return NextResponse.json({ ok: true, order: existingRead.value }, { status: 201 });
 
   // D24: a signed-in member's order belongs to their account — the id comes
   // from the session Supabase verified, never from the body. Guests stay
   // guests; a session that can't be checked refuses rather than turning a
   // member's order into a guest order.
-  const member = await resolveOrderMember(await routeCookieJar());
+  if (memberRead.status === "rejected") throw memberRead.reason;
+  const member = memberRead.value;
   if (!member.ok) {
     return NextResponse.json(
       { ok: false, error: "Oturumunuz şu an doğrulanamadı; siparişiniz alınmadı. Lütfen biraz sonra tekrar deneyin." },
@@ -83,23 +99,24 @@ export async function POST(request: Request) {
 
   // the order is checked against the saved branch stock — never against stale
   // or seed values: if the statuses can't be read, no order is taken
-  try {
-    await refreshInventory({ strict: true });
-  } catch (err) {
-    console.error("[api/orders] refused: branch stock could not be read", { error: (err as Error).message });
+  if (stockRead.status === "rejected") {
+    console.error("[api/orders] refused: branch stock could not be read", { error: (stockRead.reason as Error).message });
     return NextResponse.json({ ok: false, error: STOCK_UNREADABLE_ERROR }, { status: 503 });
   }
 
   // product prices, fresh (D5): an order is never priced from an older or a catalog value
-  try {
-    await refreshProductPrices({ strict: true });
-  } catch {
+  if (pricesRead.status === "rejected") {
     return NextResponse.json({ ok: false, error: PRICES_UNAVAILABLE_ERROR }, { status: 503 });
   }
 
-  // delivery fees, fresh (D15). A failed read leaves them "unavailable": delivery
-  // answers 503 below, pickup keeps working.
-  await refreshDeliveryFees();
+  // the published panel products (D45), fresh: a draft or unpublished one is not ordered
+  // (create_order refuses it as well, 0013)
+  if (catalogRead.status === "rejected") {
+    return NextResponse.json({ ok: false, error: CATALOG_UNAVAILABLE_ERROR }, { status: 503 });
+  }
+
+  // delivery fees, fresh (D15), read above (lenient). A failed read leaves them
+  // "unavailable": delivery answers 503 below, pickup keeps working.
 
   // 400 malformed / 409 not deliverable as asked (date, slot, stock, zone, fee,
   // minimum) / 503 prices or fees unreadable

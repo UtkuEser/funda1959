@@ -11,7 +11,7 @@ const NAV = [
   { key: "overview", label: "Genel Bakış" },
   { key: "orders", label: "Siparişler" },
   { key: "stock", label: "Şube Stokları" },
-  { key: "prices", label: "Fiyatlar" },
+  { key: "prices", label: "Ürün Bilgisi" },
   { key: "campaigns", label: "Kampanyalar" },
   { key: "funda-puan", label: "Funda Puan" },
   { key: "contact", label: "İletişim Talepleri" },
@@ -20,7 +20,10 @@ const NAV = [
   { key: "branches", label: "Şubeler" },
 ] as const;
 
-const TITLES: Record<string, string> = Object.fromEntries(NAV.map((n) => [n.key, n.label]));
+const TITLES: Record<string, string> = { ...Object.fromEntries(NAV.map((n) => [n.key, n.label])), "product-new": "Ürün Ekle", "product-edit": "Ürün Düzenle" };
+
+/** a screen opened from a menu section keeps that section highlighted */
+const PARENT: Record<string, string> = { "product-new": "prices", "product-edit": "prices" };
 
 function Chrome({ children, user }: { children: React.ReactNode; user: AdminUser }) {
   const router = useRouter();
@@ -71,7 +74,7 @@ function Chrome({ children, user }: { children: React.ReactNode; user: AdminUser
             </div>
             <nav className="flex-1 overflow-y-auto p-2">
               {navItems.map((item) => {
-                const active = section === item.key;
+                const active = (PARENT[section] ?? section) === item.key;
                 return (
                   <Link
                     key={item.key}
@@ -151,7 +154,7 @@ function Chrome({ children, user }: { children: React.ReactNode; user: AdminUser
                 key={item.key}
                 href={hrefFor(item.key)}
                 className={`shrink-0 rounded-md px-2.5 py-1 text-[12.5px] ${
-                  section === item.key
+                  (PARENT[section] ?? section) === item.key
                     ? "bg-neutral-100 font-semibold"
                     : "text-neutral-600"
                 }`}

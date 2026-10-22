@@ -33,7 +33,6 @@ export type Product = {
 export type CatalogMeta = {
   priceValue: number;
   oldPrice?: string;
-  sameDayDelivery?: boolean;
   isNew?: boolean;
   isBestSeller?: boolean;
   isGift?: boolean;
@@ -426,8 +425,8 @@ export const branches: Branch[] = [
     name: "Funda 1959 İncek",
     shortName: "İncek TONA",
     description: "İncek TONA Residence'ın içinde yer alan en yeni şubemiz. Sakin ve yeşil bir ortamda premium cafe-patisserie deneyimi.",
-    address: "TONA Residence, İncek, Ankara",
-    neighborhood: "İncek",
+    address: "TONA Residence, Alacaatlı Mahallesi, Kanuni Sultan Süleyman Bulvarı D:160/K, Çankaya/Ankara",
+    neighborhood: "Alacaatlı",
     phone: "+90 312 449 00 00",
     mapUrl: "https://maps.google.com/?q=İncek+TONA+Residence+Ankara",
     hours: "Her Gün: 09:00 – 22:00",
@@ -604,7 +603,6 @@ type ProductDetailMeta = {
   longDescription?: string;
   images?: string[]; // gradient class fragments used as placeholders
   maxCakeMessageLength?: number;
-  preparationTimeHours?: number;
   availableDeliveryTypes?: DeliveryType[];
   extraOptions?: string[];
   allergens?: string;
@@ -623,7 +621,6 @@ export type ProductDetail = CatalogProduct & {
   images: string[];
   imageLabels: string[];
   maxCakeMessageLength: number | null;
-  preparationTimeHours: number;
   availableDeliveryTypes: DeliveryType[];
   extraOptions: string[];
   allergens: string;
@@ -676,19 +673,25 @@ const SIZE_PRICES: Record<string, ProductVariant[]> = {
   p16: sized(SERVING, [950, 1280, 1760, 2280]),
 };
 
-function variantKindFor(categorySlug: string): VariantKind {
+export function variantKindFor(categorySlug: string): VariantKind {
   if (["yas-pastalar", "ozel-gun"].includes(categorySlug)) return "serving";
   if (["kuru-pastalar", "serbetli-tatlilar"].includes(categorySlug)) return "weight";
   if (categorySlug === "cikolatalar") return "pack";
   return "none";
 }
 
+/** The sizes each kind offers, smallest first — a product added in the panel (D45) picks from these. */
+export const SIZE_OPTIONS: Record<Exclude<VariantKind, "none">, { id: string; label: string }[]> = {
+  serving: SERVING.map(([id, label]) => ({ id, label })),
+  weight: WEIGHT.map(([id, label]) => ({ id, label })),
+  pack: PACK.map(([id, label]) => ({ id, label })),
+};
+
 const productDetailMeta: Record<string, ProductDetailMeta> = {
   p1: {
     longDescription:
       "Yoğun çikolata kreması, taze çilekler ve yumuşak pandispanya ile hazırlanan Funda klasiklerinden. Belçika çikolatası ganajıyla kaplanır; her katmanında taze meyve dilimleri bulunur. Doğum günü ve kutlamaların vazgeçilmezi.",
     maxCakeMessageLength: 40,
-    preparationTimeHours: 24,
     availableDeliveryTypes: ["address", "pickup"],
     extraOptions: ["Mum Ekle", "Doğum Günü Kartı", "Hediye Notu"],
     allergens: "Gluten, süt ürünü, yumurta ve fındık içerebilir.",
@@ -697,7 +700,7 @@ const productDetailMeta: Record<string, ProductDetailMeta> = {
     storageInfo:
       "+2 / +4 °C arasında buzdolabında saklayınız. Hazırlandığı gün tüketilmesi önerilir, en geç 2 gün içinde tüketiniz.",
     deliveryInfo:
-      "Yaş pasta siparişleri en az 24 saat öncesinden alınır. Adrese teslim ve mağazadan teslim seçenekleri mevcuttur.",
+      "Ürün seçtiğiniz şubede mevcutsa bugün için de sipariş verebilirsiniz; seçilebilecek tarih ve saatler adres veya mağaza seçiminizden sonra gösterilir. Adrese teslim ve mağazadan teslim seçenekleri mevcuttur.",
     quantityEnabled: false,
     relatedProductIds: ["p2", "p4", "p18", "p16"],
   },
@@ -705,7 +708,7 @@ const productDetailMeta: Record<string, ProductDetailMeta> = {
 
 /** The sizes a product sells in with their catalog prices, smallest first ([] = a single price). */
 export function productSizes(product: Pick<CatalogProduct, "id">): ProductVariant[] {
-  return SIZE_PRICES[product.id] ?? [];
+  return SIZE_PRICES[product.id] ?? addedProductSizes(product.id);
 }
 
 /* ---------------------------------------------------------------------------
@@ -719,20 +722,20 @@ const catalogMeta: Record<string, CatalogMeta> = {
   p2: { priceValue: 720, servingOptions: ["8–10 Kişilik"], occasions: ["kutlama"], features: ["Yazı Eklenebilir"], availableBranches: ALL_BRANCHES },
   p3: { priceValue: 740, isNew: true, servingOptions: ["4–6 Kişilik"], occasions: ["kutlama"], availableBranches: ["gop", "panora"] },
   p4: { priceValue: 760, servingOptions: ["12–15 Kişilik"], occasions: ["dogum-gunu", "kutlama"], availableBranches: ALL_BRANCHES },
-  p5: { priceValue: 45, sameDayDelivery: true, isGift: true, availableBranches: ALL_BRANCHES },
-  p6: { priceValue: 95, sameDayDelivery: true, availableBranches: ALL_BRANCHES },
-  p7: { priceValue: 85, sameDayDelivery: true, isNew: true, availableBranches: ["gop", "incek"] },
-  p8: { priceValue: 420, sameDayDelivery: true, isBestSeller: true, weightOptions: ["500 g", "1 kg"], availableBranches: ALL_BRANCHES },
-  p9: { priceValue: 360, sameDayDelivery: true, weightOptions: ["1 kg"], availableBranches: ALL_BRANCHES },
-  p10: { priceValue: 640, sameDayDelivery: true, isBestSeller: true, weightOptions: ["500 g", "1 kg"], availableBranches: ALL_BRANCHES },
-  p11: { priceValue: 560, sameDayDelivery: true, weightOptions: ["1 kg"], availableBranches: ["gop", "panora"] },
-  p12: { priceValue: 120, sameDayDelivery: true, availableBranches: ALL_BRANCHES },
-  p13: { priceValue: 520, sameDayDelivery: true, isBestSeller: true, isGift: true, availableBranches: ALL_BRANCHES },
+  p5: { priceValue: 45, isGift: true, availableBranches: ALL_BRANCHES },
+  p6: { priceValue: 95, availableBranches: ALL_BRANCHES },
+  p7: { priceValue: 85, isNew: true, availableBranches: ["gop", "incek"] },
+  p8: { priceValue: 420, isBestSeller: true, weightOptions: ["500 g", "1 kg"], availableBranches: ALL_BRANCHES },
+  p9: { priceValue: 360, weightOptions: ["1 kg"], availableBranches: ALL_BRANCHES },
+  p10: { priceValue: 640, isBestSeller: true, weightOptions: ["500 g", "1 kg"], availableBranches: ALL_BRANCHES },
+  p11: { priceValue: 560, weightOptions: ["1 kg"], availableBranches: ["gop", "panora"] },
+  p12: { priceValue: 120, availableBranches: ALL_BRANCHES },
+  p13: { priceValue: 520, isBestSeller: true, isGift: true, availableBranches: ALL_BRANCHES },
   p14: { priceValue: 890, isNew: true, isGift: true, availableBranches: ["gop", "panora"] },
   p15: { priceValue: 1450, customizable: true, servingOptions: ["15+ Kişilik"], occasions: ["dugun-nisan", "kisiye-ozel"], features: ["Özel Tasarım", "Kişiselleştirilebilir", "Yazı Eklenebilir"], availableBranches: ["gop", "incek"] },
   p16: { priceValue: 950, isBestSeller: true, customizable: true, isGift: true, servingOptions: ["8–10 Kişilik"], occasions: ["dogum-gunu", "kisiye-ozel"], features: ["Kişiselleştirilebilir", "Yazı Eklenebilir", "Fotoğraflı Pasta"], availableBranches: ALL_BRANCHES },
-  p17: { priceValue: 280, sameDayDelivery: true, weightOptions: ["1 kg"], availableBranches: ALL_BRANCHES },
-  p18: { priceValue: 240, oldPrice: "₺290", sameDayDelivery: true, isBestSeller: true, availableBranches: ALL_BRANCHES },
+  p17: { priceValue: 280, weightOptions: ["1 kg"], availableBranches: ALL_BRANCHES },
+  p18: { priceValue: 240, oldPrice: "₺290", isBestSeller: true, availableBranches: ALL_BRANCHES },
 };
 
 const categoryImageIndex = new Map<string, number>();
@@ -755,8 +758,179 @@ export const catalogProducts: CatalogProduct[] = products.map((p) => {
   };
 });
 
+/* ---------------------------------------------------------------------------
+ * Products added in the admin panel (D45) — published ones only
+ *
+ * The 18 products above stay in code with their ids. Products Merkez adds
+ * live in the database (`catalog_products`, 0013); the server loads the
+ * PUBLISHED ones (never drafts or unpublished ones) and registers them here
+ * (`setPublishedProducts`), and pages hand the same list to the browser, so
+ * every listing, search, detail page and order check sees one catalog:
+ * `allCatalogProducts()`. Nothing registered -> exactly the code catalog.
+ * ------------------------------------------------------------------------- */
+
+/** A published product from the database, as the storefront needs it (no audit fields). */
+export type PublishedProduct = {
+  /** "n" + 12 hex — never one of the code ids */
+  id: string;
+  slug: string;
+  name: string;
+  categorySlug: string;
+  shortDescription: string;
+  /** public image address, or null (gradient placeholder) */
+  imageUrl: string | null;
+  /** catalog prices: one per size id (smallest first), or a single `{ key: "" }` */
+  sizes: { key: string; price: number }[];
+  /** only what Merkez entered — null when nothing was entered (never generated) */
+  allergens: string | null;
+  /** the customer may write a message on it (pasta yazısı) */
+  cakeMessage: boolean;
+  isNew: boolean;
+  isBestSeller: boolean;
+  isGift: boolean;
+  /** branch -> active (true) / passive (false), until the branch's own stock rows exist */
+  branchStock: Record<string, boolean>;
+  updatedAt: string;
+};
+
+type AddedCatalog = {
+  /** published products + hidden code products: changes when either does */
+  key: string;
+  published: Map<string, PublishedProduct>;
+  products: CatalogProduct[];
+  /** code products Merkez took off the site ("Yayında" unticked, D48) */
+  hidden: Set<string>;
+  /** the storefront: visible code products, then published panel products */
+  all: CatalogProduct[];
+  /** for the panel: every code product (hidden ones too), then published panel products */
+  withHidden: CatalogProduct[];
+};
+
+/**
+ * The registered list lives on globalThis (shared by the server's module
+ * copies). Read through a function: `catalogProducts` above is built while
+ * this module loads and already asks `productSizes` -> here.
+ */
+function addedCatalog(): AddedCatalog | undefined {
+  return (globalThis as unknown as { __fundaAddedCatalog?: AddedCatalog }).__fundaAddedCatalog;
+}
+
+const codeIds = new Set(catalogProducts.map((p) => p.id));
+const codeSlugs = new Set(catalogProducts.map((p) => p.slug));
+
+/** The product slugs of the code catalog — a product added in the panel can't take one. */
+export function isCodeProductSlug(slug: string): boolean {
+  return codeSlugs.has(slug);
+}
+
+function addedSizesOf(p: PublishedProduct): ProductVariant[] {
+  const kind = variantKindFor(p.categorySlug);
+  if (kind === "none") return [];
+  const prices = new Map(p.sizes.map((s) => [s.key, s.price]));
+  return SIZE_OPTIONS[kind].filter((o) => prices.has(o.id)).map((o) => ({ id: o.id, label: o.label, price: prices.get(o.id)! }));
+}
+
+function toCatalogProduct(p: PublishedProduct): CatalogProduct {
+  const category = categories.find((c) => c.slug === p.categorySlug);
+  const smallest = addedSizesOf(p)[0];
+  const priceValue = smallest?.price ?? p.sizes.find((s) => s.key === "")?.price ?? 0;
+  return {
+    id: p.id,
+    name: p.name,
+    categorySlug: p.categorySlug,
+    categoryName: category?.name ?? "",
+    description: p.shortDescription,
+    shortDescription: p.shortDescription,
+    tags: [],
+    gradient: category?.gradient ?? "from-[#EAD9C8] to-[#D9C2AA]",
+    priceValue,
+    ...(p.isNew ? { isNew: true } : {}),
+    ...(p.isBestSeller ? { isBestSeller: true } : {}),
+    ...(p.isGift ? { isGift: true } : {}),
+    ...(p.cakeMessage ? { customizable: true } : {}),
+    availableBranches: ALL_BRANCHES,
+    slug: p.slug,
+    cardPrice: priceValue,
+    displayPrice: `₺${priceValue.toLocaleString("tr-TR")}`,
+    image: p.imageUrl,
+  };
+}
+
+/** Usable on the storefront: a database id and slug, an existing category, a price. */
+function isStorefrontProduct(p: PublishedProduct): boolean {
+  return (
+    /^n[0-9a-f]{12}$/.test(p.id) &&
+    !codeIds.has(p.id) &&
+    !codeSlugs.has(p.slug) &&
+    categories.some((c) => c.slug === p.categorySlug) &&
+    p.sizes.length > 0
+  );
+}
+
+/**
+ * Registers the published products (server: after each read; browser: from
+ * the page). The same list twice is a no-op, so listings keep their identity.
+ */
+export function setPublishedProducts(list: PublishedProduct[], hiddenCodeIds: string[] = hiddenProductIds()): void {
+  const usable = list.filter(isStorefrontProduct);
+  const hidden = [...new Set(hiddenCodeIds.filter((id) => codeIds.has(id)))].sort();
+  const key = `${usable.map((p) => `${p.id}@${p.updatedAt}`).join("|")}#${hidden.join(",")}`;
+  if ((addedCatalog()?.key ?? "#") === key) return;
+  const products = usable.map(toCatalogProduct);
+  const hiddenSet = new Set(hidden);
+  const visibleCode = hidden.length > 0 ? catalogProducts.filter((p) => !hiddenSet.has(p.id)) : catalogProducts;
+  (globalThis as unknown as { __fundaAddedCatalog?: AddedCatalog }).__fundaAddedCatalog = {
+    key,
+    published: new Map(usable.map((p) => [p.id, p])),
+    products,
+    hidden: hiddenSet,
+    all: products.length > 0 || hidden.length > 0 ? [...visibleCode, ...products] : catalogProducts,
+    withHidden: products.length > 0 ? [...catalogProducts, ...products] : catalogProducts,
+  };
+}
+
+/** Code products currently off the site (D48). */
+export function hiddenProductIds(): string[] {
+  return [...(addedCatalog()?.hidden ?? [])];
+}
+
+/** Is this code product off the site? (a hidden product is not listed, found or ordered) */
+export function isHiddenProduct(id: string): boolean {
+  return addedCatalog()?.hidden.has(id) ?? false;
+}
+
+/** The panel's list: every code product (hidden ones too), then the published panel products. */
+export function catalogWithHidden(): CatalogProduct[] {
+  return addedCatalog()?.withHidden ?? catalogProducts;
+}
+
+/** The registered published products (what pages hand to the browser). */
+export function publishedProducts(): PublishedProduct[] {
+  return [...(addedCatalog()?.published.values() ?? [])];
+}
+
+/** One published product added in the panel, or undefined (a code product, a draft, unknown). */
+export function publishedProduct(id: string): PublishedProduct | undefined {
+  return addedCatalog()?.published.get(id);
+}
+
+/** Changes whenever the registered list changes — a memo key for listings built from it. */
+export function catalogVersion(): string {
+  return addedCatalog()?.key ?? "";
+}
+
+/** The storefront catalog: the visible code products, then the published ones added in the panel. */
+export function allCatalogProducts(): CatalogProduct[] {
+  return addedCatalog()?.all ?? catalogProducts;
+}
+
+function addedProductSizes(id: string): ProductVariant[] {
+  const p = publishedProduct(id);
+  return p ? addedSizesOf(p) : [];
+}
+
 export const getCatalogProductBySlug = (slug: string) =>
-  catalogProducts.find((p) => p.slug === slug);
+  allCatalogProducts().find((p) => p.slug === slug);
 
 export type CatalogCategory = {
   label: string;
@@ -796,11 +970,12 @@ export const catalogServingOptions = [
 ];
 
 export function catalogProductsForCategory(slug: string): CatalogProduct[] {
-  if (slug === "tumu") return catalogProducts;
-  if (slug === "hediyelikler") return catalogProducts.filter((p) => p.isGift);
+  const all = allCatalogProducts();
+  if (slug === "tumu") return all;
+  if (slug === "hediyelikler") return all.filter((p) => p.isGift);
   const cat = catalogCategories.find((c) => c.slug === slug);
-  if (!cat) return catalogProducts;
-  return catalogProducts.filter((p) => cat.sources.includes(p.categorySlug));
+  if (!cat) return all;
+  return all.filter((p) => cat.sources.includes(p.categorySlug));
 }
 
 /* ---------------------------------------------------------------------------
@@ -839,7 +1014,7 @@ export function resolveCatalogListing(slug: string): CatalogListing | null {
       title: "Lezzetlerimiz",
       description: "Funda'nın günlük üretiminden kutlama pastalarına, tüm lezzetleri keşfedin.",
       navSlug: "tumu",
-      products: catalogProducts,
+      products: allCatalogProducts(),
     };
   }
   const group = catalogCategories.find((c) => c.slug === slug && c.sources.length > 0);
@@ -862,7 +1037,7 @@ export function resolveCatalogListing(slug: string): CatalogListing | null {
     title: category.name,
     description: category.description,
     navSlug: parent?.slug ?? "tumu",
-    products: catalogProducts.filter((p) => p.categorySlug === slug),
+    products: allCatalogProducts().filter((p) => p.categorySlug === slug),
   };
 }
 
@@ -882,20 +1057,26 @@ export function getProductDetail(slug: string): ProductDetail | undefined {
   const base = getCatalogProductBySlug(slug);
   if (!base) return undefined;
 
-  const meta = productDetailMeta[base.id] ?? {};
+  // a product added in the panel (D45) shows only what Merkez entered:
+  // no generated ingredients, allergens or storage advice
+  const added = publishedProduct(base.id);
+  const meta: ProductDetailMeta = added
+    ? { allergens: added.allergens ?? "", ingredients: "", storageInfo: "", maxCakeMessageLength: added.cakeMessage ? 40 : undefined }
+    : productDetailMeta[base.id] ?? {};
   const variants = productSizes(base);
   const kind = variants.length > 0 ? variantKindFor(base.categorySlug) : "none";
   const basePrice = base.priceValue;
 
+  const all = allCatalogProducts();
   const relatedIds =
     meta.relatedProductIds ??
-    catalogProducts
+    all
       .filter((p) => p.categorySlug === base.categorySlug && p.id !== base.id)
       .slice(0, 4)
       .map((p) => p.id);
 
   const relatedProducts = relatedIds
-    .map((id) => catalogProducts.find((p) => p.id === id))
+    .map((id) => all.find((p) => p.id === id))
     .filter((p): p is CatalogProduct => Boolean(p))
     .slice(0, 4);
 
@@ -908,7 +1089,6 @@ export function getProductDetail(slug: string): ProductDetail | undefined {
     images: meta.images ?? (base.image ? [base.image] : [base.gradient, base.gradient, base.gradient, base.gradient]),
     imageLabels: ["Ön Görünüm", "Detay", "Kesit", "Servis"],
     maxCakeMessageLength: meta.maxCakeMessageLength ?? (base.customizable ? 40 : null),
-    preparationTimeHours: meta.preparationTimeHours ?? (base.sameDayDelivery ? 4 : 24),
     availableDeliveryTypes: meta.availableDeliveryTypes ?? ["address", "pickup"],
     extraOptions: meta.extraOptions ?? (kind === "serving" ? ["Mum Ekle", "Doğum Günü Kartı", "Hediye Notu"] : []),
     allergens: meta.allergens ?? "Gluten, süt ürünü ve yumurta içerebilir.",

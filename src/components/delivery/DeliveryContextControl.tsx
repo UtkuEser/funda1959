@@ -8,7 +8,7 @@
 
 import { useDelivery } from "@/lib/delivery/context";
 import { SampleDataNote } from "./SampleDataNote";
-import { NotServedNotice } from "./AddressPicker";
+import { AreasUnavailableNotice, NotServedNotice } from "./AddressPicker";
 import { PickupStorePicker } from "./PickupStorePicker";
 
 export function DeliveryContextControl({ className = "" }: { className?: string }) {
@@ -62,7 +62,13 @@ export function DeliveryContextControl({ className = "" }: { className?: string 
               </span>
               {branch && <> · {branch.shortName} şubesinden hazırlanır</>}
             </p>
-            {addressStatus === "unserved" ? <NotServedNotice className="mt-1" /> : <SampleDataNote className="mt-1" />}
+            {addressStatus === "unserved" ? (
+              <NotServedNotice className="mt-1" />
+            ) : addressStatus === "unknown" ? (
+              <AreasUnavailableNotice className="mt-1" />
+            ) : (
+              <SampleDataNote className="mt-1" />
+            )}
           </>
         )
       ) : (

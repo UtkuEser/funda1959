@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { refreshInventory } from "@/lib/inventory/server-init";
 import { refreshDeliveryFees } from "@/lib/delivery/fees-server";
+import { refreshDeliveryAreas } from "@/lib/delivery/areas-server";
 import { refreshProductPrices } from "@/lib/pricing/prices-server";
+import { CATALOG_UNAVAILABLE_ERROR, refreshCatalog } from "@/lib/catalog/server";
 import { PRICES_UNAVAILABLE_ERROR, buildOrderPayload, quoteFromPayload } from "@/lib/order-server";
 import { isFundaPointsActive } from "@/lib/funda-points";
 import { getCheckoutPoints } from "@/lib/funda-points/service";
@@ -26,27 +28,32 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "Geçersiz istek." }, { status: 400 });
   }
 
-  // the same fresh, strict stock read as an order, so the quote's verdict is
-  // the order's verdict (one read per payment-page load)
-  try {
-    await refreshInventory({ strict: true });
-  } catch (err) {
-    console.error("[api/orders/quote] branch stock could not be read", { error: (err as Error).message });
+  // the same fresh reads as an order, fetched together (independent of each
+  // other) and checked in the order's sequence below:
+  // - strict stock, so the quote's verdict is the order's verdict (one read per payment-page load)
+  // - strict prices (D5): the amount shown is the amount ordered
+  // - delivery fees (D15), lenient; unreadable -> delivery answers 503
+  // - strict catalog: the published panel products (D45), so an unpublished one is refused
+  // - delivery areas (D49), fresh and lenient like the fees: the branch follows from the address
+  const [stock, prices, , catalog] = await Promise.allSettled([
+    refreshInventory({ strict: true }),
+    refreshProductPrices({ strict: true }),
+    Promise.all([refreshDeliveryFees(), refreshDeliveryAreas()]),
+    refreshCatalog({ strict: true }),
+  ]);
+  if (stock.status === "rejected") {
+    console.error("[api/orders/quote] branch stock could not be read", { error: (stock.reason as Error).message });
     return NextResponse.json(
       { ok: false, error: "Stok bilgisi şu an doğrulanamadı; tutar hesaplanamadı. Lütfen biraz sonra tekrar deneyin." },
       { status: 503 },
     );
   }
-
-  // fresh prices, like an order (D5): the amount shown is the amount ordered
-  try {
-    await refreshProductPrices({ strict: true });
-  } catch {
+  if (prices.status === "rejected") {
     return NextResponse.json({ ok: false, error: PRICES_UNAVAILABLE_ERROR }, { status: 503 });
   }
-
-  // fresh delivery fees, like an order (D15); unreadable -> delivery answers 503
-  await refreshDeliveryFees();
+  if (catalog.status === "rejected") {
+    return NextResponse.json({ ok: false, error: CATALOG_UNAVAILABLE_ERROR }, { status: 503 });
+  }
 
   // Funda Puan: same checks as the order. While points are off a request for
   // points is refused by buildOrderPayload without reading anything (D41).

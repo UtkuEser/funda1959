@@ -5,8 +5,12 @@
  *
  * Address first: the customer enters district + neighbourhood and the serving
  * branch is derived from the delivery zones (`resolveZone`) — never chosen,
- * never guessed. An address with no zone is kept but has no branch
- * ("not served"). Pickup is the exception: there the customer picks the
+ * never guessed. The district + neighbourhood -> branch map is Merkez's
+ * (D49) and is loaded from the server (GET /api/delivery-areas) before the
+ * stored choice is restored; it is loaded again when the tab comes back
+ * after a while. An address with no zone is kept but has no branch
+ * ("not served"); while the map can't be loaded the status is "unknown",
+ * never "not served". Pickup is the exception: there the customer picks the
  * store. Stock and delivery options everywhere (catalog, quick order, product
  * page, cart) are evaluated for the resulting branch.
  *
@@ -33,7 +37,8 @@ import {
   type DeliveryContext as DeliveryContextValue,
   type FulfillmentType,
 } from "@/lib/availability/types";
-import { deliverableDistricts, deliverableNeighborhoods, resolveZone } from "./zones";
+import type { AreaAssignment } from "./areas";
+import { addressDistricts, addressNeighborhoods, markAreasUnavailable, resolveZone, setAreaAssignments } from "./zones";
 import { getBranch, type Branch } from "@/lib/branch";
 
 const STORAGE_KEY = "funda-delivery-context";
@@ -41,8 +46,8 @@ const STORAGE_KEY = "funda-delivery-context";
 /** why the picker was opened — lets it explain the interruption */
 export type SelectorReason = "cart" | "stock";
 
-/** delivery address state: nothing entered / served by a branch / outside every zone */
-export type AddressStatus = "none" | "served" | "unserved";
+/** delivery address state: nothing entered / served by a branch / outside every zone / the zone map could not be loaded */
+export type AddressStatus = "none" | "served" | "unserved" | "unknown";
 
 type DeliveryContextApi = {
   context: DeliveryContextValue;
@@ -50,6 +55,8 @@ type DeliveryContextApi = {
   isHydrated: boolean;
   /** true once a branch is known — branch-specific stock can be shown */
   isResolved: boolean;
+  /** the district + neighbourhood -> branch map is loaded (false: not yet, or it failed) */
+  areasReady: boolean;
   addressStatus: AddressStatus;
   branch: Branch | null;
   branchName: string | null;
@@ -108,9 +115,9 @@ function derive(input: Partial<DeliveryContextValue>): DeliveryContextValue {
  * (and an unknown district drops both).
  */
 function validAddress(stored: Partial<DeliveryContextValue>): Partial<DeliveryContextValue> {
-  const district = stored.district && deliverableDistricts().includes(stored.district) ? stored.district : null;
+  const district = stored.district && addressDistricts().includes(stored.district) ? stored.district : null;
   const neighborhood =
-    district && stored.neighborhood && deliverableNeighborhoods(district).includes(stored.neighborhood)
+    district && stored.neighborhood && addressNeighborhoods(district).includes(stored.neighborhood)
       ? stored.neighborhood
       : null;
   return { ...stored, district, neighborhood };
@@ -132,6 +139,44 @@ function readStored(): DeliveryContextValue {
   }
 }
 
+/** how long a loaded map is used before a returning tab loads it again */
+const AREAS_RELOAD_AFTER_MS = 60_000;
+
+const isAssignment = (a: unknown): a is AreaAssignment => {
+  const r = a as Record<string, unknown> | null;
+  return (
+    Boolean(r) &&
+    typeof r!.district === "string" &&
+    typeof r!.neighborhood === "string" &&
+    typeof r!.branchId === "string" &&
+    typeof r!.enabled === "boolean" &&
+    typeof r!.zoneId === "string"
+  );
+};
+
+/**
+ * Loads Merkez's district + neighbourhood -> branch map (D49) into the zone
+ * registry. Three tries; if all fail the first time the map is "unavailable"
+ * (a later failure keeps the map already loaded — the server checks again).
+ */
+async function loadAreas(firstLoad: boolean): Promise<boolean> {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const res = await fetch("/api/delivery-areas", { cache: "no-store" });
+      const data = (await res.json().catch(() => null)) as { ok?: boolean; source?: string; assignments?: unknown[] } | null;
+      if (res.ok && data?.ok && Array.isArray(data.assignments)) {
+        setAreaAssignments(data.assignments.filter(isAssignment), data.source === "database" ? "database" : "seed");
+        return true;
+      }
+    } catch {
+      /* network — try again */
+    }
+    if (attempt < 2) await new Promise((r) => setTimeout(r, 700 * (attempt + 1)));
+  }
+  if (firstLoad) markAreasUnavailable();
+  return false;
+}
+
 export function DeliveryProvider({ children }: { children: ReactNode }) {
   const [context, setContext] = useState<DeliveryContextValue>(EMPTY_DELIVERY_CONTEXT);
   const [isHydrated, setIsHydrated] = useState(false);
@@ -140,18 +185,33 @@ export function DeliveryProvider({ children }: { children: ReactNode }) {
     open: false,
     reason: null,
   });
+  const [areasReady, setAreasReady] = useState(false);
   const lastBranch = useRef<string | null>(null);
   const hydrated = useRef(false);
+  const areasLoadedAt = useRef(0);
+  const current = useRef(context);
+  useEffect(() => {
+    current.current = context;
+  });
 
   // hydrate once on mount (client only) — avoids an SSR/client mismatch since
-  // storage is unavailable during server render.
+  // storage is unavailable during server render. The zone map comes first:
+  // the stored address is resolved with it.
   useEffect(() => {
-    const stored = readStored();
-    hydrated.current = true;
-    lastBranch.current = stored.branchId;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setContext(stored);
-    setIsHydrated(true);
+    let cancelled = false;
+    void loadAreas(true).then((ok) => {
+      if (cancelled) return;
+      areasLoadedAt.current = Date.now();
+      const stored = readStored();
+      hydrated.current = true;
+      lastBranch.current = stored.branchId;
+      setAreasReady(ok);
+      setContext(stored);
+      setIsHydrated(true);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const commit = useCallback((next: DeliveryContextValue) => {
@@ -168,6 +228,22 @@ export function DeliveryProvider({ children }: { children: ReactNode }) {
       setBranchChangeToken((t) => t + 1);
     }
   }, []);
+
+  // a tab that comes back after a while loads the map again: Merkez may have moved the address to another branch
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState !== "visible" || !hydrated.current) return;
+      if (Date.now() - areasLoadedAt.current < AREAS_RELOAD_AFTER_MS) return;
+      areasLoadedAt.current = Date.now();
+      void loadAreas(false).then((ok) => {
+        if (!ok) return;
+        setAreasReady(true);
+        commit(derive(current.current));
+      });
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [commit]);
 
   const setDeliveryAddress = useCallback(
     (district: string, neighborhood: string) => commit(derive({ fulfillmentType: "delivery", district, neighborhood })),
@@ -203,12 +279,15 @@ export function DeliveryProvider({ children }: { children: ReactNode }) {
     const addressStatus: AddressStatus = !hasAddress
       ? "none"
       : context.fulfillmentType === "delivery" && !context.branchId
-        ? "unserved"
+        ? areasReady
+          ? "unserved"
+          : "unknown"
         : "served";
     return {
       context,
       isHydrated,
       isResolved: Boolean(branch),
+      areasReady,
       addressStatus,
       branch,
       branchName: branch?.name ?? null,
@@ -225,6 +304,7 @@ export function DeliveryProvider({ children }: { children: ReactNode }) {
   }, [
     context,
     isHydrated,
+    areasReady,
     branchChangeToken,
     setDeliveryAddress,
     setDeliveryDistrict,

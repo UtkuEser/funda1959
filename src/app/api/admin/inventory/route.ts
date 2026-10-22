@@ -1,4 +1,5 @@
 import { refreshInventory } from "@/lib/inventory/server-init";
+import { refreshCatalog } from "@/lib/catalog/server";
 import { NextResponse } from "next/server";
 import { resolveAdminScope } from "@/lib/admin/access";
 import { getBranch } from "@/lib/branch";
@@ -28,9 +29,9 @@ export async function GET(request: Request) {
   const branchId = new URL(request.url).searchParams.get("branch") ?? "";
   const auth = await authorize(branchId);
   if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
-  try {
-    await refreshInventory({ strict: true });
-  } catch {
+  // published panel products (D45) are listed too
+  const [stock] = await Promise.allSettled([refreshInventory({ strict: true }), refreshCatalog()]);
+  if (stock.status === "rejected") {
     return NextResponse.json({ error: "Stok durumları şu an okunamadı. Lütfen tekrar deneyin." }, { status: 503 });
   }
   return NextResponse.json({ branchId, ...getBranchStockView(branchId) });
@@ -64,6 +65,8 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Güncellenecek ürün yok." }, { status: 400 });
   }
 
+  // a published panel product (D45) is one of the branch's products too
+  await refreshCatalog();
   const repo = getInventoryRepository();
   const rows: StockStatusWrite[] = [];
   const seen = new Set<string>();

@@ -140,7 +140,7 @@ export default function SubelerPage() {
                   </svg>
                 ),
                 title: "Sipariş & Rezervasyon",
-                description: "Özel gün siparişleri için en az 24–48 saat öncesinden şubelerimizi arayın.",
+                description: "Online siparişte seçilebilecek tarih ve saatler sipariş sırasında gösterilir. Özel istekleriniz için şubelerimizi arayabilirsiniz.",
               },
               {
                 icon: (

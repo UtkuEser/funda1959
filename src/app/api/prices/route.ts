@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { catalogProducts } from "@/lib/data";
+import { allCatalogProducts, hiddenProductIds, publishedProducts } from "@/lib/data";
+import { CATALOG_DISPLAY_MAX_AGE_MS, CATALOG_UNAVAILABLE_ERROR, refreshCatalog } from "@/lib/catalog/server";
 import { effectiveUnitPrice, priceRowsForCalculation } from "@/lib/pricing/prices";
 import { getDisplayPriceMap, refreshProductPrices } from "@/lib/pricing/prices-server";
 import { PRICES_UNAVAILABLE_ERROR } from "@/lib/order-server";
@@ -14,7 +15,10 @@ const MAX_LINES = 50;
  * its results in the browser. Display reading: a few seconds fresh.
  */
 export async function GET() {
-  return NextResponse.json({ prices: await getDisplayPriceMap() }, { headers: { "Cache-Control": "no-store" } });
+  // the published panel products (D45) too: the search builds its list in the browser
+  await refreshCatalog({ maxAgeMs: CATALOG_DISPLAY_MAX_AGE_MS });
+  const prices = await getDisplayPriceMap();
+  return NextResponse.json({ prices, products: publishedProducts(), hidden: hiddenProductIds() }, { headers: { "Cache-Control": "no-store" } });
 }
 
 /**
@@ -32,11 +36,9 @@ export async function POST(request: Request) {
   }
   const raw = Array.isArray(body.lines) ? body.lines.slice(0, MAX_LINES) : [];
 
-  try {
-    await refreshProductPrices({ strict: true });
-  } catch {
-    return NextResponse.json({ ok: false, error: PRICES_UNAVAILABLE_ERROR }, { status: 503 });
-  }
+  const [prices, catalog] = await Promise.allSettled([refreshProductPrices({ strict: true }), refreshCatalog({ strict: true })]);
+  if (prices.status === "rejected") return NextResponse.json({ ok: false, error: PRICES_UNAVAILABLE_ERROR }, { status: 503 });
+  if (catalog.status === "rejected") return NextResponse.json({ ok: false, error: CATALOG_UNAVAILABLE_ERROR }, { status: 503 });
   const rows = priceRowsForCalculation();
   if (!rows) return NextResponse.json({ ok: false, error: PRICES_UNAVAILABLE_ERROR }, { status: 503 });
 
@@ -44,7 +46,7 @@ export async function POST(request: Request) {
     const line = (l ?? {}) as { productId?: unknown; variantId?: unknown };
     const productId = typeof line.productId === "string" ? line.productId : "";
     const variantId = typeof line.variantId === "string" && line.variantId ? line.variantId : null;
-    const product = catalogProducts.find((p) => p.id === productId);
+    const product = allCatalogProducts().find((p) => p.id === productId);
     return { productId, variantId, unitPrice: product ? effectiveUnitPrice(product, variantId, rows) : null };
   });
   return NextResponse.json({ ok: true, lines }, { headers: { "Cache-Control": "no-store" } });

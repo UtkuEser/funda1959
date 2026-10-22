@@ -2,7 +2,7 @@
 
 /**
  * Client half of the homepage campaigns: it needs the visitor's branch (known
- * only in the browser). `CampaignsSection` (server) fetches the active pool,
+ * only in the browser). `CampaignsSection.tsx` (server) loads the active pool,
  * resolves images and measures them; this narrows it by branch and shows the
  * campaigns as a horizontal carousel of identical cards — 3 across on
  * desktop, 2 on tablets, 1 on phones. No campaigns for the branch -> no section.

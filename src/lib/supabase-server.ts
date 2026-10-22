@@ -66,21 +66,52 @@ export class SupabaseRestError extends Error {
 }
 
 /**
+ * A plain read (GET) that hasn't answered in this time is sent once more.
+ * Now and then a request to the project hangs ~20 s and ends in Cloudflare
+ * 522 (origin unreachable) while the next request gets through at once —
+ * measured on the test project, p99 of normal reads < 1 s. Writes and RPCs
+ * (POST, PATCH, DELETE) are never repeated or cut short.
+ */
+const READ_TIMEOUT_MS = 5_000;
+/** Cloudflare's "couldn't reach the origin" answers: worth one more read */
+const ORIGIN_UNREACHABLE = new Set([520, 521, 522, 523, 524]);
+
+const isTimeout = (err: unknown) => err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError");
+
+/**
  * The unchecked request. Private on purpose: only the marker read and the
  * row-free schema probe use it; everything else goes through `supabaseRest`.
  */
 async function rawRest<T>(path: string, init?: RequestInit): Promise<T> {
   const key = serviceKey();
-  const res = await fetch(`${baseUrl()}/rest/v1${path}`, {
-    ...init,
-    headers: {
-      apikey: key,
-      Authorization: `Bearer ${key}`,
-      "Content-Type": "application/json",
-      ...(init?.headers ?? {}),
-    },
-    cache: "no-store",
-  });
+  const send = (signal?: AbortSignal) =>
+    fetch(`${baseUrl()}/rest/v1${path}`, {
+      ...init,
+      headers: {
+        apikey: key,
+        Authorization: `Bearer ${key}`,
+        "Content-Type": "application/json",
+        ...(init?.headers ?? {}),
+      },
+      cache: "no-store",
+      ...(signal ? { signal } : {}),
+    });
+
+  let res: Response;
+  if ((init?.method ?? "GET").toUpperCase() === "GET" && !init?.signal) {
+    const first = await send(AbortSignal.timeout(READ_TIMEOUT_MS)).catch((err: unknown) => {
+      if (isTimeout(err)) return null;
+      throw err;
+    });
+    if (first && !ORIGIN_UNREACHABLE.has(first.status)) res = first;
+    else {
+      await first?.body?.cancel();
+      console.warn("[supabase] read retried", { reason: first ? `HTTP ${first.status}` : "timeout" });
+      res = await send(AbortSignal.timeout(READ_TIMEOUT_MS));
+    }
+  } else {
+    res = await send();
+  }
 
   const text = await res.text();
   if (!res.ok) {

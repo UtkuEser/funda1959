@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { resolveAdminScope } from "@/lib/admin/access";
-import { catalogProducts, productSizes } from "@/lib/data";
+import { catalogWithHidden, productSizes } from "@/lib/data";
+import { CATALOG_UNAVAILABLE_ERROR, refreshCatalog } from "@/lib/catalog/server";
 import {
   MAX_PRODUCT_PRICE,
   ProductPriceStoreError,
@@ -39,7 +40,14 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Geçersiz istek." }, { status: 400 });
   }
 
-  const product = catalogProducts.find((p) => p.id === body.productId);
+  // the code products and the published panel products (D45), read fresh
+  try {
+    await refreshCatalog({ strict: true });
+  } catch {
+    return NextResponse.json({ error: CATALOG_UNAVAILABLE_ERROR }, { status: 503 });
+  }
+  // a product off the site (D48) keeps its prices editable
+  const product = catalogWithHidden().find((p) => p.id === body.productId);
   if (!product) return NextResponse.json({ error: "Geçerli bir ürün seçin." }, { status: 400 });
   const variantKey = typeof body.variantKey === "string" ? body.variantKey : body.variantKey == null ? "" : null;
   if (variantKey === null || !isPriceKeyOf(product, variantKey)) {

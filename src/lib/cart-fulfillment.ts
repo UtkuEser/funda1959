@@ -188,11 +188,15 @@ export async function revalidateCart(
     message = reasonMessage(feeIssue.reason);
   } else if (unavailableItemIds.length > 0) {
     status = "unavailable";
-    message = "Sepetinizdeki bazı ürünler seçtiğiniz teslimat koşullarında şu an uygun değil.";
+    // name them: the customer sees which products the new address / branch changed
+    const names = [...new Set(availability.itemIssues.filter((i) => i.productId !== "*").map((i) => i.productName).filter(Boolean))];
+    message =
+      names.length > 0
+        ? `${names.join(", ")} seçtiğiniz teslimat koşullarında${availability.branchName ? ` (${availability.branchName})` : ""} şu an uygun değil.`
+        : "Sepetinizdeki bazı ürünler seçtiğiniz teslimat koşullarında şu an uygun değil.";
   } else if (branchChanged) {
     status = "updated";
-    message =
-      "Teslimat bölgeniz değişti. Sepetiniz yeni bölgenin teslimat tarihlerine göre yeniden kontrol edildi.";
+    message = `Teslimat bölgeniz değişti${availability.branchName ? `; siparişiniz ${availability.branchName} şubesinden hazırlanacak` : ""}. Sepetiniz yeni bölgenin teslimat tarihlerine göre yeniden kontrol edildi.`;
   } else if (fulfillment.slotLabel && !availability.available) {
     status = "updated";
     message = "Seçtiğiniz teslimat günü veya saati artık uygun değil; sepetiniz en erken uygun teslimata taşındı.";

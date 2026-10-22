@@ -19,6 +19,8 @@ import { DataEnvironmentError } from "../supabase-server";
 import type { AccountProfile } from "../account-service";
 import { MAX_SAVED_ADDRESSES } from "../account-service";
 import { checkAddressInput, checkProfileInput } from "../customers/validation";
+import { AREAS_DISPLAY_MAX_AGE_MS, refreshDeliveryAreas } from "../delivery/areas-server";
+import { areasState } from "../delivery/zones";
 import { getCustomerRepository, membershipReady, MembershipNotReadyError } from "../customers/repository";
 import { isSignupOpen, membershipTerms, type CustomerAuthConfig } from "./config";
 import { PERSIST_COOKIE, authCookieOptions, isAuthCookieName, persistMarker, type CookieJar } from "./cookies";
@@ -527,6 +529,9 @@ export async function saveMemberAddress(jar: CookieJar, raw: unknown): Promise<O
   if (isOp(member)) return member;
   const body = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
   const id = typeof body.id === "string" && body.id ? body.id : null;
+  // D49: whether a branch serves the area is Merkez's map — read before checking, never guessed
+  await refreshDeliveryAreas({ maxAgeMs: AREAS_DISPLAY_MAX_AGE_MS });
+  if (areasState() !== "ready") return fail(503, "Teslimat bölgeleri şu an doğrulanamadı; adres kaydedilmedi. Lütfen biraz sonra tekrar deneyin.", { code: "AREAS_UNAVAILABLE" });
   const input = checkAddressInput(body.address);
   if (!input.ok) return fail(400, "Lütfen işaretli alanları kontrol edin.", { code: "INVALID", fieldErrors: input.errors });
   try {

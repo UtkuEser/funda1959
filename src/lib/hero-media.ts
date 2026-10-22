@@ -27,7 +27,17 @@ function resolvePublicImage(publicPath: string): string | null {
   return null;
 }
 
+/** /public doesn't change while a production build runs: resolved once per process there */
+let resolved: ResolvedHeroSlide[] | null = null;
+
 export function resolveHeroSlides(): ResolvedHeroSlide[] {
+  if (resolved) return resolved;
+  const slides = resolveSlides();
+  if (process.env.NODE_ENV === "production") resolved = slides;
+  return slides;
+}
+
+function resolveSlides(): ResolvedHeroSlide[] {
   return heroSlides.map((slide) => ({
     ...slide,
     media: {

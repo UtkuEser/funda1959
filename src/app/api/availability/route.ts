@@ -1,5 +1,6 @@
 import { refreshInventory } from "@/lib/inventory/server-init";
 import { refreshDeliveryFees } from "@/lib/delivery/fees-server";
+import { refreshDeliveryAreas } from "@/lib/delivery/areas-server";
 import { refreshProductPrices } from "@/lib/pricing/prices-server";
 import { NextResponse } from "next/server";
 import {
@@ -7,7 +8,8 @@ import {
   getCartAvailability,
   type DeliveryContext,
 } from "@/lib/availability";
-import { catalogProducts } from "@/lib/data";
+import { allCatalogProducts } from "@/lib/data";
+import { refreshCatalog } from "@/lib/catalog/server";
 
 export const dynamic = "force-dynamic";
 
@@ -41,13 +43,21 @@ function normalizeContext(c: Partial<DeliveryContext> | undefined): DeliveryCont
 }
 
 export async function POST(request: Request) {
-  // branch stock statuses as saved by the ops panel (a 2 s reuse keeps catalog bursts cheap)
-  await refreshInventory({ maxAgeMs: 2000 });
-  // delivery fees (D15): a failed read marks them unavailable — delivery then answers
-  // DELIVERY_INFO_UNAVAILABLE instead of using older values; pickup is unaffected
-  await refreshDeliveryFees({ maxAgeMs: 2000 });
-  // shown unit prices (display reading: an unreadable store keeps the last good read)
-  await refreshProductPrices({ maxAgeMs: 2000 });
+  // independent reads, fetched together (a 2 s reuse keeps catalog bursts cheap):
+  // - the published products added in the panel (D45; drafts never)
+  // - branch stock statuses as saved by the ops panel
+  // - delivery fees (D15): a failed read marks them unavailable — delivery then answers
+  //   DELIVERY_INFO_UNAVAILABLE instead of using older values; pickup is unaffected
+  // - shown unit prices (display reading: an unreadable store keeps the last good read)
+  // - the district + neighbourhood -> branch map (D49): unreadable -> delivery answers DELIVERY_INFO_UNAVAILABLE
+  // All five are lenient (they log, never throw).
+  await Promise.all([
+    refreshCatalog({ maxAgeMs: 2000 }),
+    refreshInventory({ maxAgeMs: 2000 }),
+    refreshDeliveryFees({ maxAgeMs: 2000 }),
+    refreshDeliveryAreas({ maxAgeMs: 2000 }),
+    refreshProductPrices({ maxAgeMs: 2000 }),
+  ]);
   let body: Body;
   try {
     body = (await request.json()) as Body;
@@ -62,7 +72,8 @@ export async function POST(request: Request) {
     const ids = new Set(
       (Array.isArray(body.items) ? body.items : []).map((i) => i.productId),
     );
-    const pool = ids.size > 0 ? catalogProducts.filter((p) => ids.has(p.id)) : catalogProducts;
+    const all = allCatalogProducts();
+    const pool = ids.size > 0 ? all.filter((p) => ids.has(p.id)) : all;
     const map: Record<
       string,
       { available: boolean; reason: string | null; earliestLabel: string | null; earliestDate: string | null; slotLabel: string | null }

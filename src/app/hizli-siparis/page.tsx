@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { QuickOrderPage } from "@/components/quick-order/QuickOrderPage";
 import { PricesProvider } from "@/lib/pricing/prices-context";
-import { getDisplayPriceMap } from "@/lib/pricing/prices-server";
+import { CatalogProvider } from "@/lib/catalog/catalog-context";
+import { getStorefrontData } from "@/lib/catalog/server";
 
 export const metadata: Metadata = {
   title: "Hızlı Sipariş",
@@ -14,9 +15,12 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function HizliSiparisPage() {
+  const { prices, products, hidden } = await getStorefrontData();
   return (
-    <PricesProvider prices={await getDisplayPriceMap()}>
-      <QuickOrderPage />
-    </PricesProvider>
+    <CatalogProvider products={products} hidden={hidden}>
+      <PricesProvider prices={prices}>
+        <QuickOrderPage />
+      </PricesProvider>
+    </CatalogProvider>
   );
 }

@@ -4,7 +4,8 @@ import { getProductDetail } from "@/lib/data";
 import { ProductDetail } from "@/components/product/ProductDetail";
 import { applyPriceToDetail } from "@/lib/pricing/prices";
 import { PricesProvider } from "@/lib/pricing/prices-context";
-import { getDisplayPriceMap } from "@/lib/pricing/prices-server";
+import { CatalogProvider } from "@/lib/catalog/catalog-context";
+import { CATALOG_DISPLAY_MAX_AGE_MS, getStorefrontData, refreshCatalog } from "@/lib/catalog/server";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -13,6 +14,7 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
+  await refreshCatalog({ maxAgeMs: CATALOG_DISPLAY_MAX_AGE_MS });
   const product = getProductDetail(slug);
   if (!product) return { title: "Ürün Bulunamadı" };
   return {
@@ -27,13 +29,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function ProductDetailPage({ params }: Props) {
   const { slug } = await params;
+  // prices and the published panel products (D45) first: a draft or unpublished product is not found
+  const { prices, products, hidden } = await getStorefrontData();
   const product = getProductDetail(slug);
   if (!product) notFound();
 
-  const prices = await getDisplayPriceMap();
   return (
-    <PricesProvider prices={prices}>
-      <ProductDetail product={applyPriceToDetail(product, prices)} />
-    </PricesProvider>
+    <CatalogProvider products={products} hidden={hidden}>
+      <PricesProvider prices={prices}>
+        <ProductDetail product={applyPriceToDetail(product, prices)} />
+      </PricesProvider>
+    </CatalogProvider>
   );
 }

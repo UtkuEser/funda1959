@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Container } from "@/components/shared/Container";
 import { useCart } from "@/lib/use-cart";
 import { formatTL, quantityTotal, subtotal } from "@/lib/cart-utils";
-import { catalogCategories, catalogProductsForCategory, type CatalogProduct } from "@/lib/data";
+import { catalogCategories, catalogProductsForCategory, catalogVersion, type CatalogProduct } from "@/lib/data";
 import { normalize } from "@/lib/search";
 import { useDelivery } from "@/lib/delivery/context";
 import type { CatalogAvailabilityVerdict } from "@/lib/availability";
@@ -56,11 +56,13 @@ export function QuickOrderPage() {
 
   const activeQuick = quick;
 
+  const version = catalogVersion();
   const baseList = useMemo(() => {
     let list = catalogProductsForCategory(category);
     if (activeQuick === "bestseller") list = list.filter((p) => p.isBestSeller);
     return textFilter(list, query);
-  }, [category, activeQuick, query]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the catalog changes with `version`
+  }, [category, activeQuick, query, version]);
 
   // server availability verdict per visible product (ops-panel stock statuses included)
   const [verdicts, setVerdicts] = useState<Record<string, CatalogAvailabilityVerdict>>({});

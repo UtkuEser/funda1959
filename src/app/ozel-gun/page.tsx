@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
-import { catalogProducts } from "@/lib/data";
+import { allCatalogProducts } from "@/lib/data";
 import { CelebrationQuiz } from "@/components/landing/CelebrationQuiz";
 import { celebrationPool } from "@/lib/celebration-finder";
 import { FeaturedProductStrip } from "@/components/landing/FeaturedProductStrip";
 import { PricesProvider } from "@/lib/pricing/prices-context";
-import { getDisplayPriceMap } from "@/lib/pricing/prices-server";
+import { CatalogProvider } from "@/lib/catalog/catalog-context";
+import { getStorefrontData } from "@/lib/catalog/server";
 import { EditorialSteps } from "@/components/landing/EditorialSteps";
 import { EditorialSplit } from "@/components/landing/EditorialSplit";
 import { BurgundyCTA } from "@/components/landing/BurgundyCTA";
@@ -37,19 +38,21 @@ const PROCESS = [
   { index: "04", title: "Kutlamanıza ulaşsın", description: "Mağazadan teslim alın ya da adrese gönderin." },
 ];
 
-const celebrationProducts = [
-  ...catalogProducts.filter((p) => p.isSpecialOccasion),
-  ...catalogProducts.filter((p) => !p.isSpecialOccasion && (p.occasions?.length ?? 0) > 0),
-].slice(0, 4);
-
-const quizPool = celebrationPool(catalogProducts);
-
 // current prices (SUPABASE_PLAN.md, D5): read per request, never from the build
 export const dynamic = "force-dynamic";
 
 export default async function OzelGunPage() {
+  // prices and the published panel products (D45), read together
+  const { prices, products, hidden } = await getStorefrontData();
+  const all = allCatalogProducts();
+  const celebrationProducts = [
+    ...all.filter((p) => p.isSpecialOccasion),
+    ...all.filter((p) => !p.isSpecialOccasion && (p.occasions?.length ?? 0) > 0),
+  ].slice(0, 4);
+  const quizPool = celebrationPool(all);
   return (
-    <PricesProvider prices={await getDisplayPriceMap()}>
+    <CatalogProvider products={products} hidden={hidden}>
+    <PricesProvider prices={prices}>
       {/* CelebrationQuiz is this page's hero and primary discovery mechanism */}
       <CelebrationQuiz products={quizPool} />
 
@@ -114,5 +117,6 @@ export default async function OzelGunPage() {
         }
       />
     </PricesProvider>
+    </CatalogProvider>
   );
 }

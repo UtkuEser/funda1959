@@ -48,6 +48,11 @@ const TABLE_PROBES: { table: string; select: string; migration: string }[] = [
   { table: "funda_point_lot_movements", select: "id,transaction_id,lot_id", migration: "0011" },
   { table: "funda_point_reservations", select: "order_id,status,hold_until", migration: "0011" },
   { table: "contact_requests", select: "id,status,internal_note,client_request_id,handled_at", migration: "0012" },
+  { table: "catalog_products", select: "id,slug,status,image_id,sizes,branch_stock,version,published_at", migration: "0013" },
+  { table: "catalog_product_images", select: "id,object_path,client_upload_id,width,height", migration: "0013" },
+  { table: "catalog_storefront_products", select: "id,slug,image_path,sizes", migration: "0013" },
+  { table: "product_visibility", select: "product_id,is_published", migration: "0014" },
+  { table: "delivery_areas", select: "district,neighborhood,area_key,zone_id,branch_slug,delivery_enabled,updated_by,updated_at", migration: "0015" },
 ];
 
 export async function GET() {

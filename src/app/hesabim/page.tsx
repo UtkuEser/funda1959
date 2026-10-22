@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { AccountShell } from "@/components/account/AccountShell";
 import { AccountDashboard } from "@/components/account/AccountDashboard";
 import { AccountUnavailable } from "@/components/account/AccountUnavailable";
-import { requireMemberPage } from "@/lib/customer-auth/next";
+import { requireMemberPageWith } from "@/lib/customer-auth/next";
 import { getCustomerRepository } from "@/lib/customers/repository";
 
 export const metadata: Metadata = {
@@ -11,18 +11,18 @@ export const metadata: Metadata = {
 };
 
 export default async function HesabimPage() {
-  const member = await requireMemberPage("/hesabim");
-  if (member.kind !== "member") return <AccountUnavailable current="dashboard" title="Hesabım" />;
-
   const repo = getCustomerRepository();
-  let data;
-  try {
-    const [addresses, orders] = await Promise.all([repo.listAddresses(member.userId), repo.listOrders(member.userId, 5)]);
-    data = { profile: member.profile, addresses, orders };
-  } catch (err) {
-    console.error("[hesabim] account data could not be read", { error: (err as Error).message });
+  // addresses and recent orders are read together with the profile
+  const [member, read] = await requireMemberPageWith("/hesabim", (userId) =>
+    Promise.all([repo.listAddresses(userId), repo.listOrders(userId, 5)]),
+  );
+  if (member.kind !== "member" || !read) return <AccountUnavailable current="dashboard" title="Hesabım" />;
+  if (!read.ok) {
+    console.error("[hesabim] account data could not be read", { error: (read.error as Error).message });
     return <AccountUnavailable current="dashboard" title="Hesabım" />;
   }
+  const [addresses, orders] = read.value;
+  const data = { profile: member.profile, addresses, orders };
 
   return (
     <AccountShell current="dashboard" title="Hesabım" subtitle={`Hoş geldiniz, ${member.profile.fullName}.`}>

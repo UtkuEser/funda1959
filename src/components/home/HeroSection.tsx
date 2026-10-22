@@ -47,6 +47,10 @@ export function HeroSection({ slides }: { slides: ResolvedHeroSlide[] }) {
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
   const [reduced, setReduced] = useState(false);
+  // The hidden slides sit in the viewport (opacity 0), so their photos would
+  // load with the page and compete with the first one. They start once the
+  // first photo or the page has loaded — long before autoplay reaches them.
+  const [warm, setWarm] = useState(false);
   const touchX = useRef<number | null>(null);
 
   const next = useCallback(() => setIndex((i) => (i + 1) % count), [count]);
@@ -58,6 +62,16 @@ export function HeroSection({ slides }: { slides: ResolvedHeroSlide[] }) {
     update();
     mq.addEventListener("change", update);
     return () => mq.removeEventListener("change", update);
+  }, []);
+
+  useEffect(() => {
+    const done = () => setWarm(true);
+    if (document.readyState === "complete") {
+      done();
+      return;
+    }
+    window.addEventListener("load", done, { once: true });
+    return () => window.removeEventListener("load", done);
   }, []);
 
   // Autoplay is the active progress segment's fill: when it ends, the next
@@ -119,15 +133,18 @@ export function HeroSection({ slides }: { slides: ResolvedHeroSlide[] }) {
                 }`}
               >
                 {slide.media.src ? (
-                  <Image
-                    src={slide.media.src}
-                    alt={slide.media.alt}
-                    fill
-                    priority={i === 0}
-                    sizes="100vw"
-                    className="object-cover"
-                    style={{ objectPosition: slide.focal }}
-                  />
+                  (i === 0 || on || warm) && (
+                    <Image
+                      src={slide.media.src}
+                      alt={slide.media.alt}
+                      fill
+                      priority={i === 0}
+                      sizes="100vw"
+                      className="object-cover"
+                      style={{ objectPosition: slide.focal }}
+                      onLoad={i === 0 ? () => setWarm(true) : undefined}
+                    />
+                  )
                 ) : (
                   <HeroVisual variant={slide.fallbackVisual} />
                 )}

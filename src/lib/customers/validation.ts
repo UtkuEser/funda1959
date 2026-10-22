@@ -3,12 +3,14 @@
  * which checks every write again. Client-safe.
  *
  * Saved addresses use the same district / neighbourhood lists as checkout
- * (`lib/delivery/zones.ts`): an address that can't be delivered to today
- * can't be saved. The lists are test data until the business confirms them
- * (A4); an address saved earlier stays even if its area leaves the list.
+ * (Merkez's delivery areas, D49 / D50), and an address no branch delivers to
+ * today (no area, or delivery to it closed) can't be saved; the server reads
+ * the areas before checking. The lists are test data until the
+ * business confirms them (A4); an address saved earlier stays even if its
+ * area stops being served.
  */
 
-import { deliverableDistricts, deliverableNeighborhoods } from "../delivery/zones";
+import { addressDistricts, addressNeighborhoods, areasState, isKnownArea, resolveZone } from "../delivery/zones";
 import { formatPhone, isValidFullName, isValidPhone } from "../checkout-utils";
 import type { AccountAddressInput } from "../account-service";
 
@@ -30,9 +32,9 @@ const optional = (v: unknown, max: number, errors: AddressErrors, field: Address
   return s || null;
 };
 
-/** Is this district / neighbourhood pair one checkout can deliver to? */
+/** Is this district / neighbourhood pair one checkout can deliver to (a branch serves it)? False until the map is loaded. */
 export function isServiceArea(district: string, neighborhood: string): boolean {
-  return deliverableDistricts().includes(district) && deliverableNeighborhoods(district).includes(neighborhood);
+  return isKnownArea(district, neighborhood) && resolveZone(district, neighborhood) !== null;
 }
 
 export function checkAddressInput(raw: unknown): { ok: true; value: CleanAddress } | { ok: false; errors: AddressErrors } {
@@ -46,9 +48,12 @@ export function checkAddressInput(raw: unknown): { ok: true; value: CleanAddress
   const district = text(r.district);
   const neighborhood = text(r.neighborhood);
   if (!district) errors.district = "İlçe seçin.";
-  else if (!deliverableDistricts().includes(district)) errors.district = "Bu ilçeye şu an teslimat yapılmıyor.";
+  else if (!addressDistricts().includes(district)) errors.district = "Bu ilçeye şu an teslimat yapılmıyor.";
   if (!neighborhood) errors.neighborhood = "Mahalle seçin.";
-  else if (district && !deliverableNeighborhoods(district).includes(neighborhood)) {
+  else if (district && !addressNeighborhoods(district).includes(neighborhood)) {
+    errors.neighborhood = "Bu mahalleye şu an teslimat yapılmıyor.";
+  } else if (district && areasState() === "ready" && !resolveZone(district, neighborhood)) {
+    // no branch serves it now (the server always has the map read before it checks)
     errors.neighborhood = "Bu mahalleye şu an teslimat yapılmıyor.";
   }
 

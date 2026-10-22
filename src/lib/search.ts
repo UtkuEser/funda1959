@@ -6,7 +6,7 @@
  * without touching the UI. The index is built once at module load.
  */
 
-import { catalogProducts, categories, type CatalogProduct } from "./data";
+import { allCatalogProducts, catalogVersion, categories, type CatalogProduct } from "./data";
 
 /* -------------------------------------------------------------------------- */
 /* Normalization                                                              */
@@ -96,7 +96,8 @@ type ProductIndexEntry = {
   combined: string;
 };
 
-const PRODUCT_INDEX: ProductIndexEntry[] = catalogProducts.map((product, order) => {
+function buildProductIndex(): ProductIndexEntry[] {
+  return allCatalogProducts().map((product, order) => {
   const keywords = [...(product.tags ?? []), ...(SEARCH_KEYWORDS[product.id] ?? [])].join(" ");
   const occasions = (product.occasions ?? []).map((o) => OCCASION_LABELS[o] ?? o).join(" ");
   const name = normalize(product.name);
@@ -114,7 +115,16 @@ const PRODUCT_INDEX: ProductIndexEntry[] = catalogProducts.map((product, order) 
     description,
     combined: `${name} ${category} ${kw} ${occ} ${description}`,
   };
-});
+  });
+}
+
+/** the code catalog plus published panel products (D45); rebuilt when that list changes */
+let productIndex: { version: string; entries: ProductIndexEntry[] } | null = null;
+function productIndexNow(): ProductIndexEntry[] {
+  const version = catalogVersion();
+  if (!productIndex || productIndex.version !== version) productIndex = { version, entries: buildProductIndex() };
+  return productIndex.entries;
+}
 
 type CategoryIndexEntry = {
   slug: string;
@@ -191,7 +201,7 @@ export function search(rawQuery: string): SearchResults {
 
   const tokens = q.split(" ").filter(Boolean);
 
-  const products = PRODUCT_INDEX.map((e) => ({ e, s: scoreProduct(e, q, tokens) }))
+  const products = productIndexNow().map((e) => ({ e, s: scoreProduct(e, q, tokens) }))
     .filter((x) => x.s > 0)
     .sort((a, b) => {
       if (b.s !== a.s) return b.s - a.s;

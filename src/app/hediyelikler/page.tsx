@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
-import { catalogProducts } from "@/lib/data";
+import { allCatalogProducts } from "@/lib/data";
 import { LandingHero } from "@/components/landing/LandingHero";
 import { CategoryShowcase } from "@/components/landing/CategoryShowcase";
 import { FeaturedProductStrip } from "@/components/landing/FeaturedProductStrip";
 import { PricesProvider } from "@/lib/pricing/prices-context";
-import { getDisplayPriceMap } from "@/lib/pricing/prices-server";
+import { CatalogProvider } from "@/lib/catalog/catalog-context";
+import { getStorefrontData } from "@/lib/catalog/server";
 import { EditorialSteps } from "@/components/landing/EditorialSteps";
 import { EditorialSplit } from "@/components/landing/EditorialSplit";
 import { BurgundyCTA } from "@/components/landing/BurgundyCTA";
@@ -72,14 +73,16 @@ const CORPORATE_FEATURES = [
   { title: "Planlı teslimat", description: "Teslim gününü sizinle birlikte ayarlayalım." },
 ];
 
-const giftProducts = catalogProducts.filter((p) => p.isGift).slice(0, 4);
-
 // current prices (SUPABASE_PLAN.md, D5): read per request, never from the build
 export const dynamic = "force-dynamic";
 
 export default async function HediyeliklerPage() {
+  // prices and the published panel products (D45), read together
+  const { prices, products, hidden } = await getStorefrontData();
+  const giftProducts = allCatalogProducts().filter((p) => p.isGift).slice(0, 4);
   return (
-    <PricesProvider prices={await getDisplayPriceMap()}>
+    <CatalogProvider products={products} hidden={hidden}>
+    <PricesProvider prices={prices}>
       <LandingHero
         eyebrow="Hediyelikler"
         title={
@@ -197,5 +200,6 @@ export default async function HediyeliklerPage() {
         secondary={{ label: "Mağazalarımızı Gör", href: "/subeler" }}
       />
     </PricesProvider>
+    </CatalogProvider>
   );
 }

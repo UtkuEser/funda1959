@@ -15,7 +15,7 @@ import { getCustomerRepository } from "../customers/repository";
 import { getCheckoutPoints } from "../funda-points/service";
 import type { CookieJar } from "./cookies";
 import { loadMember, type MemberState, type OpResult } from "./operations";
-import { authEnvironment, readCustomerSession } from "./server";
+import { authEnvironment, readCustomerSession, type CustomerSession } from "./server";
 
 /** Can membership be used on this deployment right now (Auth config + matching project)? */
 export async function membershipAvailable(): Promise<boolean> {
@@ -63,8 +63,11 @@ async function pageCookieJar(): Promise<CookieJar> {
   return { getAll: () => store.getAll().map((c) => ({ name: c.name, value: c.value })), set: () => {} };
 }
 
+/** The session Supabase verified for this render (once per request). */
+const getPageSession = cache(async (): Promise<CustomerSession> => readCustomerSession(await pageCookieJar()));
+
 /** The signed-in member of this render (once per request). */
-export const getMemberState = cache(async (): Promise<MemberState> => loadMember(await readCustomerSession(await pageCookieJar())));
+export const getMemberState = cache(async (): Promise<MemberState> => loadMember(await getPageSession()));
 
 export type MemberPage = Extract<MemberState, { kind: "member" }> | { kind: "unavailable"; reason: string };
 
@@ -80,24 +83,55 @@ export async function requireMemberPage(path: string): Promise<MemberPage> {
   return state;
 }
 
+export type Settled<T> = { ok: true; value: T } | { ok: false; error: unknown };
+
+/**
+ * `load` for the user id of the verified session (null when nobody is signed
+ * in). Never rejects. Callers start it without awaiting, so it runs together
+ * with the profile read, and use the result only once the member is confirmed.
+ */
+async function readForSessionUser<T>(load: (userId: string) => Promise<T>): Promise<Settled<T> | null> {
+  try {
+    const session = await getPageSession();
+    if (session.status !== "signed_in") return null;
+    return { ok: true, value: await load(session.userId) };
+  } catch (error) {
+    return { ok: false, error };
+  }
+}
+
+/**
+ * `requireMemberPage` plus the page's own reads for that member, fetched
+ * together with the profile instead of after it. The reads' result is null
+ * unless the member is confirmed.
+ */
+export async function requireMemberPageWith<T>(path: string, load: (userId: string) => Promise<T>): Promise<[MemberPage, Settled<T> | null]> {
+  const pending = readForSessionUser(load); // awaited below
+  const member = await requireMemberPage(path);
+  if (member.kind !== "member") return [member, null];
+  return [member, await pending];
+}
+
 /** Checkout prefill (D24): the member's profile and saved addresses, or null (guest / unavailable). */
 export async function getCheckoutMember(): Promise<CheckoutMember | null> {
+  // both started together with the profile read, awaited below
+  const addressesRead = readForSessionUser((userId) => getCustomerRepository().listAddresses(userId));
+  // Funda Puan: nothing is read or offered while points are off (D41)
+  const pointsRead = readForSessionUser(getCheckoutPoints);
   const state = await getMemberState();
   if (state.kind !== "member") return null;
-  let addresses: CheckoutMember["addresses"] = [];
-  try {
-    addresses = await getCustomerRepository().listAddresses(state.userId);
-  } catch (err) {
-    console.error("[account] checkout: saved addresses could not be read", { error: (err as Error).message });
+  const [addresses, points] = await Promise.all([addressesRead, pointsRead]);
+  if (addresses && !addresses.ok) {
+    console.error("[account] checkout: saved addresses could not be read", { error: (addresses.error as Error).message });
   }
-  // Funda Puan: nothing is read or offered while points are off (D41)
-  let points: CheckoutMember["points"] = null;
-  try {
-    points = await getCheckoutPoints(state.userId);
-  } catch (err) {
-    console.error("[account] checkout: points could not be read", { error: (err as Error).message });
+  if (points && !points.ok) {
+    console.error("[account] checkout: points could not be read", { error: (points.error as Error).message });
   }
-  return { profile: state.profile, addresses, points };
+  return {
+    profile: state.profile,
+    addresses: addresses?.ok ? addresses.value : [],
+    points: points?.ok ? points.value : null,
+  };
 }
 
 /** Same-origin check for the account routes' state-changing requests (login CSRF etc.). */

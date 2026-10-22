@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { Container } from "@/components/shared/Container";
 import { useDelivery } from "@/lib/delivery/context";
-import { AddressPicker, NotServedNotice } from "@/components/delivery/AddressPicker";
+import { AddressPicker, AreasUnavailableNotice, NotServedNotice } from "@/components/delivery/AddressPicker";
 import { SampleDataNote } from "@/components/delivery/SampleDataNote";
 
 function PinIcon({ className = "h-6 w-6" }: { className?: string }) {
@@ -100,6 +100,8 @@ export function AddressBar() {
                 <div className="mt-2 flex min-h-[20px] flex-wrap items-center justify-between gap-x-4 gap-y-1 px-1">
                   {addressStatus === "unserved" ? (
                     <NotServedNotice />
+                  ) : addressStatus === "unknown" ? (
+                    <AreasUnavailableNotice />
                   ) : (
                     <>
                       <p className="font-sans text-[12.5px] text-warm-brown">

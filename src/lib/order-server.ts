@@ -9,8 +9,9 @@
  *   - a delivery order's branch and zone follow from the address
  *     (`resolveContextBranch`), the client's branch / zone fields are ignored;
  *   - date and slot are checked again at order time against the availability
- *     engine — opening hours, preparation time, passive stock, the branch's
- *     own slots — in Europe/Istanbul time.
+ *     engine with this server's clock and the freshly read branch stock —
+ *     opening hours, the branch's own slots, a window that has started, a
+ *     passive product today (D44) — in Europe/Istanbul time.
  *   - delivery fee from the fee store (D15) — never the zone list; an unset
  *     fee refuses delivery, an unreadable one answers 503 (no older values);
  *   - delivery minimum 500 TL on products − discount, fee excluded, pickup
@@ -27,8 +28,9 @@
  * can't be read.
  */
 
-import { catalogProducts, getProductDetail } from "./data";
+import { allCatalogProducts, catalogWithHidden, getProductDetail } from "./data";
 import { getBranch, listBranches } from "./branch";
+import { findArea } from "./delivery/zones";
 import type { OrderQuote } from "./order";
 import { deliveryMinimumShortfall, MIN_DELIVERY_ORDER_TL, roundMoney } from "./order-rules";
 import { formatTL } from "./cart-utils";
@@ -124,8 +126,14 @@ export function buildOrderPayload(
   for (const raw of rawItems) {
     const r = (raw ?? {}) as Record<string, unknown>;
     const slug = str(r.productSlug);
-    const product = catalogProducts.find((p) => p.slug === slug);
-    if (!product) return fail("Geçersiz ürün.");
+    // the code products and the published panel products (D45) — never a draft,
+    // never a product Merkez took off the site (D48)
+    const product = allCatalogProducts().find((p) => p.slug === slug);
+    if (!product) {
+      const offSite = catalogWithHidden().find((p) => p.slug === slug);
+      if (offSite) return unavailable(`${offSite.name} şu an satışta değil. Lütfen sepetinizden çıkarın.`, "PRODUCT_DISABLED");
+      return fail("Geçersiz ürün.");
+    }
 
     const quantity = Math.floor(Number(r.quantity));
     if (!Number.isFinite(quantity) || quantity < 1 || quantity > MAX_QTY) {
@@ -233,6 +241,11 @@ export function buildOrderPayload(
       return { ok: false, status: 503, error: reasonMessage(resolved.reason), reason: resolved.reason };
     }
     return unavailable(reasonMessage(resolved.reason), resolved.reason);
+  }
+  // D50: the address carries the area's own names (the database checks the order's address is its area)
+  if (address && context.fulfillmentType === "delivery") {
+    const area = findArea(context.district, context.neighborhood);
+    if (area) address = { ...address, district: area.district, neighborhood: area.neighborhood };
   }
 
   const cart = getCartAvailability({ context, items: cartLines, date, slotStart, now });

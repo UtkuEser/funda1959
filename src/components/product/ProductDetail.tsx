@@ -167,12 +167,13 @@ export function ProductDetail({ product }: { product: ProductDetailType }) {
   // same engine result as the date cards and calendar in ProductFulfillment
   const topDelivery = isResolved && fulfillment?.earliestDate ? earliestLabel(fulfillment.earliestDate) : null;
 
+  // a section without text is left out (a product added in the panel shows only what was entered, D45)
   const accordion = [
     { title: "Ürün İçeriği", body: product.ingredients },
     { title: "Alerjen Bilgileri", body: product.allergens },
     { title: "Saklama & Tüketim", body: product.storageInfo },
     { title: "Teslimat Bilgileri", body: product.deliveryInfo },
-  ];
+  ].filter((section) => section.body.trim().length > 0);
   const [openAccordion, setOpenAccordion] = useState(0);
 
   return (

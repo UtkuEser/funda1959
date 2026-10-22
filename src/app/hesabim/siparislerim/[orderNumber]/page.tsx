@@ -3,7 +3,7 @@ import Link from "next/link";
 import { AccountShell } from "@/components/account/AccountShell";
 import { AccountUnavailable } from "@/components/account/AccountUnavailable";
 import { OrderDetail } from "@/components/account/OrderDetail";
-import { requireMemberPage } from "@/lib/customer-auth/next";
+import { requireMemberPageWith } from "@/lib/customer-auth/next";
 import { getCustomerRepository } from "@/lib/customers/repository";
 
 export const metadata: Metadata = {
@@ -19,16 +19,16 @@ export default async function SiparisDetayPage({
 }) {
   const { orderNumber } = await params;
   const number = decodeURIComponent(orderNumber);
-  const member = await requireMemberPage(`/hesabim/siparislerim/${encodeURIComponent(number)}`);
-  if (member.kind !== "member") return <AccountUnavailable current="orders" title="Sipariş Detayı" />;
-
-  let order;
-  try {
-    order = /^FND-[0-9A-Z-]{6,24}$/.test(number) ? await getCustomerRepository().getOrder(member.userId, number) : null;
-  } catch (err) {
-    console.error("[hesabim] order could not be read", { error: (err as Error).message });
+  // the order is read together with the profile (only this member's own order is ever returned)
+  const [member, read] = await requireMemberPageWith(`/hesabim/siparislerim/${encodeURIComponent(number)}`, (userId) =>
+    /^FND-[0-9A-Z-]{6,24}$/.test(number) ? getCustomerRepository().getOrder(userId, number) : Promise.resolve(null),
+  );
+  if (member.kind !== "member" || !read) return <AccountUnavailable current="orders" title="Sipariş Detayı" />;
+  if (!read.ok) {
+    console.error("[hesabim] order could not be read", { error: (read.error as Error).message });
     return <AccountUnavailable current="orders" title="Sipariş Detayı" />;
   }
+  const order = read.value;
 
   if (!order) {
     return (

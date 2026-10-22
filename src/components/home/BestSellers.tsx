@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { catalogProducts, type CatalogProduct } from "@/lib/data";
+import { allCatalogProducts, catalogVersion, type CatalogProduct } from "@/lib/data";
 import { getBranchProduct } from "@/lib/inventory";
 import { useDelivery } from "@/lib/delivery/context";
 import { useCatalogVerdicts } from "@/lib/delivery/use-catalog-verdicts";
@@ -19,7 +19,7 @@ const LIMIT = 4;
  * products that branch carries.
  */
 function pickBestSellers(branchId: string | null): CatalogProduct[] {
-  const flagged = catalogProducts.filter(
+  const flagged = allCatalogProducts().filter(
     (p) => p.isBestSeller && (!branchId || getBranchProduct(branchId, p.id)?.active),
   );
   const seen = new Set<string>();
@@ -31,7 +31,9 @@ function pickBestSellers(branchId: string | null): CatalogProduct[] {
 export function BestSellers() {
   const { isHydrated, branch } = useDelivery();
   const branchId = isHydrated ? (branch?.id ?? null) : null;
-  const products = useMemo(() => pickBestSellers(branchId), [branchId]);
+  const version = catalogVersion();
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- the catalog changes with `version`
+  const products = useMemo(() => pickBestSellers(branchId), [branchId, version]);
   const verdicts = useCatalogVerdicts(useMemo(() => products.map((p) => p.id), [products]));
   if (products.length === 0) return null;
 

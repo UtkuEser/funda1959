@@ -16,7 +16,7 @@
  */
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { catalogProducts } from "../data";
+import { allCatalogProducts } from "../data";
 import { SupabaseRestError, isSupabaseConfigured, supabaseRest } from "../supabase-server";
 import {
   ProductPriceStoreError,
@@ -152,5 +152,6 @@ export async function refreshProductPrices({ strict = false, maxAgeMs = 0 }: { s
 /** The current prices pages hand to the browser (display reading, a few seconds fresh). */
 export async function getDisplayPriceMap(): Promise<PriceMap> {
   await refreshProductPrices({ maxAgeMs: DISPLAY_MAX_AGE_MS });
-  return displayPriceMap(catalogProducts, priceRowsForDisplay());
+  // the whole storefront catalog: code products + published panel products (D45)
+  return displayPriceMap(allCatalogProducts(), priceRowsForDisplay());
 }

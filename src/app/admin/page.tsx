@@ -6,12 +6,19 @@ import Link from "next/link";
 import { listBranches, getBranch, isBranchOpenAt, type Weekday } from "@/lib/branch";
 import { istanbulDateISO, weekdayOfISO } from "@/lib/time/istanbul";
 import { slotLabel, slotsForBranchDate } from "@/lib/delivery/slots";
-import { getDeliveryZoneRepository } from "@/lib/delivery/zones";
-import { readDeliveryFeeRecords, type ZoneFeeRecord } from "@/lib/delivery/fees";
+import { areaAssignments, areasState } from "@/lib/delivery/zones";
+import { adminAreaRecords, areaStoreStatus, refreshDeliveryAreas } from "@/lib/delivery/areas-server";
+import { DeliveryAreaTable } from "@/components/admin/DeliveryAreaTable";
 import { refreshDeliveryFees } from "@/lib/delivery/fees-server";
-import { MIN_DELIVERY_ORDER_TL } from "@/lib/order-rules";
-import { ZoneFeesTable, type ZoneFeeRow } from "@/components/admin/ZoneFeesTable";
-import { catalogProducts, productSizes } from "@/lib/data";
+import { catalogProducts, catalogWithHidden, categories as catalogCategoriesData, hiddenProductIds, productSizes, SIZE_OPTIONS, variantKindFor } from "@/lib/data";
+import { refreshCatalog } from "@/lib/catalog/server";
+import { getProduct, listProducts } from "@/lib/catalog/admin";
+import { isProductManagementOpen } from "@/lib/catalog/config";
+import { ProductNotReadyError, ProductStoreUnavailableError } from "@/lib/catalog/store";
+import { readHiddenProducts } from "@/lib/catalog/visibility";
+import { BRANCH_IDS, type AdminProduct } from "@/lib/catalog/types";
+import { ProductForm, type ProductFormCategory } from "@/components/admin/ProductForm";
+import { ProductImport } from "@/components/admin/ProductImport";
 import {
   catalogPriceSuffix,
   productPriceTableMissing,
@@ -59,7 +66,7 @@ const todayISO = () => istanbulDateISO();
 const isISODate = (v: string | undefined): v is string => Boolean(v && /^\d{4}-\d{2}-\d{2}$/.test(v));
 
 type Props = {
-  searchParams: Promise<{ branch?: string; section?: string; date?: string; from?: string; to?: string; page?: string }>;
+  searchParams: Promise<{ branch?: string; section?: string; date?: string; from?: string; to?: string; page?: string; id?: string }>;
 };
 
 export default async function AdminPage({ searchParams }: Props) {
@@ -76,11 +83,18 @@ export default async function AdminPage({ searchParams }: Props) {
 
   const date = isISODate(sp.date) ? sp.date : todayISO();
 
-  // saved branch stock statuses (database in production) before any section reads availability
-  const inventoryReadOk = await refreshInventory({ strict: true }).then(
-    () => true,
-    () => false,
-  );
+  // saved branch stock statuses (database in production) — only the stock
+  // section reads them, so the other sections don't wait for this read
+  // the stock and price screens also list the published panel products (D45)
+  const [inventoryReadOk] = await Promise.all([
+    section === "stock"
+      ? refreshInventory({ strict: true }).then(
+          () => true,
+          () => false,
+        )
+      : true,
+    section === "stock" || section === "prices" ? refreshCatalog() : undefined,
+  ]);
 
   const branches = listBranches(repoScope(scope));
   const scopedBranchId =
@@ -107,7 +121,9 @@ export default async function AdminPage({ searchParams }: Props) {
       {section === "campaigns" && <CampaignsSection scope={scope} />}
       {section === "funda-puan" && <FundaPointsSection scope={scope} />}
       {section === "contact" && <ContactRequestsSection scope={scope} />}
-      {section === "prices" && <PricesSection />}
+      {section === "prices" && <PricesSection scope={scope} />}
+      {section === "product-new" && <ProductNewSection scope={scope} />}
+      {section === "product-edit" && <ProductEditSection scope={scope} id={sp.id} />}
       {section === "zones" && <ZonesSection scope={scope} />}
       {section === "slots" && <SlotsSection branchId={scopedBranchId} date={date} />}
       {section === "branches" && <BranchesSection date={date} />}
@@ -553,68 +569,106 @@ async function FundaPointsSection({ scope }: { scope: AdminScope }) {
 
 /* -------------------------------------------------------------------------- */
 
+/**
+ * "Teslimat Bölgeleri" (D15, D49, D50) — one table: which branch serves each
+ * district + neighbourhood, whether delivery to it is open, and its own fee.
+ * Merkez edits it (`DeliveryAreaTable`, one all-or-nothing save); branch
+ * accounts see their own areas read-only.
+ */
 async function ZonesSection({ scope }: { scope: AdminScope }) {
-  const zones = getDeliveryZoneRepository()
-    .list()
-    .filter((z) => (scope.authorizedBranchIds ? scope.authorizedBranchIds.includes(z.branchId) : true));
+  const isMerkez = scope.user.role === "SUPER_ADMIN";
+  // the areas and their fee rows, read together and fresh
+  const [areasRead, feesRead] = await Promise.allSettled([refreshDeliveryAreas({ strict: true }), refreshDeliveryFees({ strict: true })]);
+  const readable = areasRead.status === "fulfilled" && feesRead.status === "fulfilled" && areasState() === "ready";
+  const records = readable ? adminAreaRecords(areaAssignments()) : null;
+  const store = readable ? areaStoreStatus() : null;
+  const ownBranch = isMerkez ? null : (scope.activeBranchId ?? scope.authorizedBranchIds?.[0] ?? null);
+  const visible = (records ?? []).filter((r) => (scope.authorizedBranchIds ? scope.authorizedBranchIds.includes(r.branchId) : true));
 
-  // D15: fees from Supabase; unreadable -> say so, never show older values
-  let records: ZoneFeeRecord[] | null = null;
-  try {
-    await refreshDeliveryFees({ strict: true });
-    records = readDeliveryFeeRecords();
-  } catch {
-    records = null;
-  }
-  const canEdit = scope.user.role === "SUPER_ADMIN" && records !== null;
-  // the table is a client component fed plain rows: a save updates its row from
-  // the database's answer, and the page stays small to navigate to
-  const zoneRows: ZoneFeeRow[] = zones.map((z) => ({
-    id: z.id,
-    name: z.name,
-    branchName: getBranch(z.branchId)?.name.replace("Funda 1959 ", "") ?? z.branchId,
-    district: z.district,
-    neighborhoods: z.neighborhoods,
-    active: z.active,
-    fee: records?.find((r) => r.zoneId === z.id) ?? null,
-  }));
+  // setup missing: edits work, saving is off; the technical reason stays folded
+  const setupDetail =
+    store === "table-missing"
+      ? "Teslimat bölgesi tablosu bu veritabanında henüz kurulmadı (migration 0015). Gösterilen mahalleler ve ücretler eski bölge listesinden gelir ve sitede bunlar geçerlidir."
+      : store === "not-configured"
+        ? "Bu ortamda veritabanı bağlantısı yok (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY). Gösterilenler eski bölge listesidir."
+        : null;
 
   return (
     <>
       <PageIntro>
-        Adrese teslimde mahalle → bölge → şube eşleşmesi. <strong>Bölge ve mahalle listeleri test amaçlıdır; onaylanmış hizmet
-        kapsamı değildir.</strong> Teslimat ücretlerini yalnızca Merkez Yönetim değiştirir; şubeler kendi bölgelerini salt okunur
-        görür. Ücreti belirlenmeyen bölgeye adrese teslim yapılmaz; gel-al çalışır. Adrese teslimde minimum sipariş{" "}
-        {formatTL(MIN_DELIVERY_ORDER_TL)} (ürün toplamı − indirim; teslimat ücreti hariç; gel-al hariç).
+        {isMerkez ? "Her mahallenin hizmet veren şubesini ve teslimat ücretini yönetin." : "Şubenize bağlı mahalleler ve teslimat ücretleri."}
       </PageIntro>
-      {records === null && (
+      {!records && (
         <p role="alert" className="mb-4 rounded-md border border-neutral-300 bg-neutral-50 px-3 py-2 text-[12.5px] text-neutral-800">
-          Teslimat bilgisi şu an alınamıyor. Ücretler gösterilmiyor ve değiştirilemiyor; adrese teslim siparişleri bu sırada alınmaz.
+          Bölge bilgileri şu an alınamıyor. Lütfen sayfayı yenileyin.
         </p>
       )}
-      <ZoneFeesTable rows={zoneRows} readable={records !== null} canEdit={canEdit} />
+      {records && (
+        <DeliveryAreaTable
+          initial={visible}
+          branches={listBranches().map((b) => ({ id: b.id, name: b.shortName }))}
+          canSave={store === "database"}
+          setupDetail={setupDetail}
+          readOnly={!isMerkez}
+          fixedBranchId={ownBranch}
+        />
+      )}
     </>
   );
 }
 
 /* -------------------------------------------------------------------------- */
 
-/** D5: Merkez changes the prices of existing products — nothing else about them. */
-async function PricesSection() {
-  let records: ProductPriceRecord[] | null = null;
-  try {
-    await refreshProductPrices({ strict: true });
-    records = readProductPriceRecords();
-  } catch {
-    records = null;
-  }
+/** Why the panel products can't be read (null: they can). */
+function productStoreProblem(err: unknown): string {
+  if (err instanceof ProductNotReadyError) return "ürün tabloları bu veritabanında henüz kurulmadı (migration 0013 uygulanmadı)";
+  if (err instanceof ProductStoreUnavailableError) return "bu ortamda veritabanı bağlantısı yok";
+  console.error("[admin] product store read failed", (err as Error)?.message);
+  return "kayıt servisine şu an ulaşılamıyor";
+}
+
+const PRODUCTS_CLOSED = "Ürün yönetimi bu ortamda kapalı (yalnızca test ortamında açık).";
+
+/**
+ * "Ürün Bilgisi" (D5, D20, D48) — Merkez only. Prices and sizes of every
+ * product (as before), its "Yayında" tick, the Excel import and "Ürün Ekle".
+ * The products added in the panel that are not on the site (drafts,
+ * unpublished) are listed too; their prices are edited in their form.
+ */
+async function PricesSection({ scope }: { scope: AdminScope }) {
+  const managementOpen = isProductManagementOpen();
+  // prices, the code products off the site and the panel products: read together
+  const [pricesOk, hiddenRead, panelRead] = await Promise.all([
+    refreshProductPrices({ strict: true }).then(
+      () => true,
+      () => false,
+    ),
+    readHiddenProducts().catch((err: unknown) => {
+      console.error("[admin] product visibility read failed", (err as Error)?.message);
+      return null;
+    }),
+    managementOpen
+      ? listProducts(scope).then(
+          (list) => ({ list, problem: null as string | null }),
+          (err: unknown) => ({ list: [] as AdminProduct[], problem: productStoreProblem(err) }),
+        )
+      : Promise.resolve({ list: [] as AdminProduct[], problem: null as string | null }),
+  ]);
+  const records: ProductPriceRecord[] | null = pricesOk ? readProductPriceRecords() : null;
   const tableMissing = records !== null && productPriceTableMissing();
   const canEdit = records !== null && !tableMissing;
   const stored = new Map((records ?? []).map((r) => [`${r.productId}|${r.variantKey}`, r]));
+  const hidden = new Set(hiddenRead?.hidden ?? hiddenProductIds());
+  const codeIds = new Set(catalogProducts.map((p) => p.id));
+  const panelById = new Map(panelRead.list.map((p) => [p.id, p]));
+  const editHref = (id: string) => `/admin?section=product-edit&id=${encodeURIComponent(id)}`;
+
   // plain data for the client table (see ZonesSection): one entry per product
   // with its single price, or with each of its sizes (D20)
-  const priceProducts = catalogProducts.map((p): ProductPriceProduct => {
+  const listed = catalogWithHidden();
+  const priceProducts = listed.map((p): ProductPriceProduct => {
     const sizes = productSizes(p);
+    const isCode = codeIds.has(p.id);
     return {
       productId: p.id,
       name: p.name,
@@ -624,19 +678,51 @@ async function PricesSection() {
         sizes.length > 0
           ? sizes.map((v) => ({ variantKey: v.id, size: v.label, catalogPrice: v.price, oldPrice: v.oldPrice ?? null, stored: stored.get(`${p.id}|${v.id}`) ?? null }))
           : [{ variantKey: "", size: null, catalogPrice: p.priceValue, oldPrice: p.oldPrice ?? null, stored: stored.get(`${p.id}|`) ?? null }],
+      published: isCode ? !hidden.has(p.id) : true,
+      panel: isCode ? null : { status: panelById.get(p.id)?.status ?? "published", editHref: editHref(p.id) },
+      priceLock: null,
     };
   });
+  // panel products not on the site (drafts, unpublished): listed with their form's prices
+  const listedIds = new Set(listed.map((p) => p.id));
+  for (const a of panelRead.list) {
+    if (listedIds.has(a.id)) continue;
+    const kind = a.categorySlug ? variantKindFor(a.categorySlug) : "none";
+    const sizeLabel = (key: string) => (kind === "none" ? key : (SIZE_OPTIONS[kind].find((o) => o.id === key)?.label ?? key));
+    priceProducts.push({
+      productId: a.id,
+      name: a.name,
+      category: catalogCategoriesData.find((c) => c.slug === a.categorySlug)?.name ?? "Kategori seçilmedi",
+      unit: "",
+      prices: a.sizes.map((s) => ({
+        variantKey: s.key,
+        size: s.key === "" ? null : sizeLabel(s.key),
+        catalogPrice: s.price,
+        oldPrice: null,
+        stored: stored.get(`${a.id}|${s.key}`) ?? null,
+      })),
+      published: a.status === "published",
+      panel: { status: a.status, editHref: editHref(a.id) },
+      priceLock: "Fiyatlar ürün formunda (Düzenle).",
+    });
+  }
+
+  const publishLock = !managementOpen ? PRODUCTS_CLOSED : hiddenRead === null ? "Yayın durumu şu an okunamadı; sayfayı yenileyin." : null;
 
   return (
     <>
       <PageIntro>
-        Mevcut ürünlerin fiyatları. Ürün ekleme, silme, görsel ve içerik bu ekrandan değişmez; şube stokları (aktif/pasif) ayrı
-        yönetilir. Kaydedilen fiyat katalogda, ürün sayfasında, aramada, hızlı siparişte, sepette ve ödeme hesabında hemen geçerli olur;
-        verilmiş siparişlerin fiyatları değişmez. Fiyatı kaydedilmemiş ürün veya boyut katalog fiyatıyla satılır.{" "}
+        Ürünlerin fiyatları, boyutları ve sitedeki yayın durumu. <strong>“Yayında” işaretli ürün</strong> katalogda, kategori
+        sayfalarında, aramada ve ana sayfada görünür; işaret kaldırılınca bu listelerden çıkar ve yeni teklif ile siparişte kabul
+        edilmez (verilmiş siparişler değişmez). Tekrar işaretlenince yayın koşullarını sağlıyorsa yeniden görünür. Bu ayar ürünün bütün
+        şubelerdeki genel durumudur; şube stokları (aktif/pasif) “Şube Stokları”ndan ayrı yönetilir. Kaydedilen fiyat katalogda, ürün
+        sayfasında, aramada, hızlı siparişte, sepette ve ödeme hesabında hemen geçerli olur; verilmiş siparişlerin fiyatları değişmez.
+        Fiyatı kaydedilmemiş ürün veya boyut katalog fiyatıyla satılır.{" "}
         <strong>Boyutlu ürünlerde ürün adına veya oka tıklayınca boyutlar açılır; her boyutun fiyatı ayrı girilir ve ayrı kaydedilir,
         bir boyutu değiştirmek diğerlerini değiştirmez.</strong> Kartta en küçük boyutun fiyatı görünür. Üstü çizili eski fiyat
         yalnızca belirlenmiş ürün veya boyutta ve güncel fiyattan yüksekken görünür; fiyat değişince kendiliğinden oluşmaz.
       </PageIntro>
+      {managementOpen && <ProductImport addHref="/admin?section=product-new" />}
       {records === null && (
         <p role="alert" className="mb-4 rounded-md border border-neutral-300 bg-neutral-50 px-3 py-2 text-[12.5px] text-neutral-800">
           Fiyat bilgisi şu an alınamıyor. Fiyatlar değiştirilemiyor; ödeme hesabı ve sipariş bu sırada alınmaz.
@@ -647,7 +733,132 @@ async function PricesSection() {
           Fiyat tablosu henüz kurulmadı (migration 0009). Bütün ürünler katalog fiyatıyla satılıyor; fiyat değiştirilemez.
         </p>
       )}
-      <ProductPricesTable products={priceProducts} readable={records !== null} canEdit={canEdit} />
+      {managementOpen && hiddenRead?.tableMissing && (
+        <p role="alert" className="mb-4 rounded-md border border-neutral-900 bg-neutral-50 px-3 py-2 text-[12.5px] font-medium text-neutral-900">
+          Yayın ayarı tablosu bu veritabanında henüz kurulmadı (migration 0014). Mevcut 18 ürünün “Yayında” tiki kaydedilemez:
+          değiştirmeyi denerseniz tik eski hâline döner ve hata gösterilir. Bütün ürünler sitede görünmeye devam eder.
+        </p>
+      )}
+      {panelRead.problem && (
+        <p role="alert" className="mb-4 rounded-md border border-neutral-900 bg-neutral-50 px-3 py-2 text-[12.5px] font-medium text-neutral-900">
+          Panelden eklenen ürünler listelenemiyor: {panelRead.problem}. Excel’den yükleme ve Ürün Ekle bu durumda hiçbir şey kaydetmez.
+        </p>
+      )}
+      <ProductPricesTable products={priceProducts} readable={records !== null} canEdit={canEdit} publishLock={publishLock} />
+    </>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+
+/** what the product form needs from the catalog: categories with their sizes, branch names */
+function productFormOptions() {
+  const categories: ProductFormCategory[] = catalogCategoriesData.map((c) => {
+    const kind = variantKindFor(c.slug);
+    return { slug: c.slug, name: c.name, sizes: kind === "none" ? [] : SIZE_OPTIONS[kind] };
+  });
+  const branchNames = new Map(listBranches().map((b) => [b.id, b.name.replace("Funda 1959 ", "")]));
+  return { categories, branches: BRANCH_IDS.map((id) => ({ id, name: branchNames.get(id) ?? id })) };
+}
+
+function BackToProducts() {
+  return (
+    <div className="mb-3">
+      <Link href="/admin?section=prices" className="text-[12.5px] font-medium text-neutral-500 underline underline-offset-2 hover:text-neutral-900">
+        ← Ürün Bilgisi
+      </Link>
+    </div>
+  );
+}
+
+/**
+ * "Ürün Ekle" (D45, D46) — Merkez only (section access), test data only. Before
+ * the form is shown the product store is asked once: if migration 0013 isn't
+ * applied (or nothing can be stored here) the screen says so and the save
+ * buttons stay off — no saved / published message without the database.
+ */
+async function ProductNewSection({ scope }: { scope: AdminScope }) {
+  const open = isProductManagementOpen();
+  let notice: string | null = null;
+  if (!open) {
+    notice = PRODUCTS_CLOSED;
+  } else {
+    try {
+      await listProducts(scope);
+    } catch (err) {
+      if (err instanceof ProductNotReadyError) {
+        notice = "Kayıt yapılamaz: ürün tabloları bu veritabanında henüz kurulmadı (migration 0013 uygulanmadı). Form doldurulabilir ve görsel önizlenebilir, ama hiçbir şey kaydedilmez.";
+      } else if (err instanceof ProductStoreUnavailableError) {
+        notice = "Kayıt yapılamaz: bu ortamda veritabanı bağlantısı yok.";
+      } else {
+        console.error("[admin] product store check failed", (err as Error).message);
+        notice = "Kayıt servisine şu an ulaşılamıyor; kaydetmeyi deneyebilirsiniz, sunucu sonucu bildirir.";
+      }
+    }
+  }
+  const canSave = open && (notice === null || notice.startsWith("Kayıt servisine"));
+  const options = productFormOptions();
+
+  return (
+    <>
+      <BackToProducts />
+      <PageIntro>
+        Yeni ürün önce taslak olarak kaydedilir; taslak sitede görünmez. Zorunlu alanlar tamamlanınca yayınlanır ve kategori, ürün sayfası,
+        arama ve siparişte mevcut ürünler gibi kullanılır. Teslim tarihi ve saati şubedeki aktif/pasif stok durumuna göre belirlenir; hazırlık
+        süresi girilmez. Mevcut 18 ürün bu ekrandan değişmez.
+      </PageIntro>
+      {notice && (
+        <p role="alert" className="mb-4 rounded-md border border-neutral-900 bg-neutral-50 px-3 py-2 text-[12.5px] font-medium text-neutral-900">
+          {notice}
+        </p>
+      )}
+      <ProductForm categories={options.categories} branches={options.branches} canSave={canSave} notice={canSave ? null : notice} />
+    </>
+  );
+}
+
+/**
+ * "Ürün Düzenle" (D46, D48) — a product added in the panel (a draft from the
+ * Excel import too): its fields and photo; publishing needs every required
+ * field. Merkez only, test data only. The 18 code products are not edited here.
+ */
+async function ProductEditSection({ scope, id }: { scope: AdminScope; id: string | undefined }) {
+  let product: AdminProduct | null = null;
+  let notice: string | null = null;
+  if (!isProductManagementOpen()) {
+    notice = PRODUCTS_CLOSED;
+  } else {
+    try {
+      product = id ? await getProduct(scope, id) : null;
+      if (!product) notice = "Ürün bulunamadı.";
+    } catch (err) {
+      notice = `Ürün açılamadı: ${productStoreProblem(err)}.`;
+    }
+  }
+  const options = productFormOptions();
+
+  return (
+    <>
+      <BackToProducts />
+      <PageIntro>
+        Panelden eklenen ürünün bilgileri. Taslak sitede görünmez; görsel, fiyat ve her şubenin stok durumu girilince yayınlanabilir.
+        Yayındaki ürünün adresi değişmez. Sitede gösterilip gösterilmeyeceği Ürün Bilgisi listesindeki “Yayında” tikiyle de değişir.
+      </PageIntro>
+      {notice && (
+        <p role="alert" className="mb-4 rounded-md border border-neutral-900 bg-neutral-50 px-3 py-2 text-[12.5px] font-medium text-neutral-900">
+          {notice}
+        </p>
+      )}
+      {product && (
+        <ProductForm
+          key={`${product.id}@${product.version}`}
+          initial={product}
+          categories={options.categories}
+          branches={options.branches}
+          canSave
+          notice={null}
+        />
+      )}
     </>
   );
 }
@@ -663,7 +874,7 @@ function SlotsSection({ branchId, date }: { branchId: string; date: string }) {
     <>
       <PageIntro>
         {branch?.name ?? branchId} · {date}. Şube seçimi üst bardan yapılır. Saatlik sipariş sınırı
-        uygulanmaz; bir aralık yalnızca çalışma saati, hazırlık süresi ve şubede pasif ürün kuralıyla kapanır.
+        uygulanmaz; bir aralık yalnızca çalışma saati dışında kaldığında, bugün başladığında veya ürün şubede pasifken kapanır.
       </PageIntro>
       <Panel title={`${branch?.name ?? branchId} — teslimat aralıkları`}>
         <TableWrap>

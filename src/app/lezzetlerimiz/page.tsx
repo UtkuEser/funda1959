@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { CatalogView } from "@/components/catalog/CatalogView";
 import { PricesProvider } from "@/lib/pricing/prices-context";
-import { getDisplayPriceMap } from "@/lib/pricing/prices-server";
+import { CatalogProvider } from "@/lib/catalog/catalog-context";
+import { getStorefrontData } from "@/lib/catalog/server";
 
 export const metadata: Metadata = {
   title: "Lezzetlerimiz",
@@ -20,9 +21,13 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function LezzetlerimizPage() {
+  // prices and the published panel products (D45), read together
+  const { prices, products, hidden } = await getStorefrontData();
   return (
-    <PricesProvider prices={await getDisplayPriceMap()}>
-      <CatalogView />
-    </PricesProvider>
+    <CatalogProvider products={products} hidden={hidden}>
+      <PricesProvider prices={prices}>
+        <CatalogView />
+      </PricesProvider>
+    </CatalogProvider>
   );
 }

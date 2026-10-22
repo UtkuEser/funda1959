@@ -14,6 +14,7 @@ import {
   catalogServingOptions,
   cakeCatalogSlugs,
   resolveCatalogListing,
+  catalogVersion,
   type CatalogProduct,
 } from "@/lib/data";
 
@@ -49,7 +50,9 @@ const CATEGORY_NAV = [
  * /lezzetlerimiz/[kategori] render this with their slug.
  */
 export function CatalogView({ slug = "tumu" }: { slug?: string }) {
-  const listing = useMemo(() => resolveCatalogListing(slug) ?? resolveCatalogListing("tumu")!, [slug]);
+  const version = catalogVersion();
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- the catalog changes with `version`
+  const listing = useMemo(() => resolveCatalogListing(slug) ?? resolveCatalogListing("tumu")!, [slug, version]);
   const [occasion, setOccasion] = useState("all");
   const [serving, setServing] = useState("all");
   const [quickState, setQuick] = useState<QuickKey[]>([]);

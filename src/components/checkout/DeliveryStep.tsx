@@ -1,17 +1,19 @@
-import { useMemo } from "react";
 import { branches } from "@/lib/data";
-import { DELIVERY_TIME_SLOTS } from "@/lib/checkout-utils";
 import { formatCartDate } from "@/lib/cart-utils";
-import { deliverableDistricts, deliverableNeighborhoods } from "@/lib/delivery/zones";
+import { reasonMessage } from "@/lib/availability";
+import { addressDistricts, addressNeighborhoods } from "@/lib/delivery/zones";
 import type { AccountAddress } from "@/lib/account-service";
 import { isServiceArea } from "@/lib/customers/validation";
+import { useDelivery } from "@/lib/delivery/context";
 import { Field, RadioCard, SelectField, TextAreaField, TextField } from "./fields";
-import type { AddressFields, CheckoutState, DeliveryErrors, DeliveryPatch } from "./CheckoutPage";
+import type { AddressFields, CheckoutState, DeliveryErrors, DeliveryPatch, SlotOption } from "./CheckoutPage";
 
 export function DeliveryStep({
   value,
   errors,
   minDate,
+  slotOptions,
+  slotNotice = null,
   onChange,
   onAddressChange,
   onDistrictChange,
@@ -23,7 +25,12 @@ export function DeliveryStep({
 }: {
   value: CheckoutState;
   errors: DeliveryErrors;
+  /** today in Europe/Istanbul — earlier dates can't be chosen ("" before mount) */
   minDate: string;
+  /** the windows for the chosen date; started / unavailable ones can't be chosen */
+  slotOptions: SlotOption[];
+  /** why no window can be chosen on that date, if so */
+  slotNotice?: string | null;
   onChange: (patch: DeliveryPatch) => void;
   onAddressChange: (patch: Partial<AddressFields>) => void;
   /** district / neighbourhood live in the shared delivery context (header, home page) */
@@ -38,9 +45,11 @@ export function DeliveryStep({
 }) {
   const isPickup = value.deliveryType === "pickup";
   const district = value.address.district;
-  // same lists as the site-wide address picker
-  const districts = useMemo(() => deliverableDistricts(), []);
-  const neighborhoods = useMemo(() => (district ? deliverableNeighborhoods(district) : []), [district]);
+  // a saved address is marked "teslimat yok" only once the zone map is loaded (D49)
+  const { areasReady } = useDelivery();
+  // same lists as the site-wide address picker: the loaded areas (D50), read again once they have loaded
+  const districts = areasReady ? addressDistricts() : [];
+  const neighborhoods = areasReady && district ? addressNeighborhoods(district) : [];
 
   return (
     <section>
@@ -89,7 +98,7 @@ export function DeliveryStep({
                 >
                   <option value="">Kayıtlı adres seçin veya aşağıya yazın</option>
                   {savedAddresses.map((a) => {
-                    const served = isServiceArea(a.district, a.neighborhood);
+                    const served = !areasReady || isServiceArea(a.district, a.neighborhood);
                     return (
                       <option key={a.id} value={a.id} disabled={!served}>
                         {a.label} — {a.district} / {a.neighborhood}
@@ -228,26 +237,32 @@ export function DeliveryStep({
                   role="radiogroup"
                   aria-label="Teslimat saati"
                 >
-                  {DELIVERY_TIME_SLOTS.map((slot) => {
-                    const active = value.timeSlot === slot;
+                  {slotOptions.map((slot) => {
+                    const active = value.timeSlot === slot.label && slot.available;
                     return (
                       <button
-                        key={slot}
+                        key={slot.label}
                         type="button"
                         role="radio"
                         aria-checked={active}
-                        onClick={() => onChange({ timeSlot: slot })}
+                        disabled={!slot.available}
+                        title={slot.available ? undefined : reasonMessage(slot.reason)}
+                        aria-label={slot.available ? undefined : `${slot.label}, seçilemez`}
+                        onClick={() => onChange({ timeSlot: slot.label })}
                         className={`rounded-md border px-3 py-2 font-sans text-[13px] font-medium transition-colors ${
                           active
                             ? "border-burgundy bg-burgundy/[0.05] text-burgundy"
-                            : "border-sand text-warm-brown hover:border-burgundy/40"
+                            : slot.available
+                              ? "border-sand text-warm-brown hover:border-burgundy/40"
+                              : "cursor-not-allowed border-sand-light text-warm-brown/40"
                         }`}
                       >
-                        {slot}
+                        {slot.label}
                       </button>
                     );
                   })}
                 </div>
+                {slotNotice && <p className="mt-2 font-sans text-[12px] text-taupe">{slotNotice}</p>}
               </Field>
             </div>
           </div>

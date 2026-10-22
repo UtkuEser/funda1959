@@ -1,10 +1,13 @@
 "use client";
 
 import { Fragment, useCallback, useState } from "react";
+import Link from "next/link";
 import { formatTL } from "@/lib/cart-utils";
 import { dayTime } from "@/lib/admin/format";
 import { priceKey, type ProductPriceRecord } from "@/lib/pricing/prices";
+import type { ProductStatus } from "@/lib/catalog/types";
 import { ProductPriceEditor, type EditorStatus } from "./ProductPriceEditor";
+import { ProductPublishToggle } from "./ProductPublishToggle";
 import { Badge, Panel, Th } from "./ui";
 
 /** One price of a product: its single price, or one of its sizes. */
@@ -13,7 +16,8 @@ export type ProductPriceEntry = {
   variantKey: string;
   /** "8–10 Kişilik" … for a size, null for a single price */
   size: string | null;
-  catalogPrice: number;
+  /** null: a draft without this price yet */
+  catalogPrice: number | null;
   /** struck-through "old price" of this product or size (D18, D21), shown while above the price */
   oldPrice: string | null;
   /** Merkez's stored price in effect */
@@ -28,11 +32,22 @@ export type ProductPriceProduct = {
   unit: string;
   /** one entry with variantKey '' for a single price, else one per size (smallest first) */
   prices: ProductPriceEntry[];
+  /** "Yayında" (D48): shown on the site */
+  published: boolean;
+  /** a product added in the panel (D45): its status and its form */
+  panel: { status: ProductStatus; editHref: string } | null;
+  /** why this product's prices are not edited in this list (else null) */
+  priceLock: string | null;
 };
+
+const PANEL_STATUS: Record<ProductStatus, string> = { draft: "Taslak", published: "Panelden eklendi", unpublished: "Yayından kaldırıldı" };
 
 const at = (r: ProductPriceRecord | null | undefined) => (r?.updatedAt ? Date.parse(r.updatedAt) : Number.NEGATIVE_INFINITY);
 const sizeRowId = (productId: string, variantKey: string) => `fiyat-${productId}-${variantKey}`;
-const priceRange = (values: number[]) => {
+const amount = (n: number | null, unit = "") => (n === null ? "—" : `${formatTL(n)}${unit}`);
+const priceRange = (all: (number | null)[]) => {
+  const values = all.filter((v): v is number => v !== null);
+  if (values.length === 0) return "—";
   const lo = Math.min(...values);
   const hi = Math.max(...values);
   return lo === hi ? formatTL(lo) : `${formatTL(lo)} – ${formatTL(hi)}`;
@@ -73,23 +88,46 @@ function Chevron({ open }: { open: boolean }) {
 }
 
 /**
- * Admin "Fiyatlar" table (SUPABASE_PLAN.md, D5, D20). Every product is one
- * row. A single price is edited in that row; a product with sizes opens (its
- * name or the arrow, by mouse or keyboard) to one row per size, each saved on
- * its own. Size rows stay mounted while closed, so a typed value, a message
- * or a running save survives closing and opening; a closed product says when
- * one of its sizes is unsaved, saving or refused. A save updates its row from
- * the row the database returned (checked by the editor), without a route
- * refresh; of the server's row and the saved one, the newer is shown.
+ * Admin "Ürün Bilgisi" list (SUPABASE_PLAN.md, D5, D20, D48). Every product is
+ * one row with its "Yayında" tick. A single price is edited in that row; a
+ * product with sizes opens (its name or the arrow, by mouse or keyboard) to
+ * one row per size, each saved on its own. Size rows stay mounted while
+ * closed, so a typed value, a message or a running save survives closing and
+ * opening; a closed product says when one of its sizes is unsaved, saving or
+ * refused. A save updates its row from the row the database returned
+ * (checked by the editor), without a route refresh; of the server's row and
+ * the saved one, the newer is shown. A panel product that is not on the site
+ * (draft, unpublished) has its prices in its form instead.
  */
-export function ProductPricesTable({ products, readable, canEdit }: { products: ProductPriceProduct[]; readable: boolean; canEdit: boolean }) {
+export function ProductPricesTable({
+  products,
+  readable,
+  canEdit,
+  publishLock,
+}: {
+  products: ProductPriceProduct[];
+  readable: boolean;
+  canEdit: boolean;
+  /** why "Yayında" can't be changed on this deployment (null: it can) */
+  publishLock: string | null;
+}) {
   const [saved, setSaved] = useState<Record<string, ProductPriceRecord>>({});
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const [status, setStatus] = useState<Record<string, EditorStatus>>({});
+  const [publishErrors, setPublishErrors] = useState<Record<string, string>>({});
   const onSaved = useCallback((row: ProductPriceRecord) => setSaved((s) => ({ ...s, [priceKey(row.productId, row.variantKey)]: row })), []);
   const onStatusChange = useCallback((productId: string, variantKey: string, next: EditorStatus) => {
     const key = priceKey(productId, variantKey);
     setStatus((s) => ((s[key] ?? "idle") === next ? s : { ...s, [key]: next }));
+  }, []);
+  const onPublishError = useCallback((productId: string, message: string | null) => {
+    setPublishErrors((e) => {
+      if ((e[productId] ?? null) === message) return e;
+      const next = { ...e };
+      if (message) next[productId] = message;
+      else delete next[productId];
+      return next;
+    });
   }, []);
 
   const storedOf = (productId: string, e: ProductPriceEntry) => {
@@ -97,37 +135,85 @@ export function ProductPricesTable({ products, readable, canEdit }: { products: 
     return at(saved[key]) > at(e.stored) ? saved[key] : e.stored;
   };
 
-  /** catalog, current, last change, status and editor of one price */
-  const priceCells = (p: ProductPriceProduct, e: ProductPriceEntry) => {
+  const publishCell = (p: ProductPriceProduct) => (
+    <td className={`${CELL} max-xl:float-right max-xl:ml-3 xl:w-[72px] xl:text-center`}>
+      <ProductPublishToggle
+        productId={p.productId}
+        name={p.name}
+        published={p.published}
+        disabledReason={publishLock}
+        refreshAfter={p.panel !== null}
+        onError={onPublishError}
+      />
+    </td>
+  );
+
+  /** under the name: a panel product's status and form, off the site, the last tick refusal */
+  const nameNotes = (p: ProductPriceProduct) => (
+    <>
+      {(p.panel || !p.published) && (
+        <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11.5px] text-neutral-500">
+          {p.panel && <Badge strong={p.panel.status === "draft"}>{PANEL_STATUS[p.panel.status]}</Badge>}
+          {!p.published && <span>Sitede görünmüyor</span>}
+          {p.panel && (
+            <Link href={p.panel.editHref} className="font-semibold text-neutral-700 underline underline-offset-2 hover:text-neutral-900">
+              Düzenle
+            </Link>
+          )}
+        </span>
+      )}
+      {publishErrors[p.productId] && (
+        <span role="alert" className="mt-1 block max-w-[420px] text-[12px] font-medium text-neutral-900 underline decoration-neutral-400 underline-offset-2">
+          {publishErrors[p.productId]}
+        </span>
+      )}
+    </>
+  );
+
+  const lockCell = (p: ProductPriceProduct) =>
+    canEdit && (
+      <td className={`${CELL} max-xl:mt-2 max-xl:block`}>
+        <span className="text-[12px] text-neutral-500">{p.priceLock}</span>
+      </td>
+    );
+
+  /** catalog, current, last change, status and editor of one price (a size row of a locked product: no lock note again) */
+  const priceCells = (p: ProductPriceProduct, e: ProductPriceEntry, sizeRow = false) => {
     const stored = storedOf(p.productId, e);
     const current = stored?.price ?? e.catalogPrice;
     return (
       <>
         <td className={`${CELL} ${INFO} whitespace-nowrap text-right tabular-nums`}>
           <span className="text-neutral-500 xl:hidden">Katalog: </span>
-          {`${formatTL(e.catalogPrice)}${p.unit}`}
+          {amount(e.catalogPrice, p.unit)}
           {e.oldPrice && <span className="ml-1 text-neutral-400 line-through">{e.oldPrice}</span>}
         </td>
         <td className={`${CELL} ${INFO} whitespace-nowrap text-right tabular-nums xl:font-medium`}>
           <span className="font-normal text-neutral-500 xl:hidden">Güncel: </span>
-          {readable ? `${formatTL(current)}${p.unit}` : "—"}
+          {readable ? amount(current, p.unit) : "—"}
         </td>
         <td className={`${CELL} ${INFO}`}>
           <StatusCell strong={Boolean(stored)} label={stored ? "Merkez fiyatı" : "Katalog fiyatı"} changed={stored ? changedBy(stored) : null} />
         </td>
-        {canEdit && (
-          <td className={`${CELL} max-xl:mt-2 max-xl:block`}>
-            <ProductPriceEditor
-              productId={p.productId}
-              variantKey={e.variantKey}
-              price={current}
-              unit={p.unit}
-              updatedAt={stored?.updatedAt ?? null}
-              onSaved={onSaved}
-              onStatusChange={onStatusChange}
-            />
-          </td>
-        )}
+        {p.priceLock
+          ? sizeRow
+            ? canEdit && <td className={`${CELL} max-xl:hidden`} />
+            : lockCell(p)
+          : canEdit && (
+              <td className={`${CELL} max-xl:mt-2 max-xl:block max-xl:empty:hidden`}>
+                {current !== null && (
+                  <ProductPriceEditor
+                    productId={p.productId}
+                    variantKey={e.variantKey}
+                    price={current}
+                    unit={p.unit}
+                    updatedAt={stored?.updatedAt ?? null}
+                    onSaved={onSaved}
+                    onStatusChange={onStatusChange}
+                  />
+                )}
+              </td>
+            )}
       </>
     );
   };
@@ -138,6 +224,7 @@ export function ProductPricesTable({ products, readable, canEdit }: { products: 
         <table className="w-full border-collapse text-[13px] max-xl:block">
           <thead className="max-xl:hidden">
             <tr>
+              <Th>Yayında</Th>
               <Th>Ürün</Th>
               <Th align="right">Katalog Fiyatı</Th>
               <Th align="right">Güncel Fiyat</Th>
@@ -148,16 +235,27 @@ export function ProductPricesTable({ products, readable, canEdit }: { products: 
           <tbody className="max-xl:block">
             {products.map((p) => {
               const single = p.prices.length === 1 && p.prices[0].variantKey === "";
-              if (single) {
+              if (single || p.prices.length === 0) {
                 return (
                   <tr key={p.productId} className={`${ROW} max-xl:px-4`}>
+                    {publishCell(p)}
                     <td className={`${CELL} max-xl:mb-1 max-xl:block`}>
                       <div className="xl:pl-5">
                         <span className="font-medium text-neutral-900">{p.name}</span>
                         <span className="block text-[12px] text-neutral-500">{p.category}</span>
+                        {nameNotes(p)}
                       </div>
                     </td>
-                    {priceCells(p, p.prices[0])}
+                    {single ? (
+                      priceCells(p, p.prices[0])
+                    ) : (
+                      <>
+                        <td className={`${CELL} ${INFO} text-right text-neutral-400`}>—</td>
+                        <td className={`${CELL} ${INFO} text-right text-neutral-400`}>—</td>
+                        <td className={`${CELL} ${INFO} text-[12px] text-neutral-500`}>Fiyat girilmedi</td>
+                        {lockCell(p)}
+                      </>
+                    )}
                   </tr>
                 );
               }
@@ -173,6 +271,7 @@ export function ProductPricesTable({ products, readable, canEdit }: { products: 
               return (
                 <Fragment key={p.productId}>
                   <tr className={`${ROW} max-xl:px-4`}>
+                    {publishCell(p)}
                     <td className={`${CELL} max-xl:mb-1 max-xl:block`}>
                       <button
                         type="button"
@@ -184,9 +283,12 @@ export function ProductPricesTable({ products, readable, canEdit }: { products: 
                         <Chevron open={isOpen} />
                         <span>{p.name}</span>
                       </button>
-                      <span className="block pl-5 text-[12px] text-neutral-500">
-                        {p.category} · {p.prices.length} boyut
-                      </span>
+                      <div className="pl-5">
+                        <span className="block text-[12px] text-neutral-500">
+                          {p.category} · {p.prices.length} boyut
+                        </span>
+                        {nameNotes(p)}
+                      </div>
                     </td>
                     <td className={`${CELL} ${INFO} whitespace-nowrap text-right tabular-nums text-neutral-500`}>
                       <span className="xl:hidden">Katalog: </span>
@@ -205,6 +307,7 @@ export function ProductPricesTable({ products, readable, canEdit }: { products: 
                     </td>
                     {canEdit && (
                       <td className={`${CELL} max-xl:block max-xl:empty:hidden`}>
+                        {p.priceLock && <span className="text-[12px] text-neutral-500 max-xl:mt-2 max-xl:block">{p.priceLock}</span>}
                         {!isOpen && notes.length > 0 && (
                           <p role="status" className="text-[11.5px] font-medium text-neutral-800 max-xl:mt-2">
                             {notes.map((n) => `${n.label}: ${n.sizes.join(", ")}`).join(" · ")}
@@ -220,13 +323,14 @@ export function ProductPricesTable({ products, readable, canEdit }: { products: 
                       hidden={!isOpen}
                       className={`${ROW} bg-neutral-50/70 max-xl:pl-9 max-xl:pr-4`}
                     >
+                      <td className={`${CELL} max-xl:hidden`} />
                       <td className={`${CELL} max-xl:mb-1 max-xl:block`}>
                         <div className="xl:pl-10">
                           <span className="sr-only">{p.name} </span>
                           <span className="font-medium text-neutral-900">{e.size}</span>
                         </div>
                       </td>
-                      {priceCells(p, e)}
+                      {priceCells(p, e, true)}
                     </tr>
                   ))}
                 </Fragment>

@@ -2,17 +2,18 @@
 
 /**
  * The one address picker: district, then its neighbourhoods, then the
- * address is committed and the serving branch follows from the zone map.
- * Used inline in the home page bar and inside `AddressSelectorDialog`; both
- * read and write the same saved address (localStorage, via the context).
- * Only served neighbourhoods are listed; "Mahallem listede yok" gives an
- * honest "not served" answer instead of a guessed branch.
+ * address is committed and the serving branch follows from Merkez's
+ * district + neighbourhood -> branch map (D49). Used inline in the home page
+ * bar and inside `AddressSelectorDialog`; both read and write the same saved
+ * address (localStorage, via the context). Every known neighbourhood is
+ * listed; one no branch serves (or "Mahallem listede yok") gets an honest
+ * "not served" answer instead of a guessed branch, and the picker stays open.
  */
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useDelivery } from "@/lib/delivery/context";
-import { deliverableDistricts, deliverableNeighborhoods } from "@/lib/delivery/zones";
+import { addressDistricts, addressNeighborhoods, resolveZone } from "@/lib/delivery/zones";
 
 const OTHER = "__other__";
 
@@ -48,6 +49,16 @@ export function NotServedNotice({ className = "" }: { className?: string }) {
   );
 }
 
+/** The zone map could not be loaded — say so instead of "not served". */
+export function AreasUnavailableNotice({ className = "" }: { className?: string }) {
+  return (
+    <p role="status" className={`font-sans text-[13px] leading-snug text-chocolate-light ${className}`}>
+      Teslimat bölgeleri şu an yüklenemedi; bu adrese teslimat yapılıp yapılamayacağını gösteremiyoruz. Lütfen biraz sonra tekrar
+      deneyin.
+    </p>
+  );
+}
+
 export function AddressPicker({
   onDone,
   idPrefix = "addr",
@@ -59,17 +70,22 @@ export function AddressPicker({
   /** "row": the two selects side by side from sm up */
   layout?: "row" | "stacked";
 }) {
-  const { context, setDeliveryAddress, setDeliveryDistrict } = useDelivery();
+  const { context, areasReady, setDeliveryAddress, setDeliveryDistrict } = useDelivery();
   const [district, setDistrict] = useState(context.district ?? "");
   const [neighborhood, setNeighborhood] = useState(context.neighborhood ?? "");
-  const [notServed, setNotServed] = useState(false);
 
-  const districts = useMemo(() => deliverableDistricts(), []);
-  const neighborhoods = useMemo(() => (district && district !== OTHER ? deliverableNeighborhoods(district) : []), [district]);
+  // the lists are the loaded areas (D50): read again once they have loaded
+  const districts = areasReady ? addressDistricts() : [];
+  const neighborhoods = areasReady && district && district !== OTHER ? addressNeighborhoods(district) : [];
+
+  const picked = Boolean(district && neighborhood && district !== OTHER && neighborhood !== OTHER);
+  // an address no branch serves: said here, and the picker stays open
+  const notServed = district === OTHER || neighborhood === OTHER || (picked && areasReady && !resolveZone(district, neighborhood));
+  const unknown = picked && !areasReady;
 
   const commit = (d: string, n: string) => {
     setDeliveryAddress(d, n);
-    onDone?.();
+    if (areasReady && resolveZone(d, n)) onDone?.();
   };
 
   return (
@@ -85,7 +101,6 @@ export function AddressPicker({
                 const d = e.target.value;
                 setDistrict(d);
                 setNeighborhood("");
-                setNotServed(d === OTHER);
                 // a new district invalidates the saved neighbourhood (and its branch)
                 setDeliveryDistrict(d && d !== OTHER ? d : null);
               }}
@@ -112,11 +127,7 @@ export function AddressPicker({
               onChange={(e) => {
                 const n = e.target.value;
                 setNeighborhood(n);
-                if (n === OTHER) setNotServed(true);
-                else if (n) {
-                  setNotServed(false);
-                  commit(district, n);
-                }
+                if (n && n !== OTHER) commit(district, n);
               }}
               className={selectClass}
             >
@@ -133,6 +144,7 @@ export function AddressPicker({
         </label>
       </div>
       {notServed && <NotServedNotice className="mt-2.5" />}
+      {unknown && <AreasUnavailableNotice className="mt-2.5" />}
     </div>
   );
 }

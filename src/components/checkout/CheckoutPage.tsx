@@ -8,13 +8,7 @@ import { EmptyCart } from "@/components/cart/EmptyCart";
 import type { CartItem } from "@/lib/cart";
 import { useCart } from "@/lib/use-cart";
 import { branchName, formatTL, subtotal } from "@/lib/cart-utils";
-import {
-  DELIVERY_TIME_SLOTS,
-  earliestDeliveryDate,
-  isValidEmail,
-  isValidFullName,
-  isValidPhone,
-} from "@/lib/checkout-utils";
+import { DELIVERY_TIME_SLOTS, isValidEmail, isValidFullName, isValidPhone } from "@/lib/checkout-utils";
 import type { CreateOrderRequest } from "@/lib/order";
 import type { AccountAddress, CheckoutMember } from "@/lib/account-service";
 import { isServiceArea } from "@/lib/customers/validation";
@@ -24,7 +18,16 @@ import { setCheckoutHandoff } from "@/lib/checkout-handoff";
 import { resolveZone } from "@/lib/delivery/zones";
 import { useDelivery } from "@/lib/delivery/context";
 import { useDeliveryFee } from "@/lib/delivery/use-delivery-fee";
-import { reasonMessage, type CartAvailabilityResult } from "@/lib/availability";
+import {
+  reasonMessage,
+  type CartAvailabilityResult,
+  type DeliveryContext,
+  type ReasonCode,
+  type SlotAvailability,
+} from "@/lib/availability";
+import { slotHasStarted } from "@/lib/delivery/slots";
+import { istanbulDateISO } from "@/lib/time/istanbul";
+import { useNow } from "@/lib/time/use-now";
 import { CheckoutSummary } from "./CheckoutSummary";
 import { MIN_DELIVERY_ORDER_TL, deliveryMinimumShortfall } from "@/lib/order-rules";
 import { ContactStep } from "./ContactStep";
@@ -55,6 +58,9 @@ export type CheckoutState = {
 export type DeliveryErrors = Partial<
   Record<"district" | "neighborhood" | "addressLine" | "branch" | "date" | "timeSlot", string>
 >;
+
+/** one window button: unavailable ones are shown faded and can't be chosen */
+export type SlotOption = { label: string; available: boolean; reason: ReasonCode | null };
 
 /**
  * The address fields the customer types here. District and neighbourhood are
@@ -124,7 +130,7 @@ export function CheckoutPage({ member = null }: { member?: CheckoutMember | null
   const router = useRouter();
   const items = useCart();
 
-  const { context, isHydrated, setDeliveryAddress, setDeliveryDistrict } = useDelivery();
+  const { context, isHydrated, areasReady, setDeliveryAddress, setDeliveryDistrict } = useDelivery();
   const [state, setState] = useState<FormState>(() => initialState([], member));
   // the saved address the delivery fields currently hold (null once the customer edits them)
   const [savedAddressId, setSavedAddressId] = useState<string | null>(null);
@@ -134,7 +140,10 @@ export function CheckoutPage({ member = null }: { member?: CheckoutMember | null
   const [seeded, setSeeded] = useState(false);
   const [contactErrors, setContactErrors] = useState<ContactErrors>({});
   const [deliveryErrors, setDeliveryErrors] = useState<DeliveryErrors>({});
-  const [minDate, setMinDate] = useState("");
+  // Europe/Istanbul "now", refreshed while the page is open: past dates and
+  // windows that have started can't be chosen (D44); null before mount
+  const now = useNow();
+  const todayISO = now ? istanbulDateISO(now) : "";
   const [submitting, setSubmitting] = useState(false);
   const [showErrorHint, setShowErrorHint] = useState(false);
   const [showNote, setShowNote] = useState(false);
@@ -154,13 +163,6 @@ export function CheckoutPage({ member = null }: { member?: CheckoutMember | null
     setSeeded(true);
     setState(initialState(items, member));
   }
-
-  useEffect(() => {
-    if (items.length === 0) return;
-    // Depends on the viewer's wall clock -> client only.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setMinDate(earliestDeliveryDate(items));
-  }, [items]);
 
   const patch = (p: DeliveryPatch) => {
     setState((s) => ({ ...s, ...p }));
@@ -344,6 +346,106 @@ export function CheckoutPage({ member = null }: { member?: CheckoutMember | null
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [regionKey]);
 
+  /*
+   * The serving branch's windows on the chosen date, as the server sees them
+   * (D44): the branch's own windows and hours, a passive product (tomorrow at
+   * the earliest) and windows that have already started. Refetched when the
+   * date, address / store, cart or Istanbul day changes. Until it answers the
+   * fixed window list is shown with the time rule only; the server checks the
+   * order again in any case.
+   */
+  const slotContext: DeliveryContext | null =
+    state.deliveryType === "pickup"
+      ? state.branch
+        ? { fulfillmentType: "pickup", district: null, neighborhood: null, deliveryZoneId: null, branchId: state.branch }
+        : null
+      : district && neighborhood
+        ? { fulfillmentType: "delivery", district, neighborhood, deliveryZoneId: null, branchId: null }
+        : null;
+  const cartKey = items.map((i) => `${i.productId}:${i.slug}:${i.selectedVariant ?? ""}:${i.quantity}`).join(",");
+  const slotKey =
+    isHydrated && seeded && state.date && todayISO && slotContext && items.length > 0
+      ? JSON.stringify([slotContext, state.date, cartKey, todayISO])
+      : null;
+  const [daySlots, setDaySlots] = useState<{ key: string; slots: SlotAvailability[] } | null>(null);
+  useEffect(() => {
+    if (!slotKey) return;
+    const [context, date] = JSON.parse(slotKey) as [DeliveryContext, string];
+    const ctrl = new AbortController();
+    fetch("/api/availability", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        kind: "cart",
+        context,
+        items: latest.current.items.map((i) => ({ productId: i.productId, productSlug: i.slug, variantId: i.selectedVariant, quantity: i.quantity })),
+        date,
+      }),
+      signal: ctrl.signal,
+    })
+      .then((r) => r.json() as Promise<CartAvailabilityResult>)
+      .then((res) => setDaySlots({ key: slotKey, slots: res.requestedDate === date ? res.slots : [] }))
+      .catch(() => {});
+    return () => ctrl.abort();
+  }, [slotKey]);
+  const serverSlots = daySlots && daySlots.key === slotKey ? daySlots.slots : null;
+
+  const startedNow = (startTime: string | null | undefined) =>
+    Boolean(now && state.date && startTime && slotHasStarted(state.date, startTime, now));
+  const slotOptions: SlotOption[] = serverSlots
+    ? serverSlots.map((s) =>
+        s.available && startedNow(s.startTime)
+          ? { label: s.label, available: false, reason: "SLOT_STARTED" }
+          : { label: s.label, available: s.available, reason: s.available ? null : s.reason },
+      )
+    : DELIVERY_TIME_SLOTS.map((label) =>
+        startedNow(slotStartOf(label)) ? { label, available: false, reason: "SLOT_STARTED" } : { label, available: true, reason: null },
+      );
+  // why nothing can be chosen on that date, if so
+  const slotNoticeCode: ReasonCode | null = !state.date
+    ? null
+    : serverSlots && serverSlots.length === 0
+      ? "NO_SLOTS_DEFINED"
+      : slotOptions.length > 0 && slotOptions.every((o) => !o.available)
+        ? slotOptions.every((o) => o.reason === "SLOT_STARTED")
+          ? "NO_SLOTS_LEFT_TODAY"
+          : slotOptions.find((o) => o.reason !== "SLOT_STARTED")?.reason ?? null
+        : null;
+  const slotNotice = slotNoticeCode ? reasonMessage(slotNoticeCode) : null;
+
+  // A chosen date or window that has passed — while the page stays open, or
+  // carried over from an older cart — is cleared and a new one is asked for;
+  // it is never silently moved.
+  useEffect(() => {
+    if (!now || !seeded) return;
+    const today = istanbulDateISO(now);
+    if (state.date && state.date < today) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setState((st) => ({ ...st, date: "", timeSlot: null }));
+      setDeliveryErrors((e) => ({ ...e, date: "Seçili teslimat tarihi geçti; lütfen yeni bir tarih seçin." }));
+      return;
+    }
+    const start = slotStartOf(state.timeSlot);
+    if (state.date && start && slotHasStarted(state.date, start, now)) {
+      setState((st) => ({ ...st, timeSlot: null }));
+      setDeliveryErrors((e) => ({ ...e, timeSlot: "Seçtiğiniz saat aralığı başladı; lütfen yeni bir saat seçin." }));
+    }
+  }, [now, seeded, state.date, state.timeSlot]);
+
+  // the server says the chosen window doesn't work for this order (not one of
+  // the branch's windows, or a product is passive today) -> ask for another
+  useEffect(() => {
+    if (!serverSlots || !state.timeSlot) return;
+    const chosen = serverSlots.find((s) => s.label === state.timeSlot);
+    if (chosen?.available) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setState((st) => ({ ...st, timeSlot: null }));
+    setDeliveryErrors((e) => ({
+      ...e,
+      timeSlot: chosen ? `${reasonMessage(chosen.reason)} Lütfen yeni bir saat seçin.` : "Bu saat aralığı seçtiğiniz şubede yok; lütfen yeni bir saat seçin.",
+    }));
+  }, [serverSlots, state.timeSlot]);
+
   const patchAddress = (p: Partial<AddressFields>) => {
     setState((s) => ({ ...s, address: { ...s.address, ...p } }));
     setSavedAddressId(null);
@@ -365,15 +467,17 @@ export function CheckoutPage({ member = null }: { member?: CheckoutMember | null
     if (state.deliveryType === "delivery") {
       if (!district) d.district = "İlçe seçin.";
       if (!neighborhood) d.neighborhood = "Mahalle seçin.";
-      else if (!resolveZone(district, neighborhood)) d.neighborhood = reasonMessage("DELIVERY_ZONE_NOT_FOUND");
+      // the map not loaded: no verdict here — the server resolves the address on the order anyway
+      else if (areasReady && !resolveZone(district, neighborhood)) d.neighborhood = reasonMessage("DELIVERY_ZONE_NOT_FOUND");
       if (state.address.addressLine.trim().length < 10) d.addressLine = "Açık adres girin.";
     } else if (!state.branch) {
       d.branch = "Bir mağaza seçin.";
     }
     if (!state.date) d.date = "Teslimat tarihi seçin.";
-    else if (minDate && state.date < minDate)
-      d.date = "Bu sipariş için daha erken bir tarih seçilemez.";
+    else if (todayISO && state.date < todayISO) d.date = "Geçmiş bir tarih seçilemez.";
     if (!state.timeSlot) d.timeSlot = "Teslimat saati seçin.";
+    else if (!slotOptions.find((o) => o.label === state.timeSlot)?.available)
+      d.timeSlot = "Bu saat aralığı seçilemez; lütfen yeni bir saat seçin.";
 
     setContactErrors(c);
     setDeliveryErrors(d);
@@ -430,9 +534,9 @@ export function CheckoutPage({ member = null }: { member?: CheckoutMember | null
           : `req-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
     }
 
-    const earliest = minDate || earliestDeliveryDate(items);
-    const deliveryDate = state.date && state.date >= earliest ? state.date : earliest;
-    const deliveryTimeSlot = state.timeSlot ?? DELIVERY_TIME_SLOTS[0];
+    // validateAll above: a date from today on and an open window — never replaced here
+    const deliveryDate = state.date;
+    const deliveryTimeSlot = state.timeSlot ?? "";
 
     // branch routing: pickup uses the chosen branch; delivery uses the zone of
     // the address shown here — the same resolution as the shared context
@@ -537,7 +641,9 @@ export function CheckoutPage({ member = null }: { member?: CheckoutMember | null
             <DeliveryStep
               value={view}
               errors={deliveryErrors}
-              minDate={minDate}
+              minDate={todayISO}
+              slotOptions={slotOptions}
+              slotNotice={slotNotice}
               onChange={patch}
               onAddressChange={patchAddress}
               onDistrictChange={changeDistrict}

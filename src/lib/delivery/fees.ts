@@ -1,5 +1,8 @@
 /**
  * Delivery fees per zone (SUPABASE_PLAN.md, D15) — what the server knows.
+ * Since D50 (migration 0015) every neighbourhood is its own zone: its fee row
+ * is keyed by the area's `zoneId` ('area-…'); before 0015 the old zones' rows
+ * are used. Merkez edits them on "Teslimat Bölgeleri" (`save_delivery_areas`).
  *
  * Three states, never mixed up:
  *   unset — Merkez has not set a fee (also: no row at all) -> no delivery

@@ -43,18 +43,24 @@ function resolveCampaignImage(campaign: Campaign): ResolvedImage {
   return own ? { src: own, position: "50% 50%" } : fallbackImageFor(campaign);
 }
 
-export async function CampaignsSection() {
-  // eslint-disable-next-line react-hooks/purity
-  const nowMs = Date.now();
-  let active: Campaign[];
+/**
+ * The active campaign pool for the homepage, or null when it can't be read.
+ * Never throws, so the homepage can fetch it together with the prices.
+ */
+export async function loadHomepageCampaigns(now: Date): Promise<Campaign[] | null> {
   try {
-    active = await getHomepageCampaignPool(new Date(nowMs));
+    return await getHomepageCampaignPool(now);
   } catch (err) {
     // database unreachable: hide the section rather than break the homepage
     // or show seed content as if it were the live campaign list
     console.error("[campaigns] homepage read failed", (err as Error).message);
     return null;
   }
+}
+
+/** `active`: from `loadHomepageCampaigns` (null = unreadable -> no section). */
+export function CampaignsSection({ active, nowMs }: { active: Campaign[] | null; nowMs: number }) {
+  if (!active) return null;
   const pool: CampaignWithImage[] = active.map((c) => {
     const image = resolveCampaignImage(c);
     // real pixel size -> the carousel frames the visual at its own aspect ratio

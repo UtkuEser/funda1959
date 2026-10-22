@@ -48,15 +48,17 @@ async function main() {
     { customer, items: [macaron({ unitPrice: 1 })], delivery: { type: "pickup", branchSlug: "gop", date: TODAY, timeSlot: "16:00 – 17:00" } },
     { now: NOW },
   );
-  check("pickup GOP, macaron today 16:00 (4 h prep fits) -> accepted", pickupOk.ok, reasonOf(pickupOk));
+  check("pickup GOP, macaron today 16:00 -> accepted", pickupOk.ok, reasonOf(pickupOk));
   check("…branch gop, no zone, no delivery fee", delivery(pickupOk).branch_slug === "gop" && delivery(pickupOk).zone_id === null && pickupOk.ok && pickupOk.payload.delivery_fee === 0);
   check("…unit price from the catalog (browser sent 1)", pickupOk.ok && (pickupOk.payload.items as { unit_price: number }[])[0].unit_price === 45);
   check("…total = 2 × 45", pickupOk.ok && pickupOk.payload.total === 90 && pickupOk.payload.subtotal === 90);
 
   const past = buildOrderPayload({ customer, items: [macaron()], delivery: { type: "pickup", branchSlug: "gop", date: TODAY, timeSlot: "10:00 – 11:00" } }, { now: NOW });
-  check("slot already over (10:00–11:00 at 11:00) -> 409 PREPARATION_TIME", !past.ok && past.status === 409 && past.reason === "PREPARATION_TIME", reasonOf(past));
-  const tooSoon = buildOrderPayload({ customer, items: [macaron()], delivery: { type: "pickup", branchSlug: "gop", date: TODAY, timeSlot: "13:00 – 14:00" } }, { now: NOW });
-  check("4 h prep can't make 13:00–14:00 -> 409 PREPARATION_TIME", !tooSoon.ok && tooSoon.status === 409 && tooSoon.reason === "PREPARATION_TIME", reasonOf(tooSoon));
+  check("slot already over (10:00–11:00 at 11:00) -> 409 SLOT_STARTED", !past.ok && past.status === 409 && past.reason === "SLOT_STARTED", reasonOf(past));
+  const startsNow = buildOrderPayload({ customer, items: [macaron()], delivery: { type: "pickup", branchSlug: "gop", date: TODAY, timeSlot: "11:00 – 12:00" } }, { now: NOW });
+  check("slot starting right now (11:00 at 11:00) -> 409 SLOT_STARTED", !startsNow.ok && startsNow.status === 409 && startsNow.reason === "SLOT_STARTED", reasonOf(startsNow));
+  const nextHour = buildOrderPayload({ customer, items: [macaron()], delivery: { type: "pickup", branchSlug: "gop", date: TODAY, timeSlot: "12:00 – 13:00" } }, { now: NOW });
+  check("next window today (12:00 at 11:00), no lead time (D44) -> accepted", nextHour.ok, reasonOf(nextHour));
 
   const passiveToday = buildOrderPayload(
     { customer, items: [{ productSlug: catalogProducts.find((p) => p.id === "p8")!.slug, variantId: "500g", quantity: 1 }], delivery: { type: "pickup", branchSlug: "gop", date: TODAY, timeSlot: "17:00 – 18:00" } },

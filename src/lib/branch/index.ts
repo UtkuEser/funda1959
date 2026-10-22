@@ -80,7 +80,7 @@ const BRANCH_SEED: Branch[] = [
     name: "Funda 1959 İncek",
     shortName: "İncek TONA",
     slug: "incek",
-    address: "TONA Residence, İncek, Ankara",
+    address: "TONA Residence, Alacaatlı Mahallesi, Kanuni Sultan Süleyman Bulvarı D:160/K, Çankaya/Ankara",
     phone: "+90 312 449 00 00",
     active: true,
     deliveryEnabled: true,

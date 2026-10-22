@@ -4,7 +4,7 @@
  * Quantities are no longer shown or used for availability.
  */
 
-import { catalogProducts, categories } from "../data";
+import { catalogWithHidden, categories } from "../data";
 import { getInventoryRepository, getInventoryOverride, type BranchStockStatus } from "./index";
 
 export type BranchStockRow = {
@@ -32,7 +32,8 @@ export function getBranchStockView(branchId: string): BranchStockView {
   const carried = all.filter((bp) => bp.active);
   const rows = carried
     .map((bp) => {
-      const product = catalogProducts.find((p) => p.id === bp.productId);
+      // stock is separate from "Yayında" (D48): products off the site are listed too
+      const product = catalogWithHidden().find((p) => p.id === bp.productId);
       const override = getInventoryOverride(branchId, bp.productId);
       return {
         productId: bp.productId,
