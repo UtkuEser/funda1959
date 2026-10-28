@@ -6,6 +6,7 @@ import {
   CONTACT_STATUSES,
   CONTACT_STATUS_LABEL,
   CONTACT_SUBJECT_LABEL,
+  CUSTOM_CAKE_SUBJECT,
   type ContactRequest,
   type ContactRequestPage,
   type ContactStatus,
@@ -38,6 +39,8 @@ type Filter = ContactStatus | "all";
  * Merkez İletişim Talepleri (D43): newest first, filter by status, a detail
  * panel with the message, status (Yeni / İşlemde / Kapandı) and the internal
  * note. What the screen shows after a change is what the database returned.
+ * The home page's "Özel Pasta Talebi" requests are marked in the list; their
+ * message holds every field of that form.
  */
 export function AdminContactRequests({ initial }: { initial: ContactRequestPage }) {
   const [filter, setFilter] = useState<Filter>("all");
@@ -169,7 +172,16 @@ export function AdminContactRequests({ initial }: { initial: ContactRequestPage 
                 <Row key={r.id}>
                   <Td>{formatDateTime(r.createdAt)}</Td>
                   <Td className="font-medium">{r.fullName}</Td>
-                  <Td>{CONTACT_SUBJECT_LABEL[r.subject] ?? r.subject}</Td>
+                  <Td>
+                    {r.subject === CUSTOM_CAKE_SUBJECT ? (
+                      <>
+                        <Badge strong>{CONTACT_SUBJECT_LABEL[r.subject]}</Badge>
+                        {r.attachmentPath && <span className="ml-1.5 text-[12px] text-neutral-500">· görselli</span>}
+                      </>
+                    ) : (
+                      CONTACT_SUBJECT_LABEL[r.subject] ?? r.subject
+                    )}
+                  </Td>
                   <Td>
                     {r.phone && <span className="block">{r.phone}</span>}
                     {r.email && <span className="block text-neutral-500">{r.email}</span>}
@@ -238,10 +250,33 @@ export function AdminContactRequests({ initial }: { initial: ContactRequestPage 
               </div>
             </dl>
 
-            <h3 className="mb-2 mt-5 text-[12px] font-semibold uppercase tracking-[0.04em] text-neutral-500">Mesaj</h3>
+            <h3 className="mb-2 mt-5 text-[12px] font-semibold uppercase tracking-[0.04em] text-neutral-500">
+              {open.subject === CUSTOM_CAKE_SUBJECT ? "Talep Bilgileri" : "Mesaj"}
+            </h3>
             <p className="whitespace-pre-wrap break-words rounded-md border border-neutral-200 bg-neutral-50 p-3 text-[13px] text-neutral-900">
               {open.message}
             </p>
+
+            {open.attachmentPath && (
+              <>
+                <h3 className="mb-2 mt-5 text-[12px] font-semibold uppercase tracking-[0.04em] text-neutral-500">Müşterinin Eklediği Görsel</h3>
+                {open.attachmentUrl ? (
+                  <a href={open.attachmentUrl} target="_blank" rel="noopener noreferrer" className="block" title="Tam boy aç">
+                    {/* private photo via a short-lived signed address — shown as is, not optimised */}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={open.attachmentUrl}
+                      alt="Müşterinin özel pasta talebine eklediği görsel"
+                      className="max-h-[360px] w-full rounded-md border border-neutral-200 bg-neutral-50 object-contain"
+                    />
+                  </a>
+                ) : (
+                  <p className="rounded-md border border-neutral-200 bg-neutral-50 p-3 text-[12.5px] text-neutral-600">
+                    Görsel kayıtlı, ancak şu an gösterilemiyor. Sayfayı yenileyin.
+                  </p>
+                )}
+              </>
+            )}
 
             {detailError && (
               <p role="alert" className="mt-4 rounded border border-neutral-300 bg-neutral-50 px-2.5 py-1.5 text-[12px] text-neutral-900">

@@ -11,7 +11,8 @@
 
 import { createHmac } from "node:crypto";
 import type { AdminRole, AdminScope } from "../admin/access";
-import { getContactStore } from "./store";
+import { getContactStore, type SubmitResult } from "./store";
+import { contactAttachments } from "./attachments";
 import type { ContactRequest, ContactRequestPage, ContactStatus, ContactSubject } from "./types";
 
 if (typeof window !== "undefined") {
@@ -55,10 +56,24 @@ export async function submitContactRequest(input: {
   email: string | null;
   subject: ContactSubject;
   message: string;
+  attachmentPath?: string | null;
   clientRequestId: string;
   clientKey: string;
-}): Promise<{ id: string; createdAt: string; duplicate: boolean }> {
-  return getContactStore().submit(input);
+}): Promise<SubmitResult> {
+  return getContactStore().submit({ ...input, attachmentPath: input.attachmentPath ?? null });
+}
+
+/** Signed addresses for the rows' photos (Merkez only); a failure leaves them null and is logged. */
+async function withAttachmentUrls(rows: ContactRequest[]): Promise<ContactRequest[]> {
+  const paths = rows.map((r) => r.attachmentPath).filter((p): p is string => Boolean(p));
+  if (paths.length === 0) return rows;
+  let urls: Record<string, string> = {};
+  try {
+    urls = await contactAttachments.signedUrls(paths);
+  } catch (err) {
+    console.error("[contact] photo addresses could not be signed", { error: (err as Error).message.slice(0, 200) });
+  }
+  return rows.map((r) => (r.attachmentPath ? { ...r, attachmentUrl: urls[r.attachmentPath] ?? null } : r));
 }
 
 export async function listContactRequests(
@@ -66,7 +81,8 @@ export async function listContactRequests(
   q: { status?: ContactStatus | null; limit?: number; offset?: number } = {},
 ): Promise<ContactRequestPage> {
   assertSuperAdmin(role);
-  return getContactStore().list({ status: q.status ?? null, limit: q.limit ?? 50, offset: q.offset ?? 0 });
+  const page = await getContactStore().list({ status: q.status ?? null, limit: q.limit ?? 50, offset: q.offset ?? 0 });
+  return { ...page, rows: await withAttachmentUrls(page.rows) };
 }
 
 /** Merkez change: the actor is the session's admin, never a request field. */
@@ -76,5 +92,6 @@ export async function updateContactRequest(
   change: { status: ContactStatus | null; note?: string | null },
 ): Promise<ContactRequest> {
   assertSuperAdmin(scope.user.role);
-  return getContactStore().update(id, change, { account: "merkez", name: scope.user.name });
+  const row = await getContactStore().update(id, change, { account: "merkez", name: scope.user.name });
+  return (await withAttachmentUrls([row]))[0];
 }

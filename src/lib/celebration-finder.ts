@@ -1,7 +1,8 @@
 /**
- * The cake finder's questions and saved progress — shared by the home page
- * section and /ozel-gun (both render `CelebrationQuiz`), so there is one
- * question set, one state shape and one recommender (`recommendations.ts`).
+ * The cake finder's questions and saved progress — rendered on /ozel-gun
+ * (`CelebrationQuiz`; the home page has the custom cake request form
+ * instead): one question set, one state shape and one recommender
+ * (`recommendations.ts`).
  */
 
 import type { CatalogProduct } from "./data";

@@ -38,6 +38,7 @@ const KNOWN_REFUSALS = new Set([
   "invalid_email",
   "invalid_subject",
   "invalid_message",
+  "invalid_attachment",
   "rate_limited",
   "forbidden",
   "invalid_status",
@@ -59,6 +60,8 @@ type Row = {
   handled_at: string | null;
   note_updated_by: string | null;
   note_updated_at: string | null;
+  /** 0016; absent before it is applied */
+  attachment_path?: string | null;
 };
 
 const toRequest = (r: Row): ContactRequest => ({
@@ -75,6 +78,8 @@ const toRequest = (r: Row): ContactRequest => ({
   handledAt: r.handled_at,
   noteUpdatedBy: r.note_updated_by,
   noteUpdatedAt: r.note_updated_at,
+  attachmentPath: r.attachment_path ?? null,
+  attachmentUrl: null,
 });
 
 function notReady(err: unknown): boolean {
@@ -104,14 +109,18 @@ export type SubmitPayload = {
   email: string | null;
   subject: ContactSubject;
   message: string;
+  /** the request's photo, already stored in the private bucket (0016) */
+  attachmentPath: string | null;
   clientRequestId: string;
   clientKey: string;
 };
 
+export type SubmitResult = { id: string; createdAt: string; duplicate: boolean; attachmentPath: string | null };
+
 export type ContactStore = {
   readonly kind: "supabase" | "none";
-  /** The stored row's id and time — only what the database returned. */
-  submit(p: SubmitPayload): Promise<{ id: string; createdAt: string; duplicate: boolean }>;
+  /** The stored row's id and time (and photo path) — only what the database returned. */
+  submit(p: SubmitPayload): Promise<SubmitResult>;
   list(q: { status: ContactStatus | null; limit: number; offset: number }): Promise<ContactRequestPage>;
   update(
     id: string,
@@ -124,13 +133,14 @@ export const supabaseContactStore: ContactStore = {
   kind: "supabase",
 
   async submit(p) {
-    const r = await rpc<{ id?: unknown; created_at?: unknown; duplicate?: unknown } | null>("submit_contact_request", {
+    const r = await rpc<{ id?: unknown; created_at?: unknown; duplicate?: unknown; attachment_path?: unknown } | null>("submit_contact_request", {
       p_payload: {
         full_name: p.fullName,
         phone: p.phone,
         email: p.email,
         subject: p.subject,
         message: p.message,
+        ...(p.attachmentPath ? { attachment_path: p.attachmentPath } : {}),
         client_request_id: p.clientRequestId,
         client_key: p.clientKey,
       },
@@ -139,7 +149,12 @@ export const supabaseContactStore: ContactStore = {
     if (!r || typeof r.id !== "string" || !UUID.test(r.id) || typeof r.created_at !== "string") {
       throw new Error("submit_contact_request returned no stored row");
     }
-    return { id: r.id, createdAt: r.created_at, duplicate: r.duplicate === true };
+    // a photo sent but not on the row: the database (before 0016) ignored it — not "received"
+    const attachmentPath = typeof r.attachment_path === "string" ? r.attachment_path : null;
+    if (p.attachmentPath && r.duplicate !== true && attachmentPath !== p.attachmentPath) {
+      throw new ContactNotReadyError("submit_contact_request did not store the photo path (0016)");
+    }
+    return { id: r.id, createdAt: r.created_at, duplicate: r.duplicate === true, attachmentPath };
   },
 
   async list({ status, limit, offset }) {

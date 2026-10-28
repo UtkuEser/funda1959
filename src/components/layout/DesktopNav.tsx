@@ -198,6 +198,44 @@ function DropdownItem({ item, active }: { item: NavItem & { groups: NonNullable<
   );
 }
 
+/**
+ * The links under the logo (left end of the menu row): "Hızlı Sipariş" with a
+ * golden-yellow arrow that moves forward on hover / keyboard focus.
+ */
+export function UnderLogoNav() {
+  const pathname = usePathname();
+  return (
+    <div className="flex items-center gap-x-6 justify-self-start">
+      {navItems
+        .filter((item) => item.underLogo)
+        .map((item) => {
+          const active = isNavItemActive(item, pathname);
+          return (
+            <Link
+              key={item.label}
+              href={item.href}
+              aria-current={active ? "page" : undefined}
+              className="group inline-flex items-center gap-2 rounded py-3 font-sans text-[15px] font-semibold whitespace-nowrap text-burgundy transition-colors duration-200 hover:text-chocolate-light focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-burgundy/40 xl:text-[16px]"
+            >
+              {item.label}
+              {/* golden yellow (not a brand token): #E0A21C, deeper on hover */}
+              <svg
+                aria-hidden
+                viewBox="0 0 30 12"
+                fill="none"
+                stroke="currentColor"
+                className="h-3 w-[30px] text-[#E0A21C] transition-[transform,color] duration-200 ease-out group-hover:translate-x-1 group-hover:text-[#C78A0B] group-focus-visible:translate-x-1 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0"
+              >
+                <path d="M1.5 6h25" strokeWidth={1.8} strokeLinecap="round" />
+                <path d="M21.5 1.5L27 6l-5.5 4.5" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </Link>
+          );
+        })}
+    </div>
+  );
+}
+
 export function DesktopNav() {
   const pathname = usePathname();
   const { openSelector, context, addressStatus, isHydrated } = useDelivery();
@@ -205,7 +243,7 @@ export function DesktopNav() {
 
   return (
     <nav aria-label="Ana menü" className="flex h-12 items-center justify-center gap-x-9 xl:gap-x-11">
-      {navItems.map((item) => {
+      {navItems.filter((item) => !item.underLogo).map((item) => {
         const active = isNavItemActive(item, pathname);
 
         if (item.pending) {

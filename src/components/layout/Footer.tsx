@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { branches } from "@/lib/data";
 import { Container } from "@/components/shared/Container";
+import { BrandLogo } from "@/components/shared/BrandLogo";
 
 const productLinks = [
   { href: "/lezzetlerimiz/yas-pastalar", label: "Pastalar" },
@@ -25,14 +26,8 @@ export function Footer() {
         <div className="grid grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1.1fr] gap-x-8 gap-y-9">
           {/* Brand */}
           <div className="col-span-2 lg:col-span-1">
-            <div className="flex items-baseline gap-2">
-              <span className="font-serif text-[30px] font-semibold tracking-tight text-cream-light">
-                Funda
-              </span>
-              <span className="font-sans text-[11px] font-semibold tracking-[0.34em] text-cream/45">
-                1959
-              </span>
-            </div>
+            {/* burgundy background: the cream copy of the logo */}
+            <BrandLogo height={48} tone="light" className="h-11 md:h-12" />
             <p className="mt-4 font-sans text-[14px] leading-relaxed text-cream/65 max-w-xs">
               1959&apos;dan beri Ankara&apos;nın tatlı anlarında. Gelenekten gelen
               ustalık, bugüne taşınan lezzet.

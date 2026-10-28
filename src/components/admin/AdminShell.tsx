@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { listBranches } from "@/lib/branch";
 import type { AdminUser } from "@/lib/admin/access";
 import { isSectionAllowed } from "@/lib/admin/section-access";
+import { BrandLogo } from "@/components/shared/BrandLogo";
 
 const NAV = [
   { key: "overview", label: "Genel Bakış" },
@@ -69,8 +70,8 @@ function Chrome({ children, user }: { children: React.ReactNode; user: AdminUser
         <aside className="hidden w-[232px] shrink-0 border-r border-neutral-200 md:block">
           <div className="sticky top-0 flex h-screen flex-col">
             <div className="border-b border-neutral-200 px-5 py-4">
-              <p className="text-[15px] font-semibold leading-tight">Funda 1959</p>
-              <p className="text-[12px] uppercase tracking-[0.14em] text-neutral-400">Admin</p>
+              <BrandLogo height={32} className="h-8" />
+              <p className="mt-1.5 text-[12px] uppercase tracking-[0.14em] text-neutral-400">Admin</p>
             </div>
             <nav className="flex-1 overflow-y-auto p-2">
               {navItems.map((item) => {

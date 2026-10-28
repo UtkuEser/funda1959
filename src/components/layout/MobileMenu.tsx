@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { isNavItemActive, navItems } from "./navigation";
 import { NavIcon } from "./NavIcons";
 import { useDelivery } from "@/lib/delivery/context";
+import { BrandLogo } from "@/components/shared/BrandLogo";
 
 type MobileMenuProps = {
   isOpen: boolean;
@@ -53,12 +54,7 @@ export function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
       >
         {/* Header */}
         <div className="flex shrink-0 items-center justify-between px-5 py-4 border-b border-sand-light">
-          <span className="font-serif text-xl font-semibold text-burgundy tracking-tight">
-            Funda{" "}
-            <span className="font-sans text-[10px] font-semibold tracking-[0.32em] text-burgundy/55 align-middle">
-              1959
-            </span>
-          </span>
+          <BrandLogo height={32} className="h-8" />
           <button
             onClick={onClose}
             className="p-2 rounded-md text-warm-brown hover:text-burgundy hover:bg-cream transition-colors"

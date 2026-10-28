@@ -26,6 +26,12 @@ export type ContactValidation =
 
 const str = (v: unknown) => (typeof v === "string" ? v : "");
 
+/** The phone rule of every contact form (the database checks the same, 0012). */
+export function isValidContactPhone(phone: string): boolean {
+  const digits = phone.replace(/\D/g, "").length;
+  return PHONE_CHARS.test(phone) && digits >= CONTACT_LIMITS.phoneDigitsMin && digits <= CONTACT_LIMITS.phoneDigitsMax && phone.length <= 20;
+}
+
 export function validateContactInput(raw: Partial<Record<ContactField, unknown>>): ContactValidation {
   const fullName = str(raw.fullName).trim().replace(/\s+/g, " ");
   const phone = str(raw.phone).trim().replace(/\s+/g, " ");
@@ -40,11 +46,8 @@ export function validateContactInput(raw: Partial<Record<ContactField, unknown>>
   if (!phone && !email) {
     errors.contact = "Size dönebilmemiz için telefon veya e-posta adresinizden en az birini yazın.";
   }
-  if (phone) {
-    const digits = phone.replace(/\D/g, "").length;
-    if (!PHONE_CHARS.test(phone) || digits < CONTACT_LIMITS.phoneDigitsMin || digits > CONTACT_LIMITS.phoneDigitsMax || phone.length > 20) {
-      errors.phone = "Geçerli bir telefon numarası yazın (ör. 0555 123 45 67).";
-    }
+  if (phone && !isValidContactPhone(phone)) {
+    errors.phone = "Geçerli bir telefon numarası yazın (ör. 0555 123 45 67).";
   }
   if (email && (email.length > CONTACT_LIMITS.emailMax || email.length < 6 || !EMAIL.test(email))) {
     errors.email = "Geçerli bir e-posta adresi yazın.";

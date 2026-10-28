@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { useState, useEffect, useCallback } from "react";
 import { MobileMenu } from "./MobileMenu";
-import { DesktopNav } from "./DesktopNav";
+import { DesktopNav, UnderLogoNav } from "./DesktopNav";
 import { SearchOverlay } from "@/components/search/SearchOverlay";
+import { BrandLogo } from "@/components/shared/BrandLogo";
 import { useCartCount } from "@/lib/use-cart";
 
 /** one size, one stroke, one hit area for every header icon */
@@ -14,16 +15,8 @@ const ICON = "h-[22px] w-[22px] md:h-6 md:w-6";
 
 function Logo() {
   return (
-    <Link href="/" className="flex items-end gap-2.5" aria-label="Funda 1959 anasayfa">
-      <span className="font-serif text-[27px] md:text-[31px] font-semibold tracking-[-0.015em] text-burgundy leading-[0.9]">
-        Funda
-      </span>
-      <span className="flex flex-col items-start leading-none pb-1">
-        <span className="mb-1 h-px w-5 bg-gold/70" aria-hidden />
-        <span className="font-sans text-[10px] md:text-[11px] font-semibold tracking-[0.34em] text-burgundy/55">
-          1959
-        </span>
-      </span>
+    <Link href="/" className="flex items-center" aria-label="Funda 1959 anasayfa">
+      <BrandLogo height={40} alt="" priority className="h-[34px] md:h-[40px]" />
     </Link>
   );
 }
@@ -104,10 +97,12 @@ export function Header() {
           </div>
         </div>
 
-        {/* menu row (desktop): separated by a hairline, centred on the page */}
+        {/* menu row (desktop): separated by a hairline; "Hızlı Sipariş" under the logo, the menu centred */}
         <div className="hidden border-t border-sand-light lg:block">
-          <div className="mx-auto max-w-[1320px] px-10">
+          <div className="mx-auto grid max-w-[1320px] grid-cols-[1fr_auto_1fr] items-center px-10">
+            <UnderLogoNav />
             <DesktopNav />
+            <span aria-hidden />
           </div>
         </div>
       </header>

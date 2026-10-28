@@ -3,11 +3,10 @@ import { AddressBar } from "@/components/home/AddressBar";
 import { resolveHeroSlides } from "@/lib/hero-media";
 import { CampaignsSection, loadHomepageCampaigns } from "@/components/home/CampaignsSection";
 import { CategoryGrid } from "@/components/home/CategoryGrid";
-import { CelebrationQuiz } from "@/components/landing/CelebrationQuiz";
+import { CustomCakeRequestSection } from "@/components/home/CustomCakeRequestSection";
 import { BestSellers } from "@/components/home/BestSellers";
 import { InstagramContentSection } from "@/components/home/InstagramContentSection";
-import { allCatalogProducts } from "@/lib/data";
-import { celebrationPool } from "@/lib/celebration-finder";
+import { isContactFormOpen } from "@/lib/contact/config";
 import { PricesProvider } from "@/lib/pricing/prices-context";
 import { CatalogProvider } from "@/lib/catalog/catalog-context";
 import { getStorefrontData } from "@/lib/catalog/server";
@@ -19,15 +18,15 @@ import { getStorefrontData } from "@/lib/catalog/server";
 export const dynamic = "force-dynamic";
 
 /**
- * Fixed order: hero -> branch -> campaigns -> categories -> celebrations (the
- * cake finder, shared with /ozel-gun) -> best sellers -> social videos -> footer.
+ * Fixed order: hero -> branch -> campaigns -> categories -> custom cake request
+ * form -> best sellers -> social videos -> footer. (The cake finder stays on
+ * /ozel-gun.)
  */
 export default async function HomePage() {
   // eslint-disable-next-line react-hooks/purity
   const nowMs = Date.now();
   // independent reads, fetched together rather than one after the other
   const [{ prices, products, hidden }, campaigns] = await Promise.all([getStorefrontData(), loadHomepageCampaigns(new Date(nowMs))]);
-  const cakePool = celebrationPool(allCatalogProducts());
   return (
     <>
       <HeroSection slides={resolveHeroSlides()} />
@@ -38,7 +37,8 @@ export default async function HomePage() {
       </div>
       <CategoryGrid />
       <CatalogProvider products={products} hidden={hidden}>
-        <CelebrationQuiz products={cakePool} variant="section" />
+        {/* same gate as the /iletisim form: open on test data, closed on Production */}
+        <CustomCakeRequestSection open={isContactFormOpen()} />
         <PricesProvider prices={prices}>
           <BestSellers />
         </PricesProvider>

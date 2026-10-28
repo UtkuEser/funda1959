@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Container } from "@/components/shared/Container";
+import { BrandLogo } from "@/components/shared/BrandLogo";
 
 /**
  * Shared shell for /giris, /uye-ol, /sifremi-unuttum.
@@ -31,9 +32,7 @@ export function AuthShell({
           {/* Editorial — desktop only */}
           <div className="relative hidden overflow-hidden lg:block lg:pt-1">
             <div className="relative z-10">
-              <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.22em] text-taupe">
-                Funda 1959
-              </p>
+              <BrandLogo height={40} className="h-10" />
               <h2 className="mt-5 font-serif text-[26px] font-semibold leading-[1.3] text-espresso">
                 1959&apos;dan bugüne aynı özen,
                 <br />

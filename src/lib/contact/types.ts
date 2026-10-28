@@ -11,11 +11,18 @@ export const CONTACT_SUBJECTS = [
   { value: "diger", label: "Diğer" },
 ] as const;
 
-export type ContactSubject = (typeof CONTACT_SUBJECTS)[number]["value"];
+/**
+ * The home page "Kutlamanıza özel bir pasta" form (./custom-cake). Not one of
+ * the /iletisim subjects above: only that form sends it (0016).
+ */
+export const CUSTOM_CAKE_SUBJECT = "ozel-pasta" as const;
 
-export const CONTACT_SUBJECT_LABEL: Record<ContactSubject, string> = Object.fromEntries(
-  CONTACT_SUBJECTS.map((s) => [s.value, s.label]),
-) as Record<ContactSubject, string>;
+export type ContactSubject = (typeof CONTACT_SUBJECTS)[number]["value"] | typeof CUSTOM_CAKE_SUBJECT;
+
+export const CONTACT_SUBJECT_LABEL: Record<ContactSubject, string> = {
+  ...(Object.fromEntries(CONTACT_SUBJECTS.map((s) => [s.value, s.label])) as Record<(typeof CONTACT_SUBJECTS)[number]["value"], string>),
+  [CUSTOM_CAKE_SUBJECT]: "Özel Pasta Talebi",
+};
 
 export const CONTACT_STATUSES = ["new", "in_progress", "closed"] as const;
 export type ContactStatus = (typeof CONTACT_STATUSES)[number];
@@ -52,6 +59,10 @@ export type ContactRequest = {
   handledAt: string | null;
   noteUpdatedBy: string | null;
   noteUpdatedAt: string | null;
+  /** an "Özel Pasta Talebi" reference photo in the private bucket (0016), or null */
+  attachmentPath: string | null;
+  /** a short-lived signed address for Merkez; null when there is none or it couldn't be made */
+  attachmentUrl: string | null;
 };
 
 export type ContactRequestPage = {

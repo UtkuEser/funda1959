@@ -21,6 +21,8 @@ export type NavItem = {
   pending?: string;
   /** opens a site-wide UI instead of navigating ("address" = the address picker) */
   action?: "address";
+  /** desktop: shown under the logo (left end of the menu row), not in the centred menu; the mobile drawer lists it as usual */
+  underLogo?: boolean;
 };
 
 /**
@@ -28,8 +30,9 @@ export type NavItem = {
  * drawer so both stay in sync. Links only point to routes that exist. There
  * is no campaigns page yet: "Fırsatlar" opens the home page's campaign
  * section. "Adres" opens the shared address picker (district -> neighbourhood).
- * Quick order and the cake finder are reached from the page itself (branch
- * bar, Kutlamalar section, footer), not from the header.
+ * "Hızlı Sipariş" is the quick order list (same cart and checkout) — on
+ * desktop it sits under the logo; the cake finder is reached from /ozel-gun
+ * (footer "Kutlamalar"), not from the header.
  */
 /** group title + icon come from the shared product taxonomy (also used by the admin stock screen) */
 const groupHead = (id: Parameters<typeof productGroup>[0]) => {
@@ -90,6 +93,8 @@ export const navItems: NavItem[] = [
     ],
     allLink: { label: "Tüm Ürünler", href: "/lezzetlerimiz" },
   },
+  // not "/hizli-siparis-odeme" (the payment step): prefixes match whole path segments
+  { label: "Hızlı Sipariş", href: "/hizli-siparis", activeFor: ["/hizli-siparis"], underLogo: true },
   { label: "Fırsatlar", href: "/#kampanyalar", activeFor: [] },
   { label: "1959'dan Bugüne", href: "/hikayemiz", activeFor: ["/hikayemiz"] },
   { label: "İletişim", href: "/iletisim", activeFor: ["/iletisim", "/subeler"] },
