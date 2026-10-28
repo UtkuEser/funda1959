@@ -1,7 +1,8 @@
 "use client";
 
-import { Fragment, useCallback, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { formatTL } from "@/lib/cart-utils";
 import { dayTime } from "@/lib/admin/format";
 import { priceKey, type ProductPriceRecord } from "@/lib/pricing/prices";
@@ -98,6 +99,13 @@ function Chevron({ open }: { open: boolean }) {
  * (checked by the editor), without a route refresh; of the server's row and
  * the saved one, the newer is shown. A panel product that is not on the site
  * (draft, unpublished) has its prices in its form instead.
+ *
+ * "Yayında" (D56) is not saved per tick: the ticks collect pending changes
+ * (kept while scrolling or editing prices), "Yayın Durumlarını Kaydet" sends
+ * them together and only what the server confirmed is shown as saved; a
+ * product it refused stays pending with the reason. "Vazgeç" puts the ticks
+ * back. Leaving the section with pending changes asks first. Prices are
+ * saved on their own, as before.
  */
 export function ProductPricesTable({
   products,
@@ -115,19 +123,129 @@ export function ProductPricesTable({
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const [status, setStatus] = useState<Record<string, EditorStatus>>({});
   const [publishErrors, setPublishErrors] = useState<Record<string, string>>({});
+  /** "Yayında" the server confirmed in this visit (wins over the page's data until it is reloaded) */
+  const [confirmed, setConfirmed] = useState<Record<string, boolean>>({});
+  /** ticks changed on screen, not saved yet */
+  const [pending, setPending] = useState<Record<string, boolean>>({});
+  const [publishSaving, setPublishSaving] = useState(false);
+  const [publishNote, setPublishNote] = useState<{ ok: boolean; text: string } | null>(null);
+  const router = useRouter();
   const onSaved = useCallback((row: ProductPriceRecord) => setSaved((s) => ({ ...s, [priceKey(row.productId, row.variantKey)]: row })), []);
   const onStatusChange = useCallback((productId: string, variantKey: string, next: EditorStatus) => {
     const key = priceKey(productId, variantKey);
     setStatus((s) => ((s[key] ?? "idle") === next ? s : { ...s, [key]: next }));
   }, []);
-  const onPublishError = useCallback((productId: string, message: string | null) => {
+
+  const savedPublished = (p: ProductPriceProduct) => confirmed[p.productId] ?? p.published;
+  const pendingIds = Object.keys(pending);
+  const toOff = pendingIds.filter((id) => pending[id] === false).length;
+  const toOn = pendingIds.length - toOff;
+
+  const togglePublished = (p: ProductPriceProduct, next: boolean) => {
+    setPublishNote(null);
     setPublishErrors((e) => {
-      if ((e[productId] ?? null) === message) return e;
-      const next = { ...e };
-      if (message) next[productId] = message;
-      else delete next[productId];
-      return next;
+      if (!(p.productId in e)) return e;
+      const rest = { ...e };
+      delete rest[p.productId];
+      return rest;
     });
+    setPending((cur) => {
+      const rest = { ...cur };
+      if (next === savedPublished(p)) delete rest[p.productId];
+      else rest[p.productId] = next;
+      return rest;
+    });
+  };
+
+  const discardPublished = () => {
+    setPending({});
+    setPublishErrors({});
+    setPublishNote(null);
+  };
+
+  const savePublished = async () => {
+    const items = Object.entries(pending).map(([productId, published]) => ({ productId, published }));
+    if (items.length === 0 || publishSaving) return;
+    setPublishSaving(true);
+    setPublishNote(null);
+    try {
+      const res = await fetch("/api/admin/products/visibility", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items }),
+      });
+      type Result = { productId: string; ok: boolean; published?: boolean; error?: string; fields?: Record<string, string> };
+      const data = (await res.json().catch(() => null)) as { ok?: boolean; error?: string; results?: Result[] } | null;
+      if (!res.ok || !data?.ok || !Array.isArray(data.results)) {
+        setPublishNote({ ok: false, text: data?.error ?? "Kaydedilemedi. Değişiklikler bekliyor; tekrar deneyin." });
+        return;
+      }
+      const done: Record<string, boolean> = {};
+      const failed: Record<string, string> = {};
+      for (const r of data.results) {
+        if (r.ok && typeof r.published === "boolean") {
+          done[r.productId] = r.published;
+          if (r.published !== pending[r.productId]) failed[r.productId] = "Sunucu farklı bir durum bildirdi; kontrol edin.";
+        } else {
+          const reasons = r.fields ? Object.values(r.fields).filter(Boolean) : [];
+          failed[r.productId] = reasons.length > 0 ? `Yayınlanamadı: ${reasons.join(" ")}` : (r.error ?? "Kaydedilemedi.");
+        }
+      }
+      // anything the answer did not mention stays pending
+      for (const { productId } of items) if (!(productId in done) && !(productId in failed)) failed[productId] = "Kaydedilemedi; tekrar deneyin.";
+      setConfirmed((c) => ({ ...c, ...done }));
+      setPending((cur) => {
+        const rest = { ...cur };
+        for (const id of Object.keys(done)) if (done[id] === cur[id]) delete rest[id];
+        return rest;
+      });
+      setPublishErrors(failed);
+      const saved = Object.keys(done).filter((id) => !(id in failed)).length;
+      const notSaved = Object.keys(failed).length;
+      setPublishNote(
+        notSaved === 0
+          ? { ok: true, text: `Kaydedildi — ${saved} ürünün yayın durumu.` }
+          : saved > 0
+            ? { ok: false, text: `${saved} ürün kaydedildi; ${notSaved} ürün kaydedilemedi ve bekliyor (satırlarda nedeni yazıyor).` }
+            : { ok: false, text: `Kaydedilemedi; ${notSaved} ürün bekliyor (satırlarda nedeni yazıyor).` },
+      );
+      // a panel product's status decides its price editing and its row: read the list again
+      if (Object.keys(done).some((id) => products.find((p) => p.productId === id)?.panel)) router.refresh();
+    } catch {
+      setPublishNote({ ok: false, text: "Bağlantı kurulamadı; kaydedilip kaydedilmediği bilinmiyor. Değişiklikler bekliyor — sayfayı yenilemeden tekrar deneyin." });
+    } finally {
+      setPublishSaving(false);
+    }
+  };
+
+  // leaving with pending ticks asks first: links in the panel, reloading or closing the page
+  const hasPending = pendingIds.length > 0;
+  const pendingRef = useRef(hasPending);
+  useEffect(() => {
+    pendingRef.current = hasPending;
+  });
+  useEffect(() => {
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!pendingRef.current) return;
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    const onClick = (e: MouseEvent) => {
+      if (!pendingRef.current || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      const a = (e.target as Element | null)?.closest?.("a[href]") as HTMLAnchorElement | null;
+      if (!a || a.target === "_blank" || a.hasAttribute("download") || a.getAttribute("href")?.startsWith("#")) return;
+      if (a.href === window.location.href) return;
+      if (!window.confirm("Kaydedilmemiş yayın değişiklikleri var. Ayrılırsanız kaybolacak. Devam edilsin mi?")) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    document.addEventListener("click", onClick, true);
+    return () => {
+      window.removeEventListener("beforeunload", onBeforeUnload);
+      document.removeEventListener("click", onClick, true);
+    };
   }, []);
 
   const storedOf = (productId: string, e: ProductPriceEntry) => {
@@ -138,12 +256,11 @@ export function ProductPricesTable({
   const publishCell = (p: ProductPriceProduct) => (
     <td className={`${CELL} max-xl:float-right max-xl:ml-3 xl:w-[72px] xl:text-center`}>
       <ProductPublishToggle
-        productId={p.productId}
         name={p.name}
-        published={p.published}
-        disabledReason={publishLock}
-        refreshAfter={p.panel !== null}
-        onError={onPublishError}
+        checked={pending[p.productId] ?? savedPublished(p)}
+        pending={p.productId in pending}
+        disabledReason={publishLock ?? (publishSaving ? "Kaydediliyor…" : null)}
+        onChange={(next) => togglePublished(p, next)}
       />
     </td>
   );
@@ -151,15 +268,25 @@ export function ProductPricesTable({
   /** under the name: a panel product's status and form, off the site, the last tick refusal */
   const nameNotes = (p: ProductPriceProduct) => (
     <>
-      {(p.panel || !p.published) && (
+      {(p.panel || !savedPublished(p)) && (
         <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11.5px] text-neutral-500">
           {p.panel && <Badge strong={p.panel.status === "draft"}>{PANEL_STATUS[p.panel.status]}</Badge>}
-          {!p.published && <span>Sitede görünmüyor</span>}
+          {!savedPublished(p) && <span>Sitede görünmüyor</span>}
           {p.panel && (
             <Link href={p.panel.editHref} className="font-semibold text-neutral-700 underline underline-offset-2 hover:text-neutral-900">
               Düzenle
             </Link>
           )}
+        </span>
+      )}
+      {pending[p.productId] === false && (
+        <span className="mt-1 block max-w-[420px] text-[12px] font-medium text-neutral-900">
+          Bu ürün kaydedildiğinde sitede görünmeyecek ve yeni siparişe kapanacak.
+        </span>
+      )}
+      {pending[p.productId] === true && (
+        <span className="mt-1 block max-w-[420px] text-[12px] font-medium text-neutral-900">
+          Kaydedildiğinde yayına açılacak{p.panel ? " (yayın koşulları sağlanıyorsa)" : ""}.
         </span>
       )}
       {publishErrors[p.productId] && (
@@ -339,6 +466,42 @@ export function ProductPricesTable({
           </tbody>
         </table>
       </div>
+      {publishNote && !hasPending && (
+        <p role={publishNote.ok ? "status" : "alert"} className="border-t border-neutral-100 px-3 py-2 text-[12.5px] font-medium text-neutral-900">
+          {publishNote.text}
+        </p>
+      )}
+      {/* pending "Yayında" changes: saved together, never per tick */}
+      {hasPending && (
+        <div className="sticky bottom-0 z-10 flex flex-wrap items-center gap-3 border-t border-neutral-200 bg-white/95 px-3 py-3 backdrop-blur">
+          <span className="text-[12.5px] text-neutral-700">
+            {[toOff > 0 && `${toOff} ürün pasife alınacak`, toOn > 0 && `${toOn} ürün yayına açılacak`].filter(Boolean).join(" · ")}
+          </span>
+          {publishNote && (
+            <span role={publishNote.ok ? "status" : "alert"} className="text-[12.5px] font-medium text-neutral-900">
+              {publishNote.text}
+            </span>
+          )}
+          <div className="ml-auto flex gap-2">
+            <button
+              type="button"
+              onClick={discardPublished}
+              disabled={publishSaving}
+              className="h-8 rounded-md border border-neutral-300 bg-white px-3 text-[12.5px] font-semibold text-neutral-800 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:text-neutral-400"
+            >
+              Vazgeç
+            </button>
+            <button
+              type="button"
+              onClick={() => void savePublished()}
+              disabled={publishSaving || publishLock !== null}
+              className="h-8 rounded-md bg-neutral-900 px-3 text-[12.5px] font-semibold text-white transition-colors hover:bg-neutral-700 disabled:cursor-not-allowed disabled:bg-neutral-300"
+            >
+              {publishSaving ? "Kaydediliyor…" : "Yayın Durumlarını Kaydet"}
+            </button>
+          </div>
+        </div>
+      )}
     </Panel>
   );
 }

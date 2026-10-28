@@ -123,6 +123,11 @@ export function patchAllItems(patch: Partial<Omit<CartItem, "id">>): void {
   write(read().map((i) => ({ ...i, ...patch })));
 }
 
+/** A per-line patch — lines that keep their own delivery date/slot. */
+export function patchEachItem(patch: (item: CartItem) => Partial<Omit<CartItem, "id">>): void {
+  write(read().map((i) => ({ ...i, ...patch(i) })));
+}
+
 /**
  * New unit prices for some lines (by line id) — the cart shows the price an
  * order would be placed at now (SUPABASE_PLAN.md, D5). Writes only if

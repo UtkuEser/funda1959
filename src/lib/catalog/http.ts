@@ -67,32 +67,38 @@ export function refusalMessage(code: string): string {
   return (REFUSAL[code] ?? REFUSAL.invalid_fields).error;
 }
 
-/** Product errors -> answers; anything else is logged and answered 500 without details. */
-export function productErrorResponse(err: unknown, where: string): NextResponse {
-  if (err instanceof ProductManagementClosedError) return productJson({ error: CLOSED_MESSAGE }, 503);
-  if (err instanceof ProductAccessError) return productJson(FORBIDDEN, 403);
+/** Product errors -> status and body; anything else is logged and answered 500 without details. */
+export function productErrorBody(err: unknown, where: string): { status: number; body: { error: string; code?: string; fields?: Record<string, string> } } {
+  if (err instanceof ProductManagementClosedError) return { status: 503, body: { error: CLOSED_MESSAGE } };
+  if (err instanceof ProductAccessError) return { status: 403, body: FORBIDDEN };
   if (err instanceof ProductValidationError) {
-    return productJson({ error: err.errors.form ?? "Lütfen işaretli alanları düzeltin.", fields: err.errors }, 400);
+    return { status: 400, body: { error: err.errors.form ?? "Lütfen işaretli alanları düzeltin.", fields: err.errors as Record<string, string> } };
   }
-  if (err instanceof ImageRejectedError) return productJson({ error: err.reason, fields: { imageId: err.reason } }, 400);
+  if (err instanceof ImageRejectedError) return { status: 400, body: { error: err.reason, fields: { imageId: err.reason } } };
   if (err instanceof ProductRefusedError) {
     const r = REFUSAL[err.code] ?? REFUSAL.invalid_fields;
-    return productJson({ error: r.error, code: err.code, ...(r.field ? { fields: { [r.field]: r.error } } : {}) }, r.status);
+    return { status: r.status, body: { error: r.error, code: err.code, ...(r.field ? { fields: { [r.field]: r.error } } : {}) } };
   }
   if (err instanceof ProductNotReadyError) {
     // nothing was saved: the table this needs is not in the database yet
-    return productJson(
-      { error: err.message.includes("(0014)") ? "Kaydedilemedi: yayın ayarı tablosu henüz kurulmadı (migration 0014)." : "Kaydedilemedi: ürün tabloları henüz kurulmadı (migration 0013)." },
-      503,
-    );
+    return {
+      status: 503,
+      body: { error: err.message.includes("(0014)") ? "Kaydedilemedi: yayın ayarı tablosu henüz kurulmadı (migration 0014)." : "Kaydedilemedi: ürün tabloları henüz kurulmadı (migration 0013)." },
+    };
   }
   if (err instanceof ProductStoreUnavailableError || err instanceof DataEnvironmentError) {
-    return productJson({ error: "Ürün kaydı şu an yapılamıyor: kayıt servisi kullanılamıyor." }, 503);
+    return { status: 503, body: { error: "Ürün kaydı şu an yapılamıyor: kayıt servisi kullanılamıyor." } };
   }
   if (err instanceof ImageStorageError) {
     console.error(`[${where}] storage failed`, { error: err.message });
-    return productJson({ error: "Görsel kaydedilemedi. Lütfen tekrar deneyin." }, 502);
+    return { status: 502, body: { error: "Görsel kaydedilemedi. Lütfen tekrar deneyin." } };
   }
   console.error(`[${where}] failed`, { error: (err as Error)?.message?.slice(0, 300) });
-  return productJson({ error: "İşlem tamamlanamadı. Lütfen tekrar deneyin." }, 500);
+  return { status: 500, body: { error: "İşlem tamamlanamadı. Lütfen tekrar deneyin." } };
+}
+
+/** Product errors -> answers (see `productErrorBody`). */
+export function productErrorResponse(err: unknown, where: string): NextResponse {
+  const { status, body } = productErrorBody(err, where);
+  return productJson(body, status);
 }

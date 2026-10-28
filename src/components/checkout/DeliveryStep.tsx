@@ -1,19 +1,70 @@
+import Link from "next/link";
 import { branches } from "@/lib/data";
-import { formatCartDate } from "@/lib/cart-utils";
-import { reasonMessage } from "@/lib/availability";
+import { dateSlotText } from "@/lib/delivery/labels";
 import { addressDistricts, addressNeighborhoods } from "@/lib/delivery/zones";
 import type { AccountAddress } from "@/lib/account-service";
 import { isServiceArea } from "@/lib/customers/validation";
 import { useDelivery } from "@/lib/delivery/context";
 import { Field, RadioCard, SelectField, TextAreaField, TextField } from "./fields";
-import type { AddressFields, CheckoutState, DeliveryErrors, DeliveryPatch, SlotOption } from "./CheckoutPage";
+import type { AddressFields, CheckoutState, DeliveryErrors, DeliveryPatch, ShippingTime } from "./CheckoutPage";
+
+/**
+ * "Gönderim Zamanı": the time the whole order goes out — the latest date and
+ * window chosen for the cart's products. Shown, not chosen, here; a time
+ * that doesn't work is changed in the cart.
+ */
+function ShippingTimeBox({ value }: { value: ShippingTime }) {
+  const blocked = value.status === "blocked";
+  return (
+    <div
+      id="shipTime"
+      tabIndex={-1}
+      className={`flex gap-3 rounded-lg border px-4 py-4 focus:outline-none ${
+        blocked ? "border-chocolate-light/30 bg-chocolate-light/[0.05]" : "border-sand bg-cream-light"
+      }`}
+    >
+      <svg aria-hidden viewBox="0 0 20 20" fill="none" stroke="currentColor" className="mt-px h-5 w-5 shrink-0 text-burgundy">
+        <circle cx="10" cy="10" r="8.25" strokeWidth={1.5} />
+        <path d="M10 5.75v5.5" strokeWidth={1.75} strokeLinecap="round" />
+        <circle cx="10" cy="14.1" r="1" fill="currentColor" stroke="none" />
+      </svg>
+      <div className="min-w-0">
+        <h3 className="font-sans text-[15px] font-semibold text-espresso">Gönderim Zamanı</h3>
+        {value.date && value.slotLabel && (
+          <p className="mt-1 font-sans text-[16px] font-semibold text-burgundy">{dateSlotText(value.date, value.slotLabel)}</p>
+        )}
+        <div aria-live="polite">
+          {blocked ? (
+            <>
+              <p className="mt-1.5 font-sans text-[13px] leading-relaxed text-chocolate-light">{value.problem}</p>
+              {value.editInCart && (
+                <Link
+                  href="/sepet"
+                  className="mt-2 inline-block font-sans text-[13px] font-semibold text-burgundy underline decoration-burgundy/30 underline-offset-2 hover:decoration-burgundy"
+                >
+                  Sepette teslimat zamanlarını düzenle
+                </Link>
+              )}
+            </>
+          ) : (
+            value.date && (
+              <p className="mt-1.5 font-sans text-[13px] leading-relaxed text-warm-brown">
+                {value.mixed
+                  ? "Sepetinizde farklı teslimat zamanları bulunan ürünler var. Tüm ürünleriniz en geç seçilen zamana göre birlikte gönderilecektir."
+                  : "Tüm ürünleriniz birlikte gönderilecektir."}
+              </p>
+            )
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function DeliveryStep({
   value,
   errors,
-  minDate,
-  slotOptions,
-  slotNotice = null,
+  shipping,
   onChange,
   onAddressChange,
   onDistrictChange,
@@ -25,12 +76,8 @@ export function DeliveryStep({
 }: {
   value: CheckoutState;
   errors: DeliveryErrors;
-  /** today in Europe/Istanbul — earlier dates can't be chosen ("" before mount) */
-  minDate: string;
-  /** the windows for the chosen date; started / unavailable ones can't be chosen */
-  slotOptions: SlotOption[];
-  /** why no window can be chosen on that date, if so */
-  slotNotice?: string | null;
+  /** the cart's shipping time and whether the order can go out then */
+  shipping: ShippingTime;
   onChange: (patch: DeliveryPatch) => void;
   onAddressChange: (patch: Partial<AddressFields>) => void;
   /** district / neighbourhood live in the shared delivery context (header, home page) */
@@ -202,70 +249,9 @@ export function DeliveryStep({
           </Field>
         )}
 
-        {/* Time */}
+        {/* Shipping time — from the cart, not chosen here */}
         <div className="border-t border-sand-light pt-6">
-          <h3 className="font-sans text-[15px] font-semibold text-espresso">Teslimat Zamanı</h3>
-
-          <div className="mt-4 flex flex-col gap-5 md:flex-row md:items-start">
-            <div className="md:w-[34%] md:shrink-0">
-              <Field label="Teslimat Tarihi" htmlFor="date" error={errors.date}>
-                <input
-                  id="date"
-                  type="date"
-                  value={value.date}
-                  min={minDate || undefined}
-                  onChange={(e) => onChange({ date: e.target.value, timeSlot: null })}
-                  aria-invalid={errors.date ? true : undefined}
-                  aria-describedby={errors.date ? "date-error" : undefined}
-                  className={`h-12 w-full rounded-md border bg-cream-light px-3.5 font-sans text-[14px] text-espresso focus:outline-none ${
-                    errors.date ? "border-chocolate-light/60" : "border-sand focus:border-burgundy"
-                  }`}
-                />
-                {value.date && !errors.date && (
-                  <p className="mt-1 font-sans text-[12px] text-taupe">
-                    {formatCartDate(value.date)}
-                  </p>
-                )}
-              </Field>
-            </div>
-
-            <div className="md:flex-1">
-              <Field label="Saat Aralığı" htmlFor="timeSlot" error={errors.timeSlot}>
-                <div
-                  id="timeSlot"
-                  className="flex flex-wrap gap-2"
-                  role="radiogroup"
-                  aria-label="Teslimat saati"
-                >
-                  {slotOptions.map((slot) => {
-                    const active = value.timeSlot === slot.label && slot.available;
-                    return (
-                      <button
-                        key={slot.label}
-                        type="button"
-                        role="radio"
-                        aria-checked={active}
-                        disabled={!slot.available}
-                        title={slot.available ? undefined : reasonMessage(slot.reason)}
-                        aria-label={slot.available ? undefined : `${slot.label}, seçilemez`}
-                        onClick={() => onChange({ timeSlot: slot.label })}
-                        className={`rounded-md border px-3 py-2 font-sans text-[13px] font-medium transition-colors ${
-                          active
-                            ? "border-burgundy bg-burgundy/[0.05] text-burgundy"
-                            : slot.available
-                              ? "border-sand text-warm-brown hover:border-burgundy/40"
-                              : "cursor-not-allowed border-sand-light text-warm-brown/40"
-                        }`}
-                      >
-                        {slot.label}
-                      </button>
-                    );
-                  })}
-                </div>
-                {slotNotice && <p className="mt-2 font-sans text-[12px] text-taupe">{slotNotice}</p>}
-              </Field>
-            </div>
-          </div>
+          <ShippingTimeBox value={shipping} />
         </div>
       </div>
     </section>

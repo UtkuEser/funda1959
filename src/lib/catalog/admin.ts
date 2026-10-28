@@ -297,3 +297,41 @@ export async function setProductPublished(scope: AdminScope, input: { productId?
   const product = await setProductStatus(scope, { id, expectedVersion: current.version, status: published ? "published" : "unpublished" });
   return { published: product.status === "published" };
 }
+
+export type PublishOutcome = { productId: string; ok: true; published: boolean } | { productId: string; ok: false; error: unknown };
+
+const MAX_PUBLISH_ITEMS = 100;
+
+/**
+ * "Yayın Durumlarını Kaydet" (D56): several products' "Yayında" at once.
+ * Each one is applied and confirmed on its own, with the same checks as one
+ * tick (a panel product is published only when complete); the answer says
+ * per product what the database confirmed, so the panel keeps the ones that
+ * failed as pending and never shows them saved.
+ */
+export async function setProductsPublished(scope: AdminScope, raw: unknown): Promise<PublishOutcome[]> {
+  actorOf(scope); // closed here / not Merkez: nothing is tried
+  if (!Array.isArray(raw) || raw.length === 0 || raw.length > MAX_PUBLISH_ITEMS) {
+    throw new ProductValidationError({ form: `Bir kayıtta 1–${MAX_PUBLISH_ITEMS} ürün olabilir.` });
+  }
+  const seen = new Set<string>();
+  const items: { productId: string; published: boolean }[] = [];
+  for (const entry of raw) {
+    const r = (entry && typeof entry === "object" ? entry : {}) as Record<string, unknown>;
+    if (typeof r.productId !== "string" || typeof r.published !== "boolean" || seen.has(r.productId)) {
+      throw new ProductValidationError({ form: "Yayın değişiklikleri geçersiz; sayfayı yenileyin." });
+    }
+    seen.add(r.productId);
+    items.push({ productId: r.productId, published: r.published });
+  }
+  const out: PublishOutcome[] = [];
+  for (const item of items) {
+    try {
+      const { published } = await setProductPublished(scope, item);
+      out.push({ productId: item.productId, ok: true, published });
+    } catch (error) {
+      out.push({ productId: item.productId, ok: false, error });
+    }
+  }
+  return out;
+}

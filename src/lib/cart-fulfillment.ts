@@ -3,16 +3,19 @@
 /**
  * Fulfillment layer on top of the existing cart.
  *
- * One order = one branch. The resolved/chosen branch and the chosen delivery
- * date + slot are stamped onto every cart line (reusing the line's existing
- * `branch` / `deliveryType` / `deliveryDate` / `deliveryTime` fields), so the
- * cart schema is untouched. This module never rewrites cart mechanics — it
- * only reads through `getCart()` and writes through `patchAllItems()`.
+ * One order = one branch. The resolved/chosen branch is stamped onto every
+ * cart line; each line keeps the delivery date + slot chosen for it and the
+ * order ships at the latest of them (`cartDeliveryPlan`). The line's existing
+ * `branch` / `deliveryType` / `deliveryDate` / `deliveryTime` fields are
+ * reused, so the cart schema is untouched. This module never rewrites cart
+ * mechanics — it only reads through `getCart()` and writes through
+ * `patchAllItems()` / `patchEachItem()`.
  */
 
-import { getCart, patchAllItems, removeItems, type CartItem, type CartDeliveryType } from "./cart";
+import { getCart, patchAllItems, patchEachItem, removeItems, type CartItem, type CartDeliveryType } from "./cart";
 import type { DeliveryContext } from "./availability/types";
 import { isDeliveryFeeReason, reasonMessage, type AvailabilityResult, type CartAvailabilityResult } from "./availability";
+import { istanbulInstant } from "./time/istanbul";
 
 export type CartFulfillment = {
   branchId: string | null;
@@ -21,13 +24,50 @@ export type CartFulfillment = {
   slotLabel: string | null;
 };
 
+/**
+ * The order's one shipping time: the latest date + window chosen across the
+ * lines, compared as Europe/Istanbul instants (window start, then end). Every
+ * line is sent together at that time.
+ */
+export type CartDeliveryPlan = {
+  /** null when no line has a date and window */
+  date: string | null;
+  slotLabel: string | null;
+  /** the lines were chosen for different dates / windows */
+  mixed: boolean;
+  /** some line has no date or window */
+  incomplete: boolean;
+};
+
+export function cartDeliveryPlan(items: CartItem[] = getCart()): CartDeliveryPlan {
+  let latest: { date: string; slotLabel: string; start: number; end: number } | null = null;
+  const chosen = new Set<string>();
+  let incomplete = false;
+  for (const i of items) {
+    const [startTime, endTime] = i.deliveryTime?.match(/\d{2}:\d{2}/g) ?? [];
+    if (!i.deliveryDate || !/^\d{4}-\d{2}-\d{2}$/.test(i.deliveryDate) || !i.deliveryTime || !startTime) {
+      incomplete = true;
+      continue;
+    }
+    chosen.add(`${i.deliveryDate}|${startTime}|${endTime ?? ""}`);
+    const start = istanbulInstant(i.deliveryDate, startTime).getTime();
+    const end = endTime ? istanbulInstant(i.deliveryDate, endTime).getTime() : start;
+    if (!latest || start > latest.start || (start === latest.start && end > latest.end)) {
+      latest = { date: i.deliveryDate, slotLabel: i.deliveryTime, start, end };
+    }
+  }
+  return { date: latest?.date ?? null, slotLabel: latest?.slotLabel ?? null, mixed: chosen.size > 1, incomplete };
+}
+
+/** Branch and type of the cart, and the shipping time every line goes out at (`cartDeliveryPlan`). */
 export function readCartFulfillment(items: CartItem[] = getCart()): CartFulfillment {
   const first = items[0];
+  const plan = cartDeliveryPlan(items);
   return {
     branchId: first?.branch ?? null,
     deliveryType: first?.deliveryType ?? null,
-    date: first?.deliveryDate ?? null,
-    slotLabel: first?.deliveryTime ?? null,
+    date: plan.date,
+    slotLabel: plan.slotLabel,
   };
 }
 
@@ -53,6 +93,28 @@ export function stampCartFulfillment(patch: {
     deliveryType: toCartDeliveryType(patch.deliveryType),
     deliveryDate: patch.date,
     deliveryTime: patch.slotLabel,
+  });
+}
+
+/**
+ * The cart's shipping time still works: stamp branch + type, keep every
+ * line's own date/slot (checkout shows that they go out together at the
+ * latest one); a line without a choice gets the shared one.
+ */
+export function keepCartFulfillment(patch: {
+  branchId: string;
+  deliveryType: "delivery" | "pickup";
+  date: string;
+  slotLabel: string;
+}): void {
+  patchEachItem((i) => {
+    const own = Boolean(i.deliveryDate && i.deliveryTime);
+    return {
+      branch: patch.branchId,
+      deliveryType: toCartDeliveryType(patch.deliveryType),
+      deliveryDate: own ? i.deliveryDate : patch.date,
+      deliveryTime: own ? i.deliveryTime : patch.slotLabel,
+    };
   });
 }
 

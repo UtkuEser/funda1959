@@ -8,6 +8,7 @@ import { compactSlot, dateSlotText, dayWord } from "@/lib/delivery/labels";
 import {
   revalidateCart,
   dropUnavailable,
+  keepCartFulfillment,
   readCartFulfillment,
   stampCartFulfillment,
   type CartRevalidation,
@@ -39,10 +40,11 @@ export function CartFulfillmentBanner() {
       setResult(r);
       setKept(null);
       if (r.status === "unavailable" || !r.availability.branchId) return;
-      // the date/slot chosen on the product page still works -> keep it (only the branch may change);
-      // otherwise move the lines to the earliest slot every item can share
-      if (r.availability.available && chosen.date && chosen.slotLabel) {
-        stampCartFulfillment({ branchId: r.availability.branchId, deliveryType: context.fulfillmentType, date: chosen.date, slotLabel: chosen.slotLabel });
+      // the latest date/slot chosen on the product pages (the order's shipping time) still works ->
+      // keep every line's choice (only the branch may change); a past date is not kept (the engine
+      // answers for today then); otherwise move the lines to the earliest slot every item can share
+      if (r.availability.available && chosen.date && chosen.slotLabel && r.availability.requestedDate === chosen.date) {
+        keepCartFulfillment({ branchId: r.availability.branchId, deliveryType: context.fulfillmentType, date: chosen.date, slotLabel: chosen.slotLabel });
         setKept({ date: chosen.date, slotLabel: chosen.slotLabel });
       } else if (r.availability.earliestAvailableSlot) {
         stampCartFulfillment({

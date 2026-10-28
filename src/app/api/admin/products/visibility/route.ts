@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server";
-import { setProductPublished } from "@/lib/catalog/admin";
-import { productErrorResponse, productGate, productJson } from "@/lib/catalog/http";
+import { setProductPublished, setProductsPublished } from "@/lib/catalog/admin";
+import { productErrorBody, productErrorResponse, productGate, productJson } from "@/lib/catalog/http";
 
 export const dynamic = "force-dynamic";
 
 /**
- * POST { productId, published } — "Yayında" in the "Ürün Bilgisi" list (D48).
- * Merkez only, test data only (D46). The answer is the state the database
- * confirmed; on any error nothing changed and the panel puts the tick back.
+ * POST { items: [{ productId, published }] } — "Yayın Durumlarını Kaydet" in
+ * the "Ürün Bilgisi" list (D48, D56): every product applied and confirmed on
+ * its own; `results` says per product what the database confirmed, or why
+ * not (that one stays pending in the panel). POST { productId, published }
+ * still sets one. Merkez only, test data only (D46).
  */
 export async function POST(request: Request) {
   const gate = await productGate(request, { write: true });
@@ -19,6 +21,17 @@ export async function POST(request: Request) {
     return productJson({ error: "Geçersiz istek." }, 400);
   }
   try {
+    if (Array.isArray(body?.items)) {
+      const outcomes = await setProductsPublished(gate.scope, body.items);
+      return productJson({
+        ok: true,
+        results: outcomes.map((o) =>
+          o.ok
+            ? { productId: o.productId, ok: true, published: o.published }
+            : { productId: o.productId, ok: false, ...productErrorBody(o.error, "api/admin/products/visibility").body },
+        ),
+      });
+    }
     const result = await setProductPublished(gate.scope, { productId: body?.productId, published: body?.published });
     return productJson({ ok: true, ...result });
   } catch (err) {
