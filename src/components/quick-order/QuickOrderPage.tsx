@@ -5,8 +5,8 @@ import Link from "next/link";
 import { Container } from "@/components/shared/Container";
 import { useCart } from "@/lib/use-cart";
 import { formatTL, quantityTotal, subtotal } from "@/lib/cart-utils";
-import { catalogCategories, catalogProductsForCategory, catalogVersion, type CatalogProduct } from "@/lib/data";
-import { normalize } from "@/lib/search";
+import { catalogCategories, catalogProductsForCategory, catalogVersion } from "@/lib/data";
+import { rankProducts } from "@/lib/search";
 import { useDelivery } from "@/lib/delivery/context";
 import type { CatalogAvailabilityVerdict } from "@/lib/availability";
 import { DeliveryContextControl } from "@/components/delivery/DeliveryContextControl";
@@ -21,18 +21,6 @@ const QUICK_FILTERS: { value: QuickFilter; label: string }[] = [
   { value: "all", label: "Tümü" },
   { value: "bestseller", label: "Çok Satanlar" },
 ];
-
-function textFilter(list: CatalogProduct[], query: string): CatalogProduct[] {
-  const q = normalize(query);
-  if (!q) return list;
-  const tokens = q.split(" ").filter(Boolean);
-  return list.filter((p) => {
-    const hay = normalize(
-      `${p.name} ${p.categoryName} ${(p.tags ?? []).join(" ")} ${p.shortDescription ?? ""}`,
-    );
-    return tokens.every((t) => hay.includes(t));
-  });
-}
 
 export function QuickOrderPage() {
   const [category, setCategory] = useState("tumu");
@@ -60,7 +48,8 @@ export function QuickOrderPage() {
   const baseList = useMemo(() => {
     let list = catalogProductsForCategory(category);
     if (activeQuick === "bestseller") list = list.filter((p) => p.isBestSeller);
-    return textFilter(list, query);
+    // the site search's matching and order (header, /arama)
+    return rankProducts(list, query);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the catalog changes with `version`
   }, [category, activeQuick, query, version]);
 

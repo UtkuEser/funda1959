@@ -9,7 +9,9 @@ import { CartItemRow } from "./CartItem";
 import { CartSummary } from "./CartSummary";
 import { CartFulfillmentBanner } from "./CartFulfillmentBanner";
 import { EmptyCart } from "./EmptyCart";
+import { CartSuggestions } from "./CartSuggestions";
 import { useCatalogVerdicts } from "@/lib/delivery/use-catalog-verdicts";
+import { useDelivery } from "@/lib/delivery/context";
 
 function Breadcrumb() {
   return (
@@ -26,6 +28,7 @@ function Breadcrumb() {
 export function CartPage() {
   const items = useCart();
   const verdicts = useCatalogVerdicts(items.map((i) => i.productId));
+  const { context, isResolved } = useDelivery();
 
   if (items.length === 0) {
     return (
@@ -72,6 +75,9 @@ export function CartPage() {
               />
             ))}
           </div>
+
+          {/* the same address / store the banner checks the cart with */}
+          <CartSuggestions context={isResolved ? context : null} linkToProducts className="mt-8" />
 
           <div className="mt-8">
             <Link

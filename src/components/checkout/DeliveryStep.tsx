@@ -1,70 +1,15 @@
-import Link from "next/link";
 import { branches } from "@/lib/data";
-import { dateSlotText } from "@/lib/delivery/labels";
 import { addressDistricts, addressNeighborhoods } from "@/lib/delivery/zones";
 import type { AccountAddress } from "@/lib/account-service";
 import { isServiceArea } from "@/lib/customers/validation";
 import { useDelivery } from "@/lib/delivery/context";
 import { Field, RadioCard, SelectField, TextAreaField, TextField } from "./fields";
-import type { AddressFields, CheckoutState, DeliveryErrors, DeliveryPatch, ShippingTime } from "./CheckoutPage";
+import type { AddressFields, CheckoutState, DeliveryErrors, DeliveryPatch } from "./CheckoutPage";
 
-/**
- * "Gönderim Zamanı": the time the whole order goes out — the latest date and
- * window chosen for the cart's products. Shown, not chosen, here; a time
- * that doesn't work is changed in the cart.
- */
-function ShippingTimeBox({ value }: { value: ShippingTime }) {
-  const blocked = value.status === "blocked";
-  return (
-    <div
-      id="shipTime"
-      tabIndex={-1}
-      className={`flex gap-3 rounded-lg border px-4 py-4 focus:outline-none ${
-        blocked ? "border-chocolate-light/30 bg-chocolate-light/[0.05]" : "border-sand bg-cream-light"
-      }`}
-    >
-      <svg aria-hidden viewBox="0 0 20 20" fill="none" stroke="currentColor" className="mt-px h-5 w-5 shrink-0 text-burgundy">
-        <circle cx="10" cy="10" r="8.25" strokeWidth={1.5} />
-        <path d="M10 5.75v5.5" strokeWidth={1.75} strokeLinecap="round" />
-        <circle cx="10" cy="14.1" r="1" fill="currentColor" stroke="none" />
-      </svg>
-      <div className="min-w-0">
-        <h3 className="font-sans text-[15px] font-semibold text-espresso">Gönderim Zamanı</h3>
-        {value.date && value.slotLabel && (
-          <p className="mt-1 font-sans text-[16px] font-semibold text-burgundy">{dateSlotText(value.date, value.slotLabel)}</p>
-        )}
-        <div aria-live="polite">
-          {blocked ? (
-            <>
-              <p className="mt-1.5 font-sans text-[13px] leading-relaxed text-chocolate-light">{value.problem}</p>
-              {value.editInCart && (
-                <Link
-                  href="/sepet"
-                  className="mt-2 inline-block font-sans text-[13px] font-semibold text-burgundy underline decoration-burgundy/30 underline-offset-2 hover:decoration-burgundy"
-                >
-                  Sepette teslimat zamanlarını düzenle
-                </Link>
-              )}
-            </>
-          ) : (
-            value.date && (
-              <p className="mt-1.5 font-sans text-[13px] leading-relaxed text-warm-brown">
-                {value.mixed
-                  ? "Sepetinizde farklı teslimat zamanları bulunan ürünler var. Tüm ürünleriniz en geç seçilen zamana göre birlikte gönderilecektir."
-                  : "Tüm ürünleriniz birlikte gönderilecektir."}
-              </p>
-            )
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
+/** The shipping time ("Gönderim Zamanı") is shown at the top of the page (`ShippingTimeBox`), not here. */
 export function DeliveryStep({
   value,
   errors,
-  shipping,
   onChange,
   onAddressChange,
   onDistrictChange,
@@ -76,8 +21,6 @@ export function DeliveryStep({
 }: {
   value: CheckoutState;
   errors: DeliveryErrors;
-  /** the cart's shipping time and whether the order can go out then */
-  shipping: ShippingTime;
   onChange: (patch: DeliveryPatch) => void;
   onAddressChange: (patch: Partial<AddressFields>) => void;
   /** district / neighbourhood live in the shared delivery context (header, home page) */
@@ -248,11 +191,6 @@ export function DeliveryStep({
             </div>
           </Field>
         )}
-
-        {/* Shipping time — from the cart, not chosen here */}
-        <div className="border-t border-sand-light pt-6">
-          <ShippingTimeBox value={shipping} />
-        </div>
       </div>
     </section>
   );

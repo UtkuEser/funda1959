@@ -32,7 +32,9 @@ import { CheckoutSummary } from "./CheckoutSummary";
 import { MIN_DELIVERY_ORDER_TL, deliveryMinimumShortfall } from "@/lib/order-rules";
 import { ContactStep } from "./ContactStep";
 import { DeliveryStep } from "./DeliveryStep";
+import { ShippingTimeBox } from "./ShippingTimeBox";
 import { TextAreaField } from "./fields";
+import { CartSuggestions } from "@/components/cart/CartSuggestions";
 
 export type ContactInfo = { fullName: string; phone: string; email: string };
 export type ContactErrors = Partial<Record<keyof ContactInfo, string>>;
@@ -89,8 +91,9 @@ const EMPTY_ADDRESS: AddressFields = {
   note: "",
 };
 
-// Order used to scroll to / focus the first invalid field on submit.
+// Order used to scroll to / focus the first invalid field on submit — the page's order ("Gönderim Zamanı" is on top).
 const FIELD_ORDER = [
+  "shipTime",
   "fullName",
   "phone",
   "email",
@@ -98,7 +101,6 @@ const FIELD_ORDER = [
   "neighborhood",
   "addressLine",
   "branch",
-  "shipTime",
 ];
 
 /** "10:00 – 11:00" -> "10:00" */
@@ -275,7 +277,7 @@ export function CheckoutPage({ member = null }: { member?: CheckoutMember | null
    * the header or anywhere else) or of the delivery type -> check the cart for
    * that address: serving branch, delivery fee (set / readable) and products
    * offered there; the customer is told what changed. The shipping time is
-   * checked for the new address by the "Gönderim Zamanı" box below.
+   * checked for the new address by the "Gönderim Zamanı" box (top of the page).
    */
   const latest = useRef({ state, items });
   useEffect(() => {
@@ -617,13 +619,17 @@ export function CheckoutPage({ member = null }: { member?: CheckoutMember | null
       <div className="mt-7 grid gap-10 lg:grid-cols-[1fr_360px] lg:gap-14 lg:items-start">
         {/* Form */}
         <div>
-          <ContactStep value={state.contact} errors={contactErrors} onChange={patchContact} isMember={Boolean(member)} />
+          {/* the cart's shipping time first — from the cart, not chosen here */}
+          <ShippingTimeBox value={shipping} />
+
+          <div className="mt-8">
+            <ContactStep value={state.contact} errors={contactErrors} onChange={patchContact} isMember={Boolean(member)} />
+          </div>
 
           <div className="mt-8 border-t border-sand-light pt-8">
             <DeliveryStep
               value={view}
               errors={deliveryErrors}
-              shipping={shipping}
               onChange={patch}
               onAddressChange={patchAddress}
               onDistrictChange={changeDistrict}
@@ -664,6 +670,9 @@ export function CheckoutPage({ member = null }: { member?: CheckoutMember | null
               </div>
             )}
           </div>
+
+          {/* after the form, before the summary + payment button (below on phones) — checked with this page's address / store */}
+          <CartSuggestions context={slotContext} className="mt-8 border-t border-sand-light pt-7" />
 
           <div className="mt-8">
             <Link

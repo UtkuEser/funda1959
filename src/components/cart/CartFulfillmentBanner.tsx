@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { useCart } from "@/lib/use-cart";
 import { useDelivery } from "@/lib/delivery/context";
 import { DeliveryContextControl } from "@/components/delivery/DeliveryContextControl";
-import { compactSlot, dateSlotText, dayWord } from "@/lib/delivery/labels";
+import { compactSlot, dayWord } from "@/lib/delivery/labels";
+import { longDateTR } from "@/lib/time/istanbul";
 import {
   revalidateCart,
   dropUnavailable,
@@ -13,6 +14,41 @@ import {
   stampCartFulfillment,
   type CartRevalidation,
 } from "@/lib/cart-fulfillment";
+
+/**
+ * The cart's confirmed shipping time — a quiet two-line note (the problems
+ * keep their own, louder notices): the date + window, the preparing branch.
+ */
+function CartShippingTime({
+  label,
+  date,
+  slotLabel,
+  branchName,
+}: {
+  label: string;
+  date: string;
+  slotLabel: string;
+  branchName: string | null;
+}) {
+  return (
+    <div role="status" className="flex items-start gap-2.5 rounded-lg border border-sand-light px-3.5 py-3 sm:px-4">
+      <svg aria-hidden viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth={1.4} className="mt-[3px] h-4 w-4 shrink-0 text-burgundy/70">
+        <circle cx="10" cy="10" r="7.5" />
+        <path d="M10 6.25V10l2.5 1.75" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+      <div className="min-w-0 font-sans">
+        <p className="text-[16px] leading-snug text-espresso">
+          {label}:{" "}
+          <span className="font-semibold text-burgundy">
+            <span className="whitespace-nowrap">{longDateTR(date)}</span> ·{" "}
+            <span className="whitespace-nowrap tabular-nums">{compactSlot(slotLabel)}</span>
+          </span>
+        </p>
+        {branchName && <p className="mt-0.5 text-[13.5px] leading-snug text-warm-brown">Hazırlayan şube: {branchName}</p>}
+      </div>
+    </div>
+  );
+}
 
 /**
  * Re-checks the whole cart against the session delivery context whenever the
@@ -98,22 +134,18 @@ export function CartFulfillmentBanner() {
         </div>
       )}
 
+      {/* only a time the server confirmed for this cart reads as fine; "updated" / "unavailable" keep their notices above */}
       {result?.status === "valid" && kept && (
-        <p className="font-sans text-[12.5px] text-warm-brown">
-          Teslimat seçiminiz uygun:{" "}
-          <span className="font-semibold text-burgundy">{dateSlotText(kept.date, kept.slotLabel)}</span>
-          {result.availability.branchName && <> · {result.availability.branchName}</>}
-        </p>
+        <CartShippingTime label="Gönderim zamanı" date={kept.date} slotLabel={kept.slotLabel} branchName={result.availability.branchName} />
       )}
 
       {result?.status === "valid" && !kept && result.availability.earliestAvailableSlot && (
-        <p className="font-sans text-[12.5px] text-warm-brown">
-          {result.availability.branchName} şubesinden en erken{" "}
-          <span className="font-semibold text-burgundy">
-            {dayWord(result.availability.earliestAvailableSlot.date)} {compactSlot(result.availability.earliestAvailableSlot.label)}
-          </span>{" "}
-          teslim edilebilir.
-        </p>
+        <CartShippingTime
+          label="En erken gönderim"
+          date={result.availability.earliestAvailableSlot.date}
+          slotLabel={result.availability.earliestAvailableSlot.label}
+          branchName={result.availability.branchName}
+        />
       )}
     </div>
   );

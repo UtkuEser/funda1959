@@ -183,6 +183,59 @@ export async function planCartLine(input: {
   };
 }
 
+/**
+ * Before adding a suggested product (/sepet, /checkout): the whole cart plus
+ * that product, at the cart's own shipping time — the same server check as
+ * checkout's "Gönderim Zamanı". Only when that time works for all of them
+ * does the line go in, stamped with that time and the cart's branch / type,
+ * so adding it never moves the order's shipping time; otherwise nothing is
+ * added and the customer is told why.
+ */
+export async function planLineAtCartTime(input: {
+  productId: string;
+  productSlug: string;
+  variantId: string | null;
+  quantity: number;
+  /** the context the order is checked with on this page (checkout: its own pickup store / address) */
+  context: DeliveryContext;
+}): Promise<CartLinePlan> {
+  const items = getCart();
+  const plan = cartDeliveryPlan(items);
+  const slotStart = slotStartFromLabel(plan.slotLabel);
+  if (!plan.date || !plan.slotLabel || !slotStart || plan.incomplete) {
+    return { ok: false, message: "Sepetinizin gönderim zamanı henüz belli değil; ürün eklenmedi." };
+  }
+  const res = await fetch("/api/availability", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      kind: "cart",
+      context: input.context,
+      items: [
+        ...items.map((i) => ({ productId: i.productId, productSlug: i.slug, variantId: i.selectedVariant, quantity: i.quantity })),
+        { productId: input.productId, productSlug: input.productSlug, variantId: input.variantId, quantity: input.quantity },
+      ],
+      date: plan.date,
+      slotStart,
+    }),
+  })
+    .then((r) => (r.ok ? (r.json() as Promise<CartAvailabilityResult>) : null))
+    .catch(() => null);
+
+  if (!res) return { ok: false, message: "Uygunluk kontrol edilemedi. Lütfen tekrar deneyin." };
+  if (!res.available || res.requestedDate !== plan.date || !res.branchId) {
+    return { ok: false, message: "Bu ürün siparişinizin gönderim zamanında hazırlanamıyor; sepete eklenmedi." };
+  }
+  const first = items[0];
+  return {
+    ok: true,
+    branchId: first?.branch ?? res.branchId,
+    deliveryType: first?.deliveryType ?? toCartDeliveryType(input.context.fulfillmentType),
+    date: plan.date,
+    slotLabel: plan.slotLabel,
+  };
+}
+
 /* -------------------------------------------------------------------------- */
 /* Revalidation                                                                */
 /* -------------------------------------------------------------------------- */
