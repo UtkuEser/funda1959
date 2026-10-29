@@ -25,6 +25,17 @@ export const EMPTY_DELIVERY_CONTEXT: DeliveryContext = {
   branchId: null,
 };
 
+/** A context from a request body: every field present, unknown values null. */
+export function toDeliveryContext(c: Partial<DeliveryContext> | undefined): DeliveryContext {
+  return {
+    fulfillmentType: c?.fulfillmentType === "pickup" ? "pickup" : "delivery",
+    district: c?.district ?? null,
+    neighborhood: c?.neighborhood ?? null,
+    deliveryZoneId: c?.deliveryZoneId ?? null,
+    branchId: c?.branchId ?? null,
+  };
+}
+
 export type AvailabilityRequestItem = {
   productId: string;
   /** slug is accepted too (engine resolves either) */

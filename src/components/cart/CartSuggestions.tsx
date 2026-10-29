@@ -2,23 +2,13 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { addToCart } from "@/lib/cart";
 import { useCart } from "@/lib/use-cart";
 import { formatTL } from "@/lib/cart-utils";
 import { cartDeliveryPlan, planLineAtCartTime, type CartLinePlan } from "@/lib/cart-fulfillment";
-import { SUGGESTION_LIMIT, suggestionCandidates } from "@/lib/cart-suggestions";
-import {
-  allCatalogProducts,
-  catalogVersion,
-  setPublishedProducts,
-  type CatalogProduct,
-  type ProductVariant,
-  type PublishedProduct,
-} from "@/lib/data";
-import type { CatalogAvailabilityVerdict, DeliveryContext } from "@/lib/availability";
-import { applyPrice, pricedSizes, type PriceMap } from "@/lib/pricing/prices";
-import { getQuickOrderMode } from "@/lib/quick-order-utils";
+import { SUGGESTION_LIMIT, cartHasSuggestionRule, type CartSuggestion } from "@/lib/cart-suggestions";
+import type { DeliveryContext } from "@/lib/availability";
 import { dateSlotText } from "@/lib/delivery/labels";
 import { slotHasStarted } from "@/lib/delivery/slots";
 import { istanbulDateISO } from "@/lib/time/istanbul";
@@ -27,12 +17,25 @@ import { useNow } from "@/lib/time/use-now";
 /** "10:00 – 11:00" -> "10:00" */
 const slotStartOf = (label: string | null) => label?.match(/(\d{2}:\d{2})/)?.[1];
 
+type Size = CartSuggestion["sizes"][number];
+
+/**
+ * The server's answers in this tab, per cart + place + shipping time — /sepet
+ * and /checkout share them, so the same cart shows its suggestions at once on
+ * the next page; asked again once older than FRESH_MS.
+ */
+const answers = new Map<string, { at: number; suggestions: CartSuggestion[] }>();
+const FRESH_MS = 10_000;
+
+/** The place the server resolves the branch from: the address for delivery, the store for pickup. */
+function placeOf(c: DeliveryContext): DeliveryContext {
+  return c.fulfillmentType === "pickup"
+    ? { fulfillmentType: "pickup", district: null, neighborhood: null, deliveryZoneId: null, branchId: c.branchId }
+    : { fulfillmentType: "delivery", district: c.district, neighborhood: c.neighborhood, deliveryZoneId: null, branchId: null };
+}
+
 /** One of the product at the cart's shipping time, through the cart like any other line — only after the server check. */
-async function addSuggestion(
-  product: CatalogProduct,
-  size: ProductVariant | null,
-  context: DeliveryContext,
-): Promise<CartLinePlan> {
+async function addSuggestion(product: CartSuggestion, size: Size | null, context: DeliveryContext): Promise<CartLinePlan> {
   const plan = await planLineAtCartTime({
     productId: product.id,
     productSlug: product.slug,
@@ -49,7 +52,7 @@ async function addSuggestion(
     image: product.image ?? product.gradient,
     selectedVariant: size?.id ?? null,
     variantLabel: size?.label ?? null,
-    unitPrice: size ? size.price : product.priceValue,
+    unitPrice: size ? size.price : product.price,
     quantity: 1,
     quantityEnabled: true,
     customization: { extras: [] },
@@ -63,32 +66,26 @@ async function addSuggestion(
 }
 
 function SuggestionCard({
-  product: base,
-  prices,
+  product,
   context,
   linkToProduct,
   onAdded,
 }: {
-  product: CatalogProduct;
-  prices: PriceMap;
+  product: CartSuggestion;
   context: DeliveryContext;
   linkToProduct: boolean;
   onAdded: (name: string, date: string, slotLabel: string) => void;
 }) {
-  // the current price (D5); the cart confirms it again once the line is in (useCartPriceSync)
-  const product = useMemo(() => applyPrice(base, prices), [base, prices]);
-  const mode = useMemo(() => getQuickOrderMode(product), [product]);
-  const sizes = useMemo(() => (mode.kind === "variant" ? pricedSizes(product.id, mode.variants, prices) : []), [mode, product.id, prices]);
   // never chosen for the customer
-  const [variantId, setVariantId] = useState<string | null>(null);
+  const [sizeId, setSizeId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const selected = sizes.find((s) => s.id === variantId) ?? null;
+  const selected = product.sizes.find((s) => s.id === sizeId) ?? null;
 
   const add = async () => {
     setError(null);
-    if (mode.kind === "variant" && !selected) {
-      setError(`Önce ${mode.label.toLocaleLowerCase("tr")} seçin.`);
+    if (product.sizeLabel && !selected) {
+      setError(`Önce ${product.sizeLabel.toLocaleLowerCase("tr")} seçin.`);
       return;
     }
     setBusy(true);
@@ -130,17 +127,17 @@ function SuggestionCard({
         </div>
         <p className="font-sans text-[11.5px] text-taupe">{product.categoryName}</p>
 
-        {mode.kind === "variant" && (
-          <div className="mt-2 flex flex-wrap gap-1" role="group" aria-label={mode.label}>
-            {sizes.map((s) => {
-              const on = s.id === variantId;
+        {product.sizeLabel && (
+          <div className="mt-2 flex flex-wrap gap-1" role="group" aria-label={product.sizeLabel}>
+            {product.sizes.map((s) => {
+              const on = s.id === sizeId;
               return (
                 <button
                   key={s.id}
                   type="button"
                   aria-pressed={on}
                   onClick={() => {
-                    setVariantId(s.id);
+                    setSizeId(s.id);
                     setError(null);
                   }}
                   className={`rounded-md border px-2 py-0.5 font-sans text-[12px] transition-colors ${
@@ -176,12 +173,28 @@ function SuggestionCard({
   );
 }
 
+/** A card's outline while the server answers — about a card's size, so the section doesn't jump when they arrive. */
+function SkeletonCard() {
+  return (
+    <li aria-hidden className="flex gap-3 rounded-lg border border-sand-light bg-cream-light p-3">
+      <div className="h-14 w-14 shrink-0 animate-pulse rounded-md bg-sand-light motion-reduce:animate-none" />
+      <div className="flex min-w-0 flex-1 flex-col gap-2 pt-0.5">
+        <div className="h-3.5 w-3/4 animate-pulse rounded bg-sand-light motion-reduce:animate-none" />
+        <div className="h-3 w-1/3 animate-pulse rounded bg-sand-light/70 motion-reduce:animate-none" />
+        <div className="mt-1.5 h-8 w-[104px] animate-pulse rounded-md bg-sand-light/70 motion-reduce:animate-none" />
+      </div>
+    </li>
+  );
+}
+
 /**
  * "Siparişinize eşlik etsin" (/sepet under the lines, /checkout before the
- * summary): up to four products that go with the cart (`lib/cart-suggestions`
- * — the pairings), only those the server says can be prepared at the cart's
- * branch for the cart's shipping time. Refreshed when the cart, the address /
- * store or that time changes; the order is fixed per cart (no reshuffling).
+ * summary): up to four products that go with the cart, picked by the server
+ * in one request (POST /api/cart-suggestions — published, current prices,
+ * the branch's stock and the cart's shipping day). Asked as soon as the cart,
+ * the place and the time are known, never holding the page; an answer is
+ * only shown for the cart + place + time it was asked for (a newer question
+ * cancels the older one). While it loads, card outlines hold the place.
  * Adding goes through the cart like any other line, at the cart's shipping
  * time — the time never moves; the totals, the delivery minimum and the
  * shipping check follow the cart. Hidden when nothing fits, before an address
@@ -202,60 +215,44 @@ export function CartSuggestions({
   const now = useNow();
   const titleId = useId();
 
-  // the storefront catalog + current prices, read once: published panel products (D45) join, products off the site (D48) leave
-  const [catalog, setCatalog] = useState<{ key: string; prices: PriceMap } | null>(null);
-  useEffect(() => {
-    const ctrl = new AbortController();
-    fetch("/api/prices", { signal: ctrl.signal })
-      .then((r) => (r.ok ? (r.json() as Promise<{ prices?: PriceMap; products?: PublishedProduct[]; hidden?: string[] }>) : null))
-      .then((data) => {
-        // without the current catalog nothing is offered (a product off the site must not show)
-        if (!data || !Array.isArray(data.products)) return;
-        setPublishedProducts(data.products, Array.isArray(data.hidden) ? data.hidden : []);
-        setCatalog({ key: catalogVersion(), prices: data.prices ?? {} });
-      })
-      .catch(() => {});
-    return () => ctrl.abort();
-  }, []);
-
-  const cartKey = [...new Set(items.map((i) => i.productId))].sort().join(",");
-  const pool = useMemo(
-    () => (catalog ? suggestionCandidates(items, allCatalogProducts()) : []),
-    // which products are in the cart matters, not quantities or times
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [cartKey, catalog?.key],
-  );
-  const poolIds = pool.map((p) => p.id).join(",");
-
   // a time that has passed is the cart's own problem (moved there, blocked at checkout) — nothing is offered for it
   const plan = cartDeliveryPlan(items);
   const planStart = slotStartOf(plan.slotLabel);
+  const planKnown = Boolean(context && plan.date && planStart && !plan.incomplete);
   const timeOk = Boolean(
-    now && plan.date && planStart && !plan.incomplete && plan.date >= istanbulDateISO(now) && !slotHasStarted(plan.date, planStart, now),
+    planKnown && now && plan.date! >= istanbulDateISO(now) && !slotHasStarted(plan.date!, planStart!, now),
   );
-  const scope = context && timeOk ? JSON.stringify([context, plan.date, plan.slotLabel]) : null;
+  // which products are in the cart (in the order they were added) matters, not quantities or sizes
+  const productIds = [...new Set(items.map((i) => i.productId))];
+  const scope = timeOk && context ? JSON.stringify([placeOf(context), plan.date, plan.slotLabel]) : null;
+  const key = scope ? JSON.stringify([scope, productIds]) : null;
 
-  // which candidates the branch can prepare for that day (stock, lead time, product offered there)
-  const [answer, setAnswer] = useState<{ scope: string; available: Set<string> } | null>(null);
+  const [answer, setAnswer] = useState<{ key: string; scope: string; suggestions: CartSuggestion[] } | null>(null);
   useEffect(() => {
-    if (!scope || !poolIds) return;
-    const [ctx, date] = JSON.parse(scope) as [DeliveryContext, string];
+    if (!key) return;
+    const cached = answers.get(key);
+    if (cached && Date.now() - cached.at < FRESH_MS) return;
+    const [scopeJson, ids] = JSON.parse(key) as [string, string[]];
+    const [place, date] = JSON.parse(scopeJson) as [DeliveryContext, string];
     const ctrl = new AbortController();
-    fetch("/api/availability", {
+    fetch("/api/cart-suggestions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ kind: "catalog", context: ctx, date, items: poolIds.split(",").map((productId) => ({ productId, quantity: 1 })) }),
+      body: JSON.stringify({ context: place, date, items: ids.map((productId) => ({ productId })) }),
       signal: ctrl.signal,
     })
-      .then((r) => (r.ok ? (r.json() as Promise<{ products?: Record<string, CatalogAvailabilityVerdict> }>) : null))
+      .then((r) => (r.ok ? (r.json() as Promise<{ suggestions?: CartSuggestion[] }>) : null))
       .then((data) => {
-        if (!data) return;
-        const available = new Set(Object.entries(data.products ?? {}).filter(([, v]) => v.available).map(([id]) => id));
-        setAnswer({ scope, available });
+        const suggestions = Array.isArray(data?.suggestions) ? data.suggestions : [];
+        if (data) answers.set(key, { at: Date.now(), suggestions });
+        if (!ctrl.signal.aborted) setAnswer({ key, scope: scopeJson, suggestions });
       })
-      .catch(() => {});
+      .catch(() => {
+        // a cancelled question changes nothing; a failed one shows no suggestions
+        if (!ctrl.signal.aborted) setAnswer({ key, scope: scopeJson, suggestions: [] });
+      });
     return () => ctrl.abort();
-  }, [scope, poolIds]);
+  }, [key]);
 
   const [notice, setNotice] = useState<string | null>(null);
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -268,11 +265,14 @@ export function CartSuggestions({
     noticeTimer.current = setTimeout(() => setNotice(null), 6000);
   };
 
-  // an answer for another address / time is never used; while the cart changes the last one for this scope stays
-  const shown =
-    context && catalog && answer && answer.scope === scope
-      ? pool.filter((p) => answer.available.has(p.id)).slice(0, SUGGESTION_LIMIT)
-      : [];
+  // this question's answer (or the tab's earlier one for the same cart + place + time) — never one for another place or time;
+  // only the cart changed (a line added / removed): the last answer, minus what is in the cart now, stays until the new one is in
+  const exact = key ? (answer?.key === key ? answer.suggestions : answers.get(key)?.suggestions) : undefined;
+  const carried = exact === undefined && scope && answer?.scope === scope ? answer.suggestions.filter((s) => !productIds.includes(s.id)) : [];
+  const suggestions = exact ?? (carried.length > 0 ? carried : undefined);
+  const shown = (suggestions ?? []).slice(0, SUGGESTION_LIMIT);
+  // the answer is on its way (or the clock is about to let it go) and this cart has pairings: hold the place
+  const loading = suggestions === undefined && planKnown && (now === null || timeOk) && cartHasSuggestionRule(items);
 
   const status = (
     <p aria-live="polite" className={notice ? "mt-2 font-sans text-[12.5px] leading-relaxed text-burgundy" : "sr-only"}>
@@ -280,10 +280,10 @@ export function CartSuggestions({
     </p>
   );
 
-  if (shown.length === 0 || !context || !catalog) return notice ? <div className={className}>{status}</div> : null;
+  if (!context || (shown.length === 0 && !loading)) return notice ? <div className={className}>{status}</div> : null;
 
   return (
-    <section aria-labelledby={titleId} className={className}>
+    <section aria-labelledby={titleId} aria-busy={loading || undefined} className={className}>
       <h2 id={titleId} className="font-serif text-[20px] font-semibold leading-tight text-burgundy md:text-[22px]">
         Siparişinize eşlik etsin
       </h2>
@@ -292,16 +292,11 @@ export function CartSuggestions({
       </p>
       {status}
       <ul className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-        {shown.map((p) => (
-          <SuggestionCard
-            key={p.id}
-            product={p}
-            prices={catalog.prices}
-            context={context}
-            linkToProduct={linkToProducts}
-            onAdded={onAdded}
-          />
-        ))}
+        {loading
+          ? Array.from({ length: SUGGESTION_LIMIT }, (_, i) => <SkeletonCard key={i} />)
+          : shown.map((p) => (
+              <SuggestionCard key={p.id} product={p} context={context} linkToProduct={linkToProducts} onAdded={onAdded} />
+            ))}
       </ul>
     </section>
   );

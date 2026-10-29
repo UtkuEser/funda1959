@@ -6,6 +6,7 @@ import { NextResponse } from "next/server";
 import {
   getProductAvailability,
   getCartAvailability,
+  toDeliveryContext,
   type DeliveryContext,
 } from "@/lib/availability";
 import { allCatalogProducts } from "@/lib/data";
@@ -32,16 +33,6 @@ type Body = {
   items?: { productId: string; productSlug?: string; variantId?: string | null; quantity: number }[];
 };
 
-function normalizeContext(c: Partial<DeliveryContext> | undefined): DeliveryContext {
-  return {
-    fulfillmentType: c?.fulfillmentType === "pickup" ? "pickup" : "delivery",
-    district: c?.district ?? null,
-    neighborhood: c?.neighborhood ?? null,
-    deliveryZoneId: c?.deliveryZoneId ?? null,
-    branchId: c?.branchId ?? null,
-  };
-}
-
 export async function POST(request: Request) {
   // independent reads, fetched together (a 2 s reuse keeps catalog bursts cheap):
   // - the published products added in the panel (D45; drafts never)
@@ -65,7 +56,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Geçersiz istek." }, { status: 400 });
   }
 
-  const context = normalizeContext(body.context);
+  const context = toDeliveryContext(body.context);
 
   if (body.kind === "catalog") {
     // compact per-product verdict for /hizli-siparis rows + "Bugün Teslim" filter

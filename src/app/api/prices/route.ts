@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { allCatalogProducts, hiddenProductIds, publishedProducts } from "@/lib/data";
-import { CATALOG_DISPLAY_MAX_AGE_MS, CATALOG_UNAVAILABLE_ERROR, refreshCatalog } from "@/lib/catalog/server";
+import { allCatalogProducts } from "@/lib/data";
+import { CATALOG_UNAVAILABLE_ERROR, getStorefrontData, refreshCatalog } from "@/lib/catalog/server";
 import { effectiveUnitPrice, priceRowsForCalculation } from "@/lib/pricing/prices";
-import { getDisplayPriceMap, refreshProductPrices } from "@/lib/pricing/prices-server";
+import { refreshProductPrices } from "@/lib/pricing/prices-server";
 import { PRICES_UNAVAILABLE_ERROR } from "@/lib/order-server";
 
 export const dynamic = "force-dynamic";
@@ -15,10 +15,10 @@ const MAX_LINES = 50;
  * its results in the browser. Display reading: a few seconds fresh.
  */
 export async function GET() {
-  // the published panel products (D45) too: the search builds its list in the browser
-  await refreshCatalog({ maxAgeMs: CATALOG_DISPLAY_MAX_AGE_MS });
-  const prices = await getDisplayPriceMap();
-  return NextResponse.json({ prices, products: publishedProducts(), hidden: hiddenProductIds() }, { headers: { "Cache-Control": "no-store" } });
+  // the published panel products (D45) too: the search builds its list in the browser —
+  // catalog and prices read together, not one after the other (as the pages do)
+  const { prices, products, hidden } = await getStorefrontData();
+  return NextResponse.json({ prices, products, hidden }, { headers: { "Cache-Control": "no-store" } });
 }
 
 /**

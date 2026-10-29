@@ -5,14 +5,31 @@
  * category or words in a product's name (e.g. "mum"). Only real products of
  * the storefront catalog are offered (published and on the site); a pick the
  * catalog has nothing for is skipped — nothing is made up, no external
- * service. Whether a candidate can go out with this order (the branch, the
- * cart's shipping time) is the server's answer, asked by the component.
- * Client-safe, pure.
+ * service. POST /api/cart-suggestions picks from these with the server's
+ * own reads: published / on the site, current prices, the branch's stock and
+ * the cart's shipping day. Client-safe, pure.
  */
 
-import { catalogWithHidden, type CatalogProduct } from "./data";
+import { catalogWithHidden, categories, type CatalogProduct } from "./data";
 import { getQuickOrderMode } from "./quick-order-utils";
 import { normalize } from "./search";
+
+/** One suggestion as POST /api/cart-suggestions answers it — current prices, the sizes to choose from. */
+export type CartSuggestion = {
+  id: string;
+  slug: string;
+  name: string;
+  categoryName: string;
+  image: string | null;
+  gradient: string;
+  /** the single price (a product without sizes) */
+  price: number;
+  /** what a card shows before a size is chosen (the smallest size's, D16) */
+  displayPrice: string;
+  /** "Kişi sayısı" / "Gramaj" / "Paket" when a size must be chosen; null = one price */
+  sizeLabel: string | null;
+  sizes: { id: string; label: string; price: number }[];
+};
 
 export type SuggestionPick = { category: string } | { nameWords: string[] };
 
@@ -42,6 +59,20 @@ export const CART_SUGGESTION_RULES: SuggestionRule[] = [
 
 /** shown at most */
 export const SUGGESTION_LIMIT = 4;
+
+/**
+ * Does some line's kind have pairings? — read from the lines' own category
+ * names (a panel product in the cart included), so the cart can hold the
+ * section's place while the server answers. Whether anything is offered is
+ * still the server's answer.
+ */
+export function cartHasSuggestionRule(cart: { categoryName: string }[]): boolean {
+  return cart.some((i) => {
+    const slug = categories.find((c) => c.name === i.categoryName)?.slug;
+    return Boolean(slug && CART_SUGGESTION_RULES.some((r) => r.when.includes(slug)));
+  });
+}
+
 /** asked about on the server — enough left for four after the ones this order can't take */
 const POOL_LIMIT = 16;
 
